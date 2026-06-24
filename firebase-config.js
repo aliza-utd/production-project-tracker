@@ -1,7 +1,7 @@
 // Replace these values with your Firebase project credentials
 // from the Firebase Console before deploying.
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyDlM_3fxIBXM8G0tyUY2RqHYyK0xfeN44A",
   authDomain: "production-project-tracker.firebaseapp.com",
   projectId: "production-project-tracker",

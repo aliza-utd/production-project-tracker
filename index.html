@@ -15,6 +15,11 @@
   --r:8px;--sh:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
   --sh-lg:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -2px rgba(0,0,0,.05)
 }
+.dark{
+  --bg:#0f172a;--surface:#1e293b;--border:#334155;--text:#e2e8f0;--muted:#94a3b8;
+  --sb-bg:#020617;--sb-text:#64748b;--sb-active:#6366f1;
+  color-scheme:dark
+}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
 #app{display:flex;width:100%;min-height:100vh}
 
@@ -33,7 +38,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 
 /* Layout */
 .main{margin-left:var(--sb);flex:1;display:flex;flex-direction:column;min-height:100vh}
-.topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;gap:12px}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;gap:12px}
 .topbar-left{display:flex;align-items:center;gap:12px;min-width:0;flex:1}
 .topbar-title{font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .topbar-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
@@ -42,7 +47,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 /* Buttons */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r);font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all .15s;white-space:nowrap;font-family:inherit}
 .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-h)}
-.btn-secondary{background:#fff;color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{background:var(--bg)}
+.btn-secondary{background:var(--surface);color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{background:var(--bg)}
 .btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#dc2626}
 .btn-ghost{background:transparent;color:var(--muted);padding:6px 8px}.btn-ghost:hover{background:var(--bg);color:var(--text)}
 .btn-sm{padding:5px 10px;font-size:13px}
@@ -53,7 +58,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 /* Forms */
 .form-group{margin-bottom:14px}
 .form-label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
-.form-input,.form-select,.form-textarea{width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:var(--r);font-size:14px;color:var(--text);background:#fff;transition:border-color .15s;font-family:inherit}
+.form-input,.form-select,.form-textarea{width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:var(--r);font-size:14px;color:var(--text);background:var(--surface);transition:border-color .15s;font-family:inherit}
 .form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
 .form-textarea{resize:vertical;min-height:80px;line-height:1.5}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -64,14 +69,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .toggle-track.on .toggle-thumb{transform:translateX(18px)}
 
 /* Filter bar */
-.filter-bar{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.filter-bar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px}
 .filter-sep{width:1px;height:20px;background:var(--border);flex-shrink:0}
-.filter-input,.filter-select{padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);background:#fff;font-family:inherit}
+.filter-input,.filter-select{padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);background:var(--surface);font-family:inherit}
 .filter-input:focus,.filter-select:focus{outline:none;border-color:var(--primary)}
 .filter-label{font-size:12px;color:var(--muted);white-space:nowrap;font-weight:500}
 
 /* Table */
-.tbl-wrap{background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
 .tbl{width:100%;border-collapse:collapse}
 .tbl th{background:#f8fafc;padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap}
 .tbl td{padding:11px 16px;border-bottom:1px solid #f1f5f9;font-size:14px}
@@ -92,13 +97,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 
 /* Kanban */
 .kanban-wrap{display:flex;gap:14px;overflow-x:auto;padding-bottom:16px;min-height:calc(100vh - 220px);align-items:flex-start}
-.kb-col{flex-shrink:0;width:230px;background:#f1f5f9;border-radius:var(--r);display:flex;flex-direction:column;max-height:calc(100vh - 220px)}
+.kb-col{flex-shrink:0;width:230px;background:var(--bg);border-radius:var(--r);display:flex;flex-direction:column;max-height:calc(100vh - 220px)}
 .kb-col-hdr{padding:11px 12px;display:flex;align-items:center;justify-content:space-between;border-radius:var(--r) var(--r) 0 0}
 .kb-col-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px}
 .kb-count{background:rgba(0,0,0,.15);border-radius:100px;padding:1px 7px;font-size:11px;font-weight:700}
 .kb-cards{flex:1;padding:8px;display:flex;flex-direction:column;gap:7px;min-height:80px;overflow-y:auto;transition:background .15s;border-radius:0 0 var(--r) var(--r)}
 .kb-cards.drag-over{background:rgba(99,102,241,.08)}
-.kb-card{background:#fff;border-radius:7px;padding:11px;box-shadow:var(--sh);cursor:grab;transition:box-shadow .15s,transform .15s;border-left:3px solid transparent}
+.kb-card{background:var(--surface);border-radius:7px;padding:11px;box-shadow:var(--sh);cursor:grab;transition:box-shadow .15s,transform .15s;border-left:3px solid transparent}
 .kb-card.multi{box-shadow:var(--sh),3px 3px 0 1px #e2e8f0,5px 5px 0 2px #f1f5f9}
 .kb-card:hover{box-shadow:var(--sh-lg);transform:translateY(-1px)}
 .kb-card.dragging{opacity:.4;cursor:grabbing}
@@ -112,16 +117,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .kb-empty{padding:20px 12px;text-align:center;font-size:12px;color:#94a3b8}
 
 /* ── PROJECT DETAIL PAGE ── */
-.proj-hero{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:22px 24px;margin-bottom:20px;box-shadow:var(--sh)}
+.proj-hero{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px 24px;margin-bottom:20px;box-shadow:var(--sh)}
 .proj-name-input{font-size:22px;font-weight:700;border:none;background:transparent;width:100%;color:var(--text);font-family:inherit;line-height:1.2;padding:0;margin-bottom:10px}
 .proj-name-input:focus{outline:none}
 .proj-name-input::placeholder{color:#cbd5e1}
 .proj-meta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.proj-tabs-bar{display:flex;border-bottom:2px solid var(--border);margin-bottom:0;background:#fff;border-radius:var(--r) var(--r) 0 0;overflow:hidden}
+.proj-tabs-bar{display:flex;border-bottom:2px solid var(--border);margin-bottom:0;background:var(--surface);border-radius:var(--r) var(--r) 0 0;overflow:hidden}
 .proj-tab{padding:11px 20px;font-size:14px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap}
 .proj-tab:hover{color:var(--text);background:#f8fafc}
-.proj-tab.active{color:var(--primary);border-bottom-color:var(--primary);background:#fff}
-.proj-tab-content{background:#fff;border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r);padding:24px}
+.proj-tab.active{color:var(--primary);border-bottom-color:var(--primary);background:var(--surface)}
+.proj-tab-content{background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r);padding:24px}
 
 /* Phase select row */
 .phase-select-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
@@ -130,7 +135,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 
 /* Modal (team members only) */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
-.modal{background:#fff;border-radius:12px;width:100%;max-width:820px;margin:auto;box-shadow:var(--sh-lg)}
+.modal{background:var(--surface);border-radius:12px;width:100%;max-width:820px;margin:auto;box-shadow:var(--sh-lg)}
 .modal-hdr{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
 .modal-title{font-size:16px;font-weight:700;flex:1}
 .modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1;padding:2px 6px;border-radius:4px}
@@ -157,7 +162,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .week-label{font-size:18px;font-weight:700}
 .week-sub{font-size:13px;color:var(--muted)}
 .weekly-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.w-section{background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.w-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
 .w-sec-hdr{padding:11px 16px;background:#f8fafc;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .w-sec-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px}
 .w-sec-icon{font-size:16px}
@@ -182,7 +187,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 
 /* Dev notes */
 .dn-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.dn-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+.dn-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
 .dn-card-hdr{padding:14px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:#f8fafc}
 .dn-card-info{flex:1;min-width:0}
 .dn-card-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -195,7 +200,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .dn-section:last-child{margin-bottom:0}
 
 /* Summary banner */
-.summary-banner{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:14px 20px;display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.summary-banner{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 20px;display:flex;align-items:center;gap:16px;margin-bottom:20px}
 .summary-stat{display:flex;align-items:center;gap:8px;font-size:14px}
 .summary-stat strong{font-weight:700}
 .progress-bar-wrap{flex:1;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;min-width:80px}
@@ -205,7 +210,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .tm-dept-section{margin-bottom:28px}
 .tm-dept-title{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .tm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
-.tm-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:16px;cursor:pointer;transition:box-shadow .15s,transform .15s;box-shadow:var(--sh)}
+.tm-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;cursor:pointer;transition:box-shadow .15s,transform .15s;box-shadow:var(--sh)}
 .tm-card:hover{box-shadow:var(--sh-lg);transform:translateY(-1px)}
 .tm-card-hdr{display:flex;align-items:center;gap:12px;margin-bottom:10px}
 .tm-card-name{font-size:14px;font-weight:700;line-height:1.2}
@@ -223,10 +228,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 /* Settings */
 .settings-sec{margin-bottom:28px}
 .settings-sec h3{font-size:15px;font-weight:700;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:var(--sh)}
 
 /* Confirm */
 .confirm-wrap{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;display:flex;align-items:center;justify-content:center}
-.confirm-box{background:#fff;border-radius:12px;padding:24px;max-width:400px;width:90%;box-shadow:var(--sh-lg)}
+.confirm-box{background:var(--surface);border-radius:12px;padding:24px;max-width:400px;width:90%;box-shadow:var(--sh-lg)}
 .confirm-title{font-size:16px;font-weight:700;margin-bottom:8px}
 .confirm-msg{font-size:14px;color:var(--muted);margin-bottom:20px;line-height:1.5}
 .confirm-btns{display:flex;justify-content:flex-end;gap:10px}
@@ -285,7 +291,7 @@ a.ext:hover{text-decoration:underline}
 
 /* ── Phase Cards ── */
 .ph-cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.ph-card{background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--sh)}
+.ph-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--sh)}
 .ph-card-wide{grid-column:1/-1}
 .ph-card-hdr{padding:12px 15px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;transition:background .15s}
 .ph-card-hdr:hover{background:#fafafa}
@@ -301,7 +307,7 @@ a.ext:hover{text-decoration:underline}
 .ph-arrow.open{transform:rotate(90deg)}
 .ph-card-body{padding:16px;border-top:1px solid var(--border)}
 .ph-status-group{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
-.ph-st-btn{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--muted);transition:all .15s;font-family:inherit;white-space:nowrap}
+.ph-st-btn{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);transition:all .15s;font-family:inherit;white-space:nowrap}
 .ph-st-btn:hover{background:var(--bg)}
 .ph-st-btn.sel-pending{background:#f1f5f9;border-color:#94a3b8;color:#475569}
 .ph-st-btn.sel-active{background:var(--primary);border-color:var(--primary);color:#fff}
@@ -315,7 +321,7 @@ a.ext:hover{text-decoration:underline}
 .collapsible-hdr-title{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
 .collapsible-hdr-arrow{font-size:11px;color:var(--muted);transition:transform .2s}
 .collapsible-hdr-arrow.open{transform:rotate(90deg)}
-.collapsible-body{border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r);padding:18px 14px 6px;margin-bottom:16px;background:#fff}
+.collapsible-body{border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r);padding:18px 14px 6px;margin-bottom:16px;background:var(--surface)}
 
 /* Link field with icon */
 .link-field-wrap{position:relative;display:flex;align-items:center}
@@ -339,7 +345,7 @@ a.ext:hover{text-decoration:underline}
 
 /* ── Manage Phases page ── */
 .ps-wrap{max-width:820px}
-.ps-phase-row{background:#fff;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;box-shadow:var(--sh);transition:box-shadow .15s}
+.ps-phase-row{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;box-shadow:var(--sh);transition:box-shadow .15s}
 .ps-phase-row.drag-over{box-shadow:0 0 0 2px var(--primary),var(--sh-lg)}
 .ps-phase-hdr{display:flex;align-items:center;gap:10px;padding:12px 15px;cursor:pointer;user-select:none}
 .ps-drag-handle{color:var(--muted);font-size:16px;cursor:grab;flex-shrink:0;padding:2px 4px}
@@ -369,10 +375,127 @@ a.ext:hover{text-decoration:underline}
 .ps-sub-del:hover{background:#fef2f2;color:var(--danger)}
 .ps-add-sub{display:flex;gap:8px;margin-top:4px}
 .ps-warning{background:#fffbeb;border:1px solid #fde68a;border-radius:var(--r);padding:10px 14px;font-size:13px;color:#92400e;margin-bottom:16px}
+
+/* ── Auth screens ── */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:24px;width:100%}
+.auth-card{background:var(--surface);border-radius:16px;padding:40px;max-width:420px;width:100%;text-align:center;box-shadow:var(--sh-lg);border:1px solid var(--border)}
+.auth-logo{font-size:44px;margin-bottom:10px}
+.auth-title{font-size:22px;font-weight:700;margin-bottom:4px;color:var(--text)}
+.auth-sub{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.6}
+.btn-google{background:#fff;color:#3c4043;border:1.5px solid #dadce0;padding:12px 20px;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:10px;width:100%;justify-content:center;transition:background .15s,box-shadow .15s;font-family:inherit}
+.btn-google:hover{background:#f8f9fa;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.btn-google:disabled{opacity:.6;cursor:not-allowed}
+.auth-note{font-size:12px;color:var(--muted);margin-top:20px;line-height:1.7;border-top:1px solid var(--border);padding-top:16px}
+.auth-error{background:#fef2f2;border:1px solid #fecaca;border-radius:var(--r);padding:12px 14px;font-size:13px;color:#dc2626;margin-bottom:16px;text-align:left}
+.auth-loading{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);flex-direction:column;gap:14px;width:100%}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sb-user{display:flex;align-items:center;gap:8px;padding:8px 8px 10px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:8px}
+.sb-user-info{min-width:0;flex:1;overflow:hidden}
+.sb-user-name{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-user-role{font-size:10px;color:var(--sb-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+/* ── Notifications ── */
+.notif-wrap{position:relative}
+.notif-btn{position:relative;width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:background .15s;padding:0}
+.notif-btn:hover{background:#f1f5f9}
+.notif-badge{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:100px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;pointer-events:none}
+.notif-panel{position:fixed;top:64px;right:16px;width:340px;max-height:460px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.14);z-index:155;display:flex;flex-direction:column}
+.notif-panel-hdr{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0}
+.notif-panel-title{font-size:14px;font-weight:600}
+.notif-list{overflow-y:auto;flex:1;overscroll-behavior:contain}
+.notif-item{padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;display:flex;gap:10px;align-items:flex-start}
+.notif-item:last-child{border-bottom:none}
+.notif-item:hover{background:#f8fafc}
+.notif-item.unread{background:#f0f4ff}
+.notif-item.unread:hover{background:#e8eeff}
+.notif-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.notif-body{flex:1;min-width:0}
+.notif-msg{font-size:13px;line-height:1.4;word-break:break-word;color:var(--text)}
+.notif-time{font-size:11px;color:var(--muted);margin-top:3px}
+.notif-dot{width:7px;height:7px;border-radius:50%;background:#6366f1;flex-shrink:0;margin-top:6px}
+.notif-empty{padding:32px 16px;text-align:center;color:var(--muted);font-size:14px}
 </style>
 </head>
 <body>
 <div id="app" v-cloak>
+
+<!-- ── LOADING ── -->
+<div v-if="authState==='loading'" class="auth-loading">
+  <div class="spinner"></div>
+  <div style="color:var(--muted);font-size:14px">Loading…</div>
+</div>
+
+<!-- ── LOGIN ── -->
+<div v-else-if="authState==='unauthenticated'" class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">🚀</div>
+    <div class="auth-title">Project Tracker</div>
+    <div class="auth-sub" style="margin-bottom:24px">Web Dev Team</div>
+    <div v-if="authError" class="auth-error">{{authError}}</div>
+    <button class="btn-google" @click="handleSignIn" :disabled="signInLoading">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      <span>{{signInLoading ? 'Signing in…' : 'Sign in with Google'}}</span>
+    </button>
+    <div class="auth-note">
+      Access is restricted to team members.<br>
+      Contact your manager if you cannot log in.
+    </div>
+  </div>
+</div>
+
+<!-- ── ACCESS DENIED ── -->
+<div v-else-if="authState==='access-denied'" class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">🚫</div>
+    <div class="auth-title">Access Denied</div>
+    <div class="auth-sub">
+      Your account (<strong>{{currentUser&&currentUser.email}}</strong>) is not registered as a team member.<br>
+      Please contact your manager.
+    </div>
+    <button class="btn btn-secondary" style="width:100%;justify-content:center" @click="handleSignOut">
+      Sign Out
+    </button>
+  </div>
+</div>
+
+<!-- ── FIRST-RUN SETUP ── -->
+<div v-else-if="authState==='first-run'" class="auth-wrap">
+  <div class="auth-card" style="text-align:left;max-width:460px">
+    <div style="text-align:center;margin-bottom:24px">
+      <div class="auth-logo">🚀</div>
+      <div class="auth-title">First-Time Setup</div>
+      <div class="auth-sub" style="margin-bottom:0">
+        No team members found.<br>Set up the first Manager account.
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Full Name</label>
+      <input class="form-input" v-model="setupForm.name" placeholder="Your full name…">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" :value="setupForm.email" readonly style="background:#f8fafc;color:var(--muted)">
+    </div>
+    <div class="form-group" style="margin-bottom:20px">
+      <label class="form-label">Role</label>
+      <input class="form-input" value="Manager" readonly style="background:#f8fafc;color:var(--muted)">
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" @click="handleFirstRunSetup" :disabled="setupLoading">
+      {{setupLoading ? 'Setting up…' : '✓ Confirm &amp; Enter App'}}
+    </button>
+    <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:8px" @click="handleSignOut">
+      Sign Out
+    </button>
+  </div>
+</div>
+
+<!-- ── AUTHENTICATED APP ── -->
+<template v-else-if="authState==='authenticated'">
 
 <!-- SIDEBAR -->
 <nav class="sb">
@@ -381,12 +504,11 @@ a.ext:hover{text-decoration:underline}
     <p>Web Dev Team</p>
   </div>
   <div class="sb-nav">
-    <div class="sb-section">Projects</div>
-    <button class="nav-item" :class="{active:view==='list'||view==='project'}" @click="goList">
-      <span class="ico">📋</span><span>Project List</span>
+    <button class="nav-item" :class="{active:view==='dashboard'}" @click="view='dashboard'">
+      <span class="ico">🏠</span><span>Dashboard</span>
     </button>
-    <button class="nav-item" :class="{active:view==='kanban'}" @click="view='kanban'">
-      <span class="ico">🗂️</span><span>Kanban Board</span>
+    <button class="nav-item" :class="{active:view==='list'||view==='project'||view==='kanban'}" @click="goList">
+      <span class="ico">📋</span><span>Projects</span>
     </button>
     <button class="nav-item" :class="{active:view==='weekly'}" @click="view='weekly'">
       <span class="ico">📅</span><span>Weekly Tracker</span>
@@ -394,26 +516,38 @@ a.ext:hover{text-decoration:underline}
     <button class="nav-item" :class="{active:view==='weeklynotes'}" @click="view='weeklynotes'">
       <span class="ico">📝</span><span>Weekly Notes</span>
     </button>
-    <div class="sb-section">Team</div>
-    <button class="nav-item" :class="{active:view==='team'}" @click="view='team'">
-      <span class="ico">👥</span><span>Team Members</span>
+    <button class="nav-item" :class="{active:view==='reports'}" @click="view='reports'">
+      <span class="ico">📊</span><span>Reports</span>
     </button>
-    <div class="sb-section">System</div>
-    <button class="nav-item" :class="{active:view==='phase-settings'}" @click="openPhaseSettings">
-      <span class="ico">🔧</span><span>Manage Phases</span>
+    <button class="nav-item" :class="{active:view==='archived'}" @click="view='archived'">
+      <span class="ico">🗄️</span><span>Archived</span>
     </button>
     <button class="nav-item" :class="{active:view==='settings'}" @click="view='settings'">
       <span class="ico">⚙️</span><span>Settings</span>
     </button>
+    <button v-if="currentUser&&currentUser.department==='Manager'" class="nav-item" :class="{active:view==='team'}" @click="view='team'">
+      <span class="ico">👥</span><span>Team Members</span>
+    </button>
+    <button v-if="currentUser&&currentUser.department==='Manager'" class="nav-item" :class="{active:view==='phase-settings'}" @click="openPhaseSettings">
+      <span class="ico">🔧</span><span>Phase Settings</span>
+    </button>
+    <button class="nav-item" @click="handleSignOut">
+      <span class="ico">🚪</span><span>Logout</span>
+    </button>
   </div>
   <div class="sb-bottom">
-    <button class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:6px;justify-content:center" @click="exportData">
-      <span>⬇️</span><span>Export</span>
+    <div class="sb-user">
+      <div class="avatar avatar-sm" :style="`background:${currentUser&&currentUser.avatarColor||'#6366f1'}`">
+        {{currentUser&&currentUser.name?currentUser.name.trim().split(/\s+/).slice(0,2).map(function(w){return w[0]}).join('').toUpperCase():''}}
+      </div>
+      <div class="sb-user-info">
+        <div class="sb-user-name">{{currentUser&&currentUser.name||''}}</div>
+        <div class="sb-user-role">{{currentUser&&(currentUser.role||currentUser.department)||''}}</div>
+      </div>
+    </div>
+    <button class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:6px;justify-content:center" @click="toggleTheme">
+      <span>{{isDark?'☀️':'🌙'}}</span><span>{{isDark?'Light Mode':'Dark Mode'}}</span>
     </button>
-    <label class="btn btn-secondary btn-sm" style="width:100%;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-      <span>⬆️</span><span>Import</span>
-      <input type="file" accept=".json" style="display:none" @change="importData">
-    </label>
   </div>
 </nav>
 
@@ -433,20 +567,30 @@ a.ext:hover{text-decoration:underline}
       </template>
       <template v-else>
         <span class="topbar-title">
-          <span v-if="view==='list'">📋 Project List</span>
+          <span v-if="view==='dashboard'">🏠 Dashboard</span>
+          <span v-else-if="view==='list'">📋 Projects</span>
           <span v-else-if="view==='kanban'">🗂️ Kanban Board</span>
           <span v-else-if="view==='weekly'">📅 Weekly Tracker</span>
           <span v-else-if="view==='weeklynotes'">📝 Weekly Developer Notes</span>
+          <span v-else-if="view==='reports'">📊 Reports</span>
+          <span v-else-if="view==='archived'">🗄️ Archived Projects</span>
           <span v-else-if="view==='team'">👥 Team Members</span>
-          <span v-else-if="view==='phase-settings'">🔧 Manage Phases</span>
+          <span v-else-if="view==='phase-settings'">🔧 Phase Settings</span>
           <span v-else-if="view==='settings'">⚙️ Settings</span>
         </span>
       </template>
     </div>
     <div class="topbar-actions">
+      <!-- Notifications bell — always visible when authenticated -->
+      <div class="notif-wrap" @click.stop>
+        <button class="notif-btn" @click="showNotifPanel=!showNotifPanel" title="Notifications">
+          🔔<span v-if="unreadCount>0" class="notif-badge">{{unreadCount>99?'99+':unreadCount}}</span>
+        </button>
+      </div>
+
       <template v-if="view==='project'">
         <span style="font-size:13px;color:var(--muted)">{{editingProject.id?'Editing':'Creating'}}</span>
-        <button v-if="editingProject.id" class="btn btn-danger btn-sm" @click="deleteProject(editingProject.id)">🗑️ Delete</button>
+        <button v-if="editingProject.id" class="btn btn-danger btn-sm" @click="archiveProject(editingProject.id)">🗂️ Archive</button>
         <button class="btn btn-primary btn-sm" @click="saveProject">💾 Save Project</button>
       </template>
       <template v-else>
@@ -493,7 +637,11 @@ a.ext:hover{text-decoration:underline}
 
     <!-- ===== PROJECT LIST ===== -->
     <div v-if="view==='list'">
-      <div v-if="filteredProjects.length===0" class="empty">
+      <div v-if="projectsLoading" style="display:flex;align-items:center;justify-content:center;padding:60px;gap:12px;color:var(--muted)">
+        <span style="font-size:22px;animation:spin 1s linear infinite">⏳</span>
+        <span>Loading projects…</span>
+      </div>
+      <div v-else-if="filteredProjects.length===0" class="empty">
         <div class="empty-icon">📂</div>
         <div class="empty-title">No projects found</div>
         <div class="empty-desc">{{projects.length===0?'Create your first project to get started.':'No projects match the current filters.'}}</div>
@@ -543,7 +691,11 @@ a.ext:hover{text-decoration:underline}
     </div>
 
     <!-- ===== KANBAN ===== -->
-    <div v-if="view==='kanban'" class="kanban-wrap">
+    <div v-if="view==='kanban'" class="kanban-wrap" style="position:relative">
+      <div v-if="projectsLoading" style="position:absolute;inset:0;background:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;gap:12px;z-index:10;border-radius:var(--r);color:var(--muted)">
+        <span style="font-size:22px;animation:spin 1s linear infinite">⏳</span>
+        <span>Loading projects…</span>
+      </div>
       <div v-for="phase in PHASES" :key="phase.key" class="kb-col">
         <div class="kb-col-hdr" :style="`background:${phase.bg};color:${phase.color}`">
           <div class="kb-col-title">
@@ -610,9 +762,13 @@ a.ext:hover{text-decoration:underline}
 
       <!-- Tabs -->
       <div class="proj-tabs-bar">
-        <div class="proj-tab" :class="{active:projTab==='info'}"   @click="projTab='info'">Info</div>
-        <div class="proj-tab" :class="{active:projTab==='phases'}" @click="projTab='phases'">Phases</div>
-        <div class="proj-tab" :class="{active:projTab==='links'}"  @click="projTab='links'">Links & Notes</div>
+        <div class="proj-tab" :class="{active:projTab==='info'}"     @click="projTab='info'">Info</div>
+        <div class="proj-tab" :class="{active:projTab==='phases'}"   @click="projTab='phases'">Phases</div>
+        <div class="proj-tab" :class="{active:projTab==='links'}"    @click="projTab='links'">Links & Notes</div>
+        <div class="proj-tab" v-if="editingProject.id" :class="{active:projTab==='comments'}"  @click="projTab='comments'">
+          💬 Comments<span v-if="projectComments.length" style="font-size:11px;background:var(--primary);color:#fff;border-radius:10px;padding:1px 6px;margin-left:5px">{{projectComments.length}}</span>
+        </div>
+        <div class="proj-tab" v-if="editingProject.id" :class="{active:projTab==='activity'}"  @click="projTab='activity'">📋 Activity</div>
       </div>
 
       <div class="proj-tab-content">
@@ -952,11 +1108,57 @@ a.ext:hover{text-decoration:underline}
           </div>
         </div>
 
+        <!-- COMMENTS TAB -->
+        <div v-if="projTab==='comments'">
+          <div v-if="commentsLoading" style="display:flex;align-items:center;gap:10px;padding:24px;color:var(--muted)">
+            <span style="animation:spin 1s linear infinite">⏳</span> Loading comments…
+          </div>
+          <div v-else>
+            <div v-if="projectComments.length===0" style="color:var(--muted);font-size:14px;margin-bottom:20px">No comments yet. Be the first to comment.</div>
+            <div v-for="c in projectComments" :key="c.id"
+              style="display:flex;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+              <div class="avatar avatar-sm" :style="`background:${c.authorColor||'#6366f1'};flex-shrink:0`">{{c.authorInitials||'?'}}</div>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                  <span style="font-weight:600;font-size:14px">{{c.authorName||'Unknown'}}</span>
+                  <span style="font-size:12px;color:var(--muted)">{{fmtDate(c.createdAt)}}</span>
+                </div>
+                <div style="font-size:14px;white-space:pre-wrap;word-break:break-word">{{c.text}}</div>
+              </div>
+            </div>
+            <div style="margin-top:16px">
+              <textarea class="form-textarea" v-model="newCommentText" placeholder="Add a comment…" rows="3" style="margin-bottom:10px"></textarea>
+              <button class="btn btn-primary btn-sm" @click="addComment" :disabled="!newCommentText.trim()">Post Comment</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACTIVITY LOG TAB -->
+        <div v-if="projTab==='activity'">
+          <div v-if="commentsLoading" style="display:flex;align-items:center;gap:10px;padding:24px;color:var(--muted)">
+            <span style="animation:spin 1s linear infinite">⏳</span> Loading activity…
+          </div>
+          <div v-else>
+            <div v-if="projectActivityLog.length===0" style="color:var(--muted);font-size:14px">No activity recorded yet.</div>
+            <div v-for="entry in projectActivityLog" :key="entry.id"
+              style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+              <span style="font-size:18px;flex-shrink:0">
+                {{entry.action==='created'?'✨':entry.action==='updated'?'✏️':entry.action==='phase_changed'?'🔄':entry.action==='archived'?'🗂️':entry.action==='comment_added'?'💬':'📌'}}
+              </span>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:500">{{entry.detail}}</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px">{{entry.userName||'System'}} · {{fmtDate(entry.timestamp)}}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div><!-- end proj-tab-content -->
     </div><!-- end project detail -->
 
     <!-- ===== WEEKLY TRACKER ===== -->
     <div v-if="view==='weekly'">
+
       <div class="week-nav">
         <button class="btn btn-secondary btn-sm" @click="weekOffset--">← Prev</button>
         <div>
@@ -966,7 +1168,14 @@ a.ext:hover{text-decoration:underline}
         <button class="btn btn-secondary btn-sm" @click="weekOffset++" :disabled="weekOffset>=0">Next →</button>
         <button v-if="weekOffset!==0" class="btn btn-ghost btn-sm" @click="weekOffset=0">Today</button>
       </div>
-      <div class="weekly-grid">
+
+      <!-- Loading spinner while Firestore fetches this week's data -->
+      <div v-if="weeklyTrackerLoading" style="display:flex;align-items:center;justify-content:center;padding:60px;gap:12px;color:var(--muted)">
+        <span style="font-size:22px;animation:spin 1s linear infinite">⏳</span>
+        <span>Loading weekly tracker…</span>
+      </div>
+
+      <div v-else class="weekly-grid">
         <div class="w-section" v-for="sec in weeklySections" :key="sec.key">
           <div class="w-sec-hdr">
             <div class="w-sec-title"><span class="w-sec-icon">{{sec.icon}}</span> {{sec.label}}</div>
@@ -1003,6 +1212,7 @@ a.ext:hover{text-decoration:underline}
 
     <!-- ===== WEEKLY DEVELOPER NOTES ===== -->
     <div v-if="view==='weeklynotes'">
+
       <div class="week-nav">
         <button class="btn btn-secondary btn-sm" @click="dnWeekOffset--">← Prev</button>
         <div>
@@ -1012,6 +1222,14 @@ a.ext:hover{text-decoration:underline}
         <button class="btn btn-secondary btn-sm" @click="dnWeekOffset++" :disabled="dnWeekOffset>=0">Next →</button>
         <button v-if="dnWeekOffset!==0" class="btn btn-ghost btn-sm" @click="dnWeekOffset=0">Today</button>
       </div>
+
+      <!-- Loading spinner while Firestore fetches this week's dev notes -->
+      <div v-if="weeklyDevNotesLoading" style="display:flex;align-items:center;justify-content:center;padding:60px;gap:12px;color:var(--muted)">
+        <span style="font-size:22px;animation:spin 1s linear infinite">⏳</span>
+        <span>Loading developer notes…</span>
+      </div>
+
+      <template v-else>
       <div class="summary-banner">
         <div class="summary-stat"><strong>{{dnCompletion.complete}}</strong> / {{dnCompletion.total}} completed</div>
         <div class="progress-bar-wrap">
@@ -1066,10 +1284,12 @@ a.ext:hover{text-decoration:underline}
           </div>
         </div>
       </div>
+      </template>
     </div>
 
     <!-- ===== TEAM MEMBERS ===== -->
-    <div v-if="view==='team'">
+    <div v-if="view==='team' && currentUser && currentUser.department==='Manager'">
+
       <template v-for="dept in ['Developer','Production','Manager']" :key="dept">
         <div v-if="membersByDept[dept]&&membersByDept[dept].length" class="tm-dept-section">
           <div class="tm-dept-title">
@@ -1120,7 +1340,7 @@ a.ext:hover{text-decoration:underline}
     </div>
 
     <!-- ===== MANAGE PHASES ===== -->
-    <div v-if="view==='phase-settings'" class="ps-wrap">
+    <div v-if="view==='phase-settings' && currentUser && currentUser.department==='Manager'" class="ps-wrap">
 
       <div class="ps-warning">
         ⚠️ Drag rows to reorder. Phases are listed from <strong>least advanced</strong> (top) to <strong>most advanced</strong> (bottom). Terminal phases (On-Hold / Cancelled) should go at the bottom. Changes apply immediately to Kanban, timeline, and filters after saving.
@@ -1229,30 +1449,220 @@ a.ext:hover{text-decoration:underline}
     </div>
 
     <!-- ===== SETTINGS ===== -->
-    <div v-if="view==='settings'" style="max-width:640px">
+    <div v-if="view==='settings'" style="max-width:680px">
+
       <div class="settings-sec">
         <h3>🔧 Phase Configuration</h3>
         <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Add, rename, reorder, and configure phases. Changes affect Kanban columns, the timeline, and all filters.</p>
-        <button class="btn btn-secondary btn-sm" @click="openPhaseSettings">Go to Manage Phases →</button>
+        <button class="btn btn-secondary btn-sm" @click="openPhaseSettings">Go to Phase Settings →</button>
       </div>
-      <div class="settings-sec">
+
+      <div v-if="currentUser&&currentUser.department==='Manager'" class="settings-sec">
         <h3>👥 Team Members</h3>
         <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Manage your team roster from the Team Members page.</p>
         <button class="btn btn-secondary btn-sm" @click="view='team'">Go to Team Members →</button>
       </div>
+
       <div class="settings-sec">
-        <h3>💾 Data Management</h3>
+        <h3>💾 Data</h3>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-secondary" @click="exportData">⬇️ Export JSON</button>
           <label class="btn btn-secondary" style="cursor:pointer">
             ⬆️ Import JSON
             <input type="file" accept=".json" style="display:none" @change="importData">
           </label>
-          <button class="btn btn-danger" @click="clearAllData">🗑️ Clear All Data</button>
+          <button class="btn btn-danger" @click="clearAllData">🗑️ Clear Local Cache</button>
         </div>
-        <p style="font-size:13px;color:var(--muted);margin-top:10px">
-          Exports include projects, weekly entries, team members, and developer notes.
-        </p>
+        <p style="font-size:13px;color:var(--muted);margin-top:10px">All project and team data is stored in Firestore. Export creates a JSON backup.</p>
+      </div>
+
+      <!-- Data Migration — Managers only -->
+      <div v-if="currentUser&&currentUser.department==='Manager'" class="settings-sec" style="border:2px solid #f59e0b;background:#fffbeb">
+        <h3 style="color:#92400e">📦 Data Migration</h3>
+        <div style="font-size:13px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:10px 14px;margin-bottom:16px;line-height:1.6">
+          ⚠️ <strong>Only run each migration once.</strong> Back up your data before migrating. These buttons read from this device's localStorage and upload to Firestore — once run, the local data is removed.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <div style="font-size:13px;font-weight:600">Team Members</div>
+              <div style="font-size:12px;color:var(--muted)">Uploads <code>pt_team_members</code> to Firestore</div>
+            </div>
+            <button class="btn btn-sm" :class="hasMigrationData?'btn-primary':'btn-secondary'" @click="migrateTeamMembers" :disabled="migrating||!hasMigrationData">
+              {{migrating?'Migrating…':hasMigrationData?'☁️ Migrate Team Members':'✓ Already migrated'}}
+            </button>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <div style="font-size:13px;font-weight:600">Phase Config</div>
+              <div style="font-size:12px;color:var(--muted)">Uploads <code>pt_phase_config</code> to Firestore</div>
+            </div>
+            <button class="btn btn-sm" :class="hasPhaseConfigMigration?'btn-primary':'btn-secondary'" @click="migratePhaseConfig" :disabled="migratingPhaseConfig||!hasPhaseConfigMigration">
+              {{migratingPhaseConfig?'Migrating…':hasPhaseConfigMigration?'☁️ Migrate Phase Config':'✓ Already migrated'}}
+            </button>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <div style="font-size:13px;font-weight:600">Projects</div>
+              <div style="font-size:12px;color:var(--muted)">Uploads <code>pt_projects</code> to Firestore</div>
+            </div>
+            <button class="btn btn-sm" :class="hasProjectsMigration?'btn-primary':'btn-secondary'" @click="migrateProjects" :disabled="migratingProjects||!hasProjectsMigration">
+              {{migratingProjects?'Migrating…':hasProjectsMigration?'☁️ Migrate Projects':'✓ Already migrated'}}
+            </button>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <div style="font-size:13px;font-weight:600">Weekly Tracker</div>
+              <div style="font-size:12px;color:var(--muted)">Uploads <code>pt_weekly_tracker</code> to Firestore</div>
+            </div>
+            <button class="btn btn-sm" :class="hasWeeklyTrackerMigration?'btn-primary':'btn-secondary'" @click="migrateWeeklyTracker" :disabled="migratingWeeklyTracker||!hasWeeklyTrackerMigration">
+              {{migratingWeeklyTracker?'Migrating…':hasWeeklyTrackerMigration?'☁️ Migrate Weekly Tracker':'✓ Already migrated'}}
+            </button>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <div style="font-size:13px;font-weight:600">Developer Notes</div>
+              <div style="font-size:12px;color:var(--muted)">Uploads <code>pt_weekly_dev_notes</code> to Firestore</div>
+            </div>
+            <button class="btn btn-sm" :class="hasDevNotesMigration?'btn-primary':'btn-secondary'" @click="migrateDevNotes" :disabled="migratingDevNotes||!hasDevNotesMigration">
+              {{migratingDevNotes?'Migrating…':hasDevNotesMigration?'☁️ Migrate Dev Notes':'✓ Already migrated'}}
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===== DASHBOARD ===== -->
+    <div v-if="view==='dashboard'">
+      <!-- Firestore error banner (shown when any listener fails) -->
+      <div v-if="firestoreError" style="background:#fef2f2;border:1px solid #fecaca;border-radius:var(--r);padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <span style="font-size:22px;flex-shrink:0">⚠️</span>
+        <div style="flex:1;min-width:180px">
+          <div style="font-size:14px;font-weight:600;color:#991b1b;margin-bottom:2px">Firestore connection error</div>
+          <div style="font-size:13px;color:#991b1b">{{firestoreError}} — cached data may be shown.</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" @click="retryFirestore">↺ Retry</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px">
+        <div class="card" style="text-align:center;padding:24px">
+          <div style="font-size:36px;font-weight:700;color:var(--primary)">{{projects.length}}</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">Active Projects</div>
+        </div>
+        <div class="card" style="text-align:center;padding:24px">
+          <div style="font-size:36px;font-weight:700;color:var(--success)">{{projects.filter(p=>p.currentPhase==='live').length}}</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">Live</div>
+        </div>
+        <div class="card" style="text-align:center;padding:24px">
+          <div style="font-size:36px;font-weight:700;color:var(--warn)">{{upcomingDeadlineCount}}</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">Deadlines this week</div>
+        </div>
+        <div class="card" style="text-align:center;padding:24px">
+          <div style="font-size:36px;font-weight:700;color:var(--danger)">{{overdueCount}}</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">Overdue</div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:20px">
+        <div style="font-weight:600;font-size:15px;margin-bottom:14px">Projects by Phase</div>
+        <div v-for="ph in PHASES.filter(p=>!p.canOverlap)" :key="ph.key" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="width:12px;height:12px;border-radius:50%;flex-shrink:0" :style="`background:${ph.color}`"></div>
+          <div style="font-size:13px;flex:1">{{ph.label}}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--muted)">{{projects.filter(p=>p.currentPhase===ph.key).length}}</div>
+          <div style="width:100px;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+            <div style="height:100%;border-radius:3px;transition:width .3s"
+              :style="`background:${ph.color};width:${projects.length?Math.round(projects.filter(p=>p.currentPhase===ph.key).length/projects.length*100):0}%`"></div>
+          </div>
+        </div>
+      </div>
+      <div v-if="notifications.filter(n=>!n.read).length" class="card">
+        <div style="font-weight:600;font-size:15px;margin-bottom:14px">Unread Notifications</div>
+        <div v-for="n in notifications.filter(n=>!n.read).slice(0,5)" :key="n.id" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer" @click="handleNotifClick(n)">
+          <span>{{n.type==='deadline_overdue'?'🚨':n.type==='deadline_warning'?'⏰':'💬'}}</span>
+          <div style="flex:1;font-size:13px">{{n.message}}</div>
+          <div style="font-size:12px;color:var(--muted)">{{fmtDateTime(n.createdAt)}}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== REPORTS ===== -->
+    <div v-if="view==='reports'" style="max-width:700px">
+      <div class="settings-sec">
+        <h3>📊 Project Summary</h3>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+              <tr style="border-bottom:2px solid var(--border)">
+                <th style="padding:8px 12px;text-align:left;color:var(--muted);font-weight:600">Phase</th>
+                <th style="padding:8px 12px;text-align:right;color:var(--muted);font-weight:600">Count</th>
+                <th style="padding:8px 12px;text-align:right;color:var(--muted);font-weight:600">%</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="ph in PHASES.filter(p=>!p.canOverlap)" :key="ph.key" style="border-bottom:1px solid var(--border)">
+                <td style="padding:8px 12px;display:flex;align-items:center;gap:8px">
+                  <span style="width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0" :style="`background:${ph.color}`"></span>
+                  {{ph.label}}
+                </td>
+                <td style="padding:8px 12px;text-align:right;font-weight:600">{{projects.filter(p=>p.currentPhase===ph.key).length}}</td>
+                <td style="padding:8px 12px;text-align:right;color:var(--muted)">{{projects.length?Math.round(projects.filter(p=>p.currentPhase===ph.key).length/projects.length*100):0}}%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="settings-sec">
+        <h3>📅 Upcoming Deadlines</h3>
+        <div v-if="!upcomingProjects.length" style="color:var(--muted);font-size:13px">No deadlines in the next 30 days.</div>
+        <div v-for="p in upcomingProjects" :key="p.id" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:500">{{p.name}}</div>
+            <div style="font-size:12px;color:var(--muted)">Developer: {{p.developer||'—'}}</div>
+          </div>
+          <div :style="`font-size:13px;font-weight:600;color:${new Date(p.liveDate)<new Date()?'var(--danger)':'var(--text)'}`">{{p.liveDate}}</div>
+        </div>
+      </div>
+      <div class="settings-sec">
+        <h3>💾 Export</h3>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Download all project data as JSON for backup or analysis.</p>
+        <button class="btn btn-secondary" @click="exportData">⬇️ Export All Data (JSON)</button>
+      </div>
+    </div>
+
+    <!-- ===== ARCHIVED PROJECTS ===== -->
+    <div v-if="view==='archived'">
+      <div v-if="archivedLoading" style="display:flex;align-items:center;justify-content:center;padding:60px;gap:12px;color:var(--muted)">
+        <span style="font-size:22px;animation:spin 1s linear infinite">⏳</span>
+        <span>Loading archived projects…</span>
+      </div>
+      <div v-else-if="archivedError" style="background:#fef2f2;border:1px solid #fecaca;border-radius:var(--r);padding:16px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span>⚠️</span>
+        <div style="flex:1;font-size:13px;color:#991b1b">{{archivedError}}</div>
+        <button class="btn btn-secondary btn-sm" @click="loadArchivedProjects">↺ Retry</button>
+      </div>
+      <div v-else-if="!archivedProjects.length" class="empty">
+        <div class="empty-icon">🗄️</div>
+        <div class="empty-title">No archived projects</div>
+        <div class="empty-desc">Projects you archive will appear here.</div>
+      </div>
+      <div v-else class="tbl-wrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Project Name</th><th>Platform</th><th>Developer</th>
+              <th>Live Date</th><th>Archived On</th><th>Archived By</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in archivedProjects" :key="p.id">
+              <td style="font-weight:600">{{p.name}}</td>
+              <td>{{p.platform||'—'}}</td>
+              <td>{{p.developer||'—'}}</td>
+              <td>{{p.liveDate||'—'}}</td>
+              <td>{{p.archivedAt ? fmtDate(p.archivedAt) : '—'}}</td>
+              <td>{{p.archivedBy||'—'}}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -1313,7 +1723,7 @@ a.ext:hover{text-decoration:underline}
       </div>
     </div>
     <div class="modal-footer">
-      <button v-if="editingMember.id" class="btn btn-danger btn-sm" @click="deleteMember(editingMember.id)">🗑️ Delete</button>
+      <button v-if="editingMember.id" class="btn btn-danger btn-sm" @click="deleteMember(editingMember.id)">🔒 Deactivate</button>
       <div v-else></div>
       <div style="display:flex;gap:10px">
         <button class="btn btn-secondary btn-sm" @click="closeMemberModal">Cancel</button>
@@ -1335,14 +1745,65 @@ a.ext:hover{text-decoration:underline}
   </div>
 </div>
 
-<!-- TOASTS -->
+<!-- NOTIFICATION PANEL — Teleported to body so z-index isn't clipped by topbar stacking context -->
+<Teleport to="body">
+  <template v-if="showNotifPanel">
+    <!-- Backdrop: click outside to close -->
+    <div style="position:fixed;inset:0;z-index:149" @click="showNotifPanel=false"></div>
+    <!-- Panel -->
+    <div class="notif-panel">
+      <div class="notif-panel-hdr">
+        <span class="notif-panel-title">🔔 Notifications</span>
+        <button v-if="unreadCount>0" class="btn btn-ghost btn-xs" @click="markAllNotifsRead">Mark all read</button>
+      </div>
+      <div v-if="notifLoading" style="padding:24px;text-align:center;color:var(--muted);font-size:13px">
+        <span style="display:inline-block;animation:spin 1s linear infinite">⏳</span> Loading…
+      </div>
+      <div v-else-if="notifications.length===0" class="notif-empty">
+        You're all caught up! No notifications.
+      </div>
+      <div v-else class="notif-list">
+        <div v-for="n in notifications" :key="n.id"
+          class="notif-item" :class="{unread:!n.read}"
+          @click="handleNotifClick(n)">
+          <span class="notif-icon">
+            {{n.type==='deadline_overdue'?'🚨':n.type==='deadline_warning'?'⏰':n.type==='comment'?'💬':'🔔'}}
+          </span>
+          <div class="notif-body">
+            <div class="notif-msg">{{n.message}}</div>
+            <div class="notif-time">{{fmtDateTime(n.createdAt)}}</div>
+          </div>
+          <div v-if="!n.read" class="notif-dot"></div>
+        </div>
+      </div>
+    </div>
+  </template>
+</Teleport>
+
+</template><!-- end authenticated app -->
+
+<!-- TOASTS — always visible regardless of auth state -->
 <div class="toast-wrap">
   <div v-for="t in toasts" :key="t.id" class="toast" :class="t.type">{{t.msg}}</div>
 </div>
 
 </div><!-- end #app -->
 
-<script>
+<script type="module">
+import { auth, initAuthPersistence, signInWithGoogle, signOutUser,
+         onAuthChange, getTeamMembersFromFirestore, createTeamMember,
+         updateTeamMember, updateMemberUID, migrateTeamMembersToFirestore,
+         getPhaseConfigFromFirestore, savePhaseConfigToFirestore,
+         subscribeToProjects, getArchivedProjects, createProjectInFirestore, updateProjectInFirestore,
+         archiveProjectInFirestore, getProjectComments, addProjectComment,
+         getProjectActivityLog, addProjectActivityEntry, migrateProjectsToFirestore,
+         subscribeToWeeklyTracker, saveWeeklyTrackerDoc, migrateWeeklyTrackerToFirestore,
+         subscribeToWeeklyDevNotes, saveWeeklyDevNote, getPrevWeekDevNote,
+         migrateWeeklyDevNotesToFirestore,
+         subscribeToNotifications, createNotification, setNotificationIfNotExists,
+         markNotificationRead, markAllNotificationsRead }
+  from './firebase-service.js';
+
 const { createApp, ref, computed, reactive, watch, onMounted } = Vue;
 
 // ===================== CONSTANTS =====================
@@ -1375,18 +1836,8 @@ const DEFAULT_PHASE_CONFIG = [
   { key:'onhold',     label:'On-Hold / Cancelled', color:'#6b7280', bg:'#f9fafb', canOverlap:false, isTerminal:true,  subPhases:[] },
 ];
 
-// Module-level reactive phase config — loaded from localStorage
-function _loadPhaseConfig() {
-  try {
-    const raw = localStorage.getItem('pt_phase_config');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length) return parsed;
-    }
-  } catch(e){}
-  return DEFAULT_PHASE_CONFIG.map(p=>({...p, subPhases:[...(p.subPhases||[])]}));
-}
-const _phaseConfig = ref(_loadPhaseConfig());
+// Module-level reactive phase config — seeded with defaults; overwritten from Firestore after auth
+const _phaseConfig = ref(DEFAULT_PHASE_CONFIG.map(p=>({...p, subPhases:[...(p.subPhases||[])]})));
 
 // Derived getters (read _phaseConfig at call time — works inside Vue reactive contexts)
 function getPhases()         { return _phaseConfig.value; }
@@ -1446,6 +1897,21 @@ function uid() { return Math.random().toString(36).substr(2,9)+Date.now().toStri
 function fmtDate(s) {
   if (!s) return '';
   return new Date(s+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+
+function fmtDateTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const diffMs = Date.now() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHrs  = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHrs  / 24);
+  if (diffMins < 1)  return 'just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHrs  < 24) return `${diffHrs}h ago`;
+  if (diffDays === 1) return 'yesterday';
+  if (diffDays < 7)  return `${diffDays}d ago`;
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
 }
 
 function isUrgent(d) {
@@ -1601,7 +2067,7 @@ createApp({
     const teamMembers    = ref([]);
     const weeklyDevNotes = ref({});
 
-    const view           = ref('list');
+    const view           = ref('dashboard');
     const previousView   = ref('list');
 
     // Project detail
@@ -1633,6 +2099,80 @@ createApp({
     const confirmDlg = reactive({show:false,title:'',message:'',cb:()=>{}});
     const toasts     = ref([]);
 
+    // ===================== AUTH STATE =====================
+
+    const authState     = ref('loading'); // 'loading' | 'unauthenticated' | 'access-denied' | 'first-run' | 'authenticated'
+    const currentUser   = ref(null);      // { uid, name, email, role, department, avatarColor }
+    const authError     = ref('');
+
+    const isDark = ref(localStorage.getItem('pt_theme') === 'dark');
+    function applyTheme() {
+      document.getElementById('app').classList.toggle('dark', isDark.value);
+    }
+    function toggleTheme() {
+      isDark.value = !isDark.value;
+      localStorage.setItem('pt_theme', isDark.value ? 'dark' : 'light');
+      applyTheme();
+    }
+    applyTheme();
+    const signInLoading = ref(false);
+    const setupForm     = reactive({ name: '', email: '' });
+    const setupLoading  = ref(false);
+    const hasMigrationData        = ref(!!localStorage.getItem('pt_team_members'));
+    const migrating               = ref(false);
+    const hasPhaseConfigMigration = ref(!!localStorage.getItem('pt_phase_config'));
+    const migratingPhaseConfig    = ref(false);
+    const hasProjectsMigration    = ref(!!localStorage.getItem('pt_projects'));
+    const migratingProjects       = ref(false);
+    const projectsLoading         = ref(true);
+
+    // Project detail — comments + activity log (loaded when opening an existing project)
+    const projectComments         = ref([]);
+    const projectActivityLog      = ref([]);
+    const commentsLoading         = ref(false);
+    const newCommentText          = ref('');
+
+    // Notifications
+    const notifications   = ref([]);
+    const showNotifPanel  = ref(false);
+    const notifLoading    = ref(false);
+
+    const archivedProjects = ref([]);
+    const archivedLoading  = ref(false);
+    const archivedError    = ref('');
+    const firestoreError   = ref('');
+
+    async function loadArchivedProjects() {
+      archivedLoading.value = true;
+      archivedError.value   = '';
+      try {
+        archivedProjects.value = await getArchivedProjects();
+      } catch(err) {
+        archivedError.value = err.message || 'Failed to load archived projects';
+      } finally {
+        archivedLoading.value = false;
+      }
+    }
+
+    function retryFirestore() {
+      firestoreError.value = '';
+      const uid = currentUser.value?.uid;
+      if (uid) {
+        startProjectsListener();
+        startNotificationsListener();
+      }
+    }
+
+    // Weekly tracker — Firestore migration + loading state
+    const hasWeeklyTrackerMigration = ref(!!localStorage.getItem('pt_weekly_tracker'));
+    const migratingWeeklyTracker    = ref(false);
+    const weeklyTrackerLoading      = ref(false);
+
+    // Weekly dev notes — Firestore migration + loading state
+    const hasDevNotesMigration  = ref(!!localStorage.getItem('pt_weekly_dev_notes'));
+    const migratingDevNotes     = ref(false);
+    const weeklyDevNotesLoading = ref(false);
+
     // ===================== PERSISTENCE =====================
 
     function ensurePhases(p) {
@@ -1649,6 +2189,11 @@ createApp({
       if (p.briefingUrl===undefined)   p.briefingUrl='';
       if (p.googleKeepUrl===undefined) p.googleKeepUrl='';
       if (p.logoSetUrl===undefined)    p.logoSetUrl='';
+      // Firestore archive fields (default to false/null for non-archived docs)
+      if (p.archived===undefined)      p.archived=false;
+      if (p.archivedAt===undefined)    p.archivedAt=null;
+      if (p.archivedBy===undefined)    p.archivedBy=null;
+      if (p.createdBy===undefined)     p.createdBy='';
       // migrate old single-phase to activePhases array
       if (!p.activePhases || !p.activePhases.length) {
         p.activePhases = [{phase: p.currentPhase||'kickstart', subPhase: p.currentSubPhase||null}];
@@ -1676,57 +2221,14 @@ createApp({
     }
 
     function loadData() {
+      // All data (projects, weekly tracker, dev notes, team members, phase config) is in Firestore.
+      // This function now only handles one-time cleanup of legacy localStorage keys.
       try {
-        // Load projects (new key first, fall back to legacy pt_data for migration)
-        const rawProj = localStorage.getItem('pt_projects');
-        const rawWeekly = localStorage.getItem('pt_weekly_tracker');
-        const legacy = localStorage.getItem('pt_data');
-
-        if (rawProj) {
-          projects.value = JSON.parse(rawProj).map(ensurePhases);
-        } else if (legacy) {
-          // Migrate from legacy bundled key
-          const p = JSON.parse(legacy);
-          if (p.projects) projects.value = p.projects.map(ensurePhases);
-          if (p.settings) settings.value = {...settings.value,...p.settings};
-          localStorage.removeItem('pt_data');
-        } else {
-          projects.value = SAMPLE_PROJECTS.map(ensurePhases);
-        }
-
-        if (rawWeekly) {
-          const w = JSON.parse(rawWeekly);
-          if (w.weeklyEntries) weeklyEntries.value = w.weeklyEntries;
-          if (w.settings) settings.value = {...settings.value,...w.settings};
-        } else if (legacy) {
-          const p = JSON.parse(legacy);
-          if (p.weeklyEntries) weeklyEntries.value = p.weeklyEntries;
-        }
-
-        const tm = localStorage.getItem('pt_team_members');
-        teamMembers.value = tm ? JSON.parse(tm) : SAMPLE_MEMBERS;
-        if (!tm) localStorage.setItem('pt_team_members', JSON.stringify(SAMPLE_MEMBERS));
-
-        const dn = localStorage.getItem('pt_weekly_dev_notes');
-        if (dn) weeklyDevNotes.value = JSON.parse(dn);
-
-        if (!rawProj) saveData();
+        ['pt_data', 'pt_settings'].forEach(k => localStorage.removeItem(k));
       } catch(e) { console.error(e); }
     }
 
-    function saveData() {
-      localStorage.setItem('pt_projects', JSON.stringify(projects.value));
-      localStorage.setItem('pt_weekly_tracker', JSON.stringify({
-        weeklyEntries: weeklyEntries.value,
-        settings: settings.value
-      }));
-    }
-
-    const saveDevNotes = debounce(()=>localStorage.setItem('pt_weekly_dev_notes',JSON.stringify(weeklyDevNotes.value)),600);
-
-    watch([projects,weeklyEntries,settings],saveData,{deep:true});
-    watch(teamMembers,()=>localStorage.setItem('pt_team_members',JSON.stringify(teamMembers.value)),{deep:true});
-    watch(weeklyDevNotes,saveDevNotes,{deep:true});
+    // settings (developer fallback list) is in-memory only — no longer persisted to localStorage
 
     // ===================== COMPUTED =====================
 
@@ -1803,6 +2305,46 @@ createApp({
       return {complete,total:members.length};
     });
 
+    const unreadCount = computed(() => notifications.value.filter(n => !n.read).length);
+
+    const upcomingDeadlineCount = computed(() => {
+      const now = Date.now();
+      return projects.value.filter(p => {
+        if (!p.liveDate || p.currentPhase === 'live') return false;
+        const d = new Date(p.liveDate + 'T00:00:00').getTime();
+        return d >= now && d <= now + 7 * 86400000;
+      }).length;
+    });
+    const overdueCount = computed(() => {
+      const now = Date.now();
+      return projects.value.filter(p => {
+        if (!p.liveDate || p.currentPhase === 'live') return false;
+        return new Date(p.liveDate + 'T00:00:00').getTime() < now;
+      }).length;
+    });
+    const upcomingProjects = computed(() => {
+      const now = Date.now();
+      return projects.value
+        .filter(p => p.liveDate && p.currentPhase !== 'live' &&
+          new Date(p.liveDate + 'T00:00:00').getTime() >= now - 86400000 &&
+          new Date(p.liveDate + 'T00:00:00').getTime() <= now + 30 * 86400000)
+        .sort((a, b) => a.liveDate.localeCompare(b.liveDate));
+    });
+
+    // Restart Firestore listeners when user navigates to a different week
+    // (placed after computed refs are defined so weekKey/dnWeekKey are accessible)
+    watch(weekKey,   wk => startWeeklyTrackerListener(wk));
+    watch(dnWeekKey, wk => startWeeklyDevNotesListener(wk));
+    watch(view,      v  => {
+      if (v === 'archived') loadArchivedProjects();
+      // Enforce access control: non-Managers cannot view team members or phase settings
+      const isManager = currentUser.value?.department === 'Manager';
+      if (!isManager && (v === 'team' || v === 'phase-settings')) {
+        view.value = 'dashboard';
+        toast('This page is only available to Managers.', 'err');
+      }
+    });
+
     // ===================== HELPERS =====================
 
     function phaseInfo(p) {
@@ -1852,16 +2394,35 @@ createApp({
       if (view.value==='project') { backFromProject(); } else { view.value='list'; }
     }
 
-    function openProject(p) {
+    async function openProject(p) {
       previousView.value = view.value;
       editingProject.value = JSON.parse(JSON.stringify(ensurePhases(p)));
       editingPhaseValue.value = phaseOptValue(p);
-      // Default Phases tab to the project's current phase section
       activePhaseTab.value = phaseSectionKey(p);
       projTab.value = 'info';
       showAddSheet.value = false;
+      newCommentText.value = '';
       view.value = 'project';
       Vue.nextTick(initPhaseCardCollapsed);
+
+      // Fetch comments and activity log for existing Firestore projects
+      if (p.id) {
+        commentsLoading.value = true;
+        projectComments.value    = [];
+        projectActivityLog.value = [];
+        try {
+          const [comments, log] = await Promise.all([
+            getProjectComments(p.id),
+            getProjectActivityLog(p.id),
+          ]);
+          projectComments.value    = comments;
+          projectActivityLog.value = log;
+        } catch(err) {
+          console.error('Error loading project details:', err);
+        } finally {
+          commentsLoading.value = false;
+        }
+      }
     }
 
     function openNewProject() {
@@ -1871,6 +2432,9 @@ createApp({
       activePhaseTab.value = 'kickstart';
       projTab.value = 'info';
       showAddSheet.value = false;
+      newCommentText.value = '';
+      projectComments.value    = [];
+      projectActivityLog.value = [];
       view.value = 'project';
       Vue.nextTick(initPhaseCardCollapsed);
     }
@@ -1914,31 +2478,127 @@ createApp({
       activePhaseTab.value=phaseSectionKey(editingProject.value);
     }
 
-    function saveProject() {
+    async function saveProject() {
       if (!editingProject.value.name.trim()) { toast('Project name is required.','err'); return; }
-      const p = editingProject.value;
-      p.updatedAt = new Date().toISOString();
+      const p   = editingProject.value;
+      const now = new Date().toISOString();
+      p.updatedAt = now;
+
       if (p.id) {
-        const idx=projects.value.findIndex(x=>x.id===p.id);
-        if(idx!==-1) projects.value[idx]=p;
-        toast('Project saved.','ok');
+        // ── Update existing project ──
+        try {
+          const docData = buildProjectDoc(p);
+          await updateProjectInFirestore(p.id, docData);
+          // Optimistic local update so the hero refreshes immediately
+          const idx = projects.value.findIndex(x => x.id === p.id);
+          if (idx !== -1) projects.value[idx] = ensurePhases({ ...p });
+          // Fire-and-forget activity log
+          addProjectActivityEntry(p.id, {
+            action: 'updated', detail: `Project "${p.name}" updated`,
+            userName: currentUser.value?.name || '', userUid: currentUser.value?.uid || '',
+            timestamp: now,
+          }).catch(() => {});
+          toast('Project saved.', 'ok');
+        } catch(err) {
+          console.error('Save project error:', err);
+          toast('Failed to save: ' + (err.message || 'Unknown error'), 'err');
+        }
       } else {
-        p.id=uid(); p.createdAt=new Date().toISOString();
-        projects.value.unshift(p);
-        toast('Project created.','ok');
-        view.value=previousView.value; // go back after creating
+        // ── Create new project ──
+        try {
+          const docData = {
+            ...buildProjectDoc(p),
+            createdAt: now,
+            createdBy: currentUser.value?.name || '',
+            archived:  false,
+          };
+          const created = await createProjectInFirestore(docData);
+          p.id = created.id;
+          // Fire-and-forget activity log
+          addProjectActivityEntry(created.id, {
+            action: 'created', detail: `Project "${p.name}" created`,
+            userName: currentUser.value?.name || '', userUid: currentUser.value?.uid || '',
+            timestamp: now,
+          }).catch(() => {});
+          toast('Project created.', 'ok');
+          view.value = previousView.value;
+        } catch(err) {
+          console.error('Create project error:', err);
+          toast('Failed to create: ' + (err.message || 'Unknown error'), 'err');
+        }
       }
     }
 
-    function deleteProject(id) {
-      confirmDlg.title='Delete Project';
-      confirmDlg.message='Are you sure? This cannot be undone.';
-      confirmDlg.cb=()=>{
-        projects.value=projects.value.filter(p=>p.id!==id);
-        view.value=previousView.value;
-        toast('Project deleted.','ok');
+    function archiveProject(id) {
+      confirmDlg.title   = 'Archive Project';
+      confirmDlg.message = 'This will archive the project and remove it from active views. Continue?';
+      confirmDlg.cb = async () => {
+        const now = new Date().toISOString();
+        const by  = currentUser.value?.name || '';
+        try {
+          await archiveProjectInFirestore(id, by, now);
+          // Optimistic: remove from local list (snapshot confirms)
+          projects.value = projects.value.filter(p => p.id !== id);
+          addProjectActivityEntry(id, {
+            action: 'archived', detail: `Project archived by ${by}`,
+            userName: by, userUid: currentUser.value?.uid || '',
+            timestamp: now,
+          }).catch(() => {});
+          view.value = previousView.value;
+          toast('Project archived.', 'ok');
+        } catch(err) {
+          console.error('Archive project error:', err);
+          toast('Failed to archive: ' + (err.message || 'Unknown error'), 'err');
+        }
       };
-      confirmDlg.show=true;
+      confirmDlg.show = true;
+    }
+
+    async function addComment() {
+      const text = newCommentText.value.trim();
+      if (!text) return;
+      if (!editingProject.value.id) { toast('Save the project first.', 'err'); return; }
+      const now = new Date().toISOString();
+      const comment = {
+        text,
+        authorName:     currentUser.value?.name     || '',
+        authorUid:      currentUser.value?.uid       || '',
+        authorInitials: (currentUser.value?.name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase(),
+        authorColor:    currentUser.value?.avatarColor || '#6366f1',
+        createdAt:      now,
+      };
+      try {
+        const saved = await addProjectComment(editingProject.value.id, comment);
+        projectComments.value.push(saved);
+        newCommentText.value = '';
+        // Fire-and-forget activity log
+        addProjectActivityEntry(editingProject.value.id, {
+          action: 'comment_added', detail: `Comment added by ${comment.authorName}`,
+          userName: comment.authorName, userUid: comment.authorUid, timestamp: now,
+        }).catch(() => {});
+        // Fire-and-forget comment notifications
+        const notifBase = {
+          type: 'comment',
+          message: `New comment on "${editingProject.value.name}" by ${comment.authorName}`,
+          projectId:   editingProject.value.id,
+          projectName: editingProject.value.name,
+          read: false, createdAt: now, createdDate: now.slice(0, 10),
+        };
+        // Notify assigned developer (if registered and not the commenter)
+        const assignedDev = teamMembers.value.find(m =>
+          m.active && m.name === editingProject.value.developer &&
+          m.uid   && m.uid  !== comment.authorUid
+        );
+        if (assignedDev) createNotification({ ...notifBase, userId: assignedDev.uid }).catch(() => {});
+        // Notify all active Managers who didn't post the comment
+        // (muting is not yet implemented — all Managers receive comment notifications by default)
+        teamMembers.value
+          .filter(m => m.active && m.department === 'Manager' && m.uid && m.uid !== comment.authorUid)
+          .forEach(m => createNotification({ ...notifBase, userId: m.uid }).catch(() => {}));
+      } catch(err) {
+        console.error('Add comment error:', err);
+        toast('Failed to post comment.', 'err');
+      }
     }
 
     // ===================== CHECKLIST + SHEETS =====================
@@ -1971,24 +2631,48 @@ createApp({
     function onDragEnd(){draggingId.value=null;dragOverPhase.value=null;}
 
     function onDrop(phaseKey) {
-      if(!draggingId.value) return;
-      const proj=projects.value.find(p=>p.id===draggingId.value);
-      if(proj){
-        const ph=getPhases().find(p=>p.key===phaseKey);
-        const existing=proj.activePhases?proj.activePhases.find(ap=>ap.phase===phaseKey):null;
-        let sub=null;
-        if(ph&&ph.subPhases&&ph.subPhases.length) sub=existing?.subPhase||ph.subPhases[0].key;
-        proj.currentPhase=phaseKey;proj.currentSubPhase=sub;proj.updatedAt=new Date().toISOString();
-        if(getParallelPhases().has(phaseKey)){
-          const others=(proj.activePhases||[]).filter(ap=>ap.phase!==phaseKey);
-          proj.activePhases=[...others,{phase:phaseKey,subPhase:sub}];
+      if (!draggingId.value) return;
+      const proj = projects.value.find(p => p.id === draggingId.value);
+      if (proj) {
+        const ph       = getPhases().find(p => p.key === phaseKey);
+        const existing = proj.activePhases?.find(ap => ap.phase === phaseKey);
+        let sub = null;
+        if (ph?.subPhases?.length) sub = existing?.subPhase || ph.subPhases[0].key;
+        const now = new Date().toISOString();
+
+        // Optimistic local update for instant Kanban feedback
+        proj.currentPhase    = phaseKey;
+        proj.currentSubPhase = sub;
+        proj.updatedAt       = now;
+        if (getParallelPhases().has(phaseKey)) {
+          const others = (proj.activePhases || []).filter(ap => ap.phase !== phaseKey);
+          proj.activePhases = [...others, { phase: phaseKey, subPhase: sub }];
         } else {
-          proj.activePhases=[{phase:phaseKey,subPhase:sub}];
+          proj.activePhases = [{ phase: phaseKey, subPhase: sub }];
         }
-        proj.phaseHistory=proj.phaseHistory||[];
-        proj.phaseHistory.push({phase:phaseKey,subPhase:sub,changedAt:new Date().toISOString()});
+        proj.phaseHistory = proj.phaseHistory || [];
+        proj.phaseHistory.push({ phase: phaseKey, subPhase: sub, changedAt: now });
+
+        // Persist to Firestore (fire-and-forget with error toast)
+        const pid = proj.id;
+        updateProjectInFirestore(pid, {
+          currentPhase: phaseKey, currentSubPhase: sub,
+          activePhases: proj.activePhases, phaseHistory: proj.phaseHistory,
+          updatedAt: now,
+        }).then(() => {
+          addProjectActivityEntry(pid, {
+            action: 'phase_changed',
+            detail: `Phase changed to "${ph?.label || phaseKey}"`,
+            userName: currentUser.value?.name || '', userUid: currentUser.value?.uid || '',
+            timestamp: now,
+          });
+        }).catch(err => {
+          console.error('Kanban drop error:', err);
+          toast('Failed to update phase.', 'err');
+        });
       }
-      draggingId.value=null;dragOverPhase.value=null;
+      draggingId.value = null;
+      dragOverPhase.value = null;
     }
 
     // ===================== FILTERS =====================
@@ -2018,11 +2702,15 @@ createApp({
         item.text=weekAdd.text;item.projectId=weekAdd.projectId||null;
       }
       entry[section].push(item);weekAddOpen.value=null;
+      saveWeeklyTrackerDoc(weekKey.value, entry).catch(err=>console.error('Weekly tracker save error:',err));
     }
 
     function removeWeekItem(section,id) {
       const entry=weeklyEntries.value[weekKey.value];
-      if(entry) entry[section]=entry[section].filter(i=>i.id!==id);
+      if(entry){
+        entry[section]=entry[section].filter(i=>i.id!==id);
+        saveWeeklyTrackerDoc(weekKey.value, entry).catch(err=>console.error('Weekly tracker save error:',err));
+      }
     }
 
     // ===================== TEAM MEMBERS =====================
@@ -2036,21 +2724,57 @@ createApp({
       editingMember.value.initials=autoInitials(editingMember.value.name);
     }
 
-    function saveMember() {
-      const m=editingMember.value;
-      if(!m.name.trim()){toast('Name is required.','err');return;}
-      if(!m.initials.trim()) m.initials=autoInitials(m.name);
-      m.initials=m.initials.toUpperCase().slice(0,3);
-      if(m.id){const idx=teamMembers.value.findIndex(x=>x.id===m.id);if(idx!==-1) teamMembers.value[idx]=m;}
-      else{m.id=uid();teamMembers.value.push(m);}
-      showMemberModal.value=false;toast('Team member saved.','ok');
+    async function saveMember() {
+      const m = editingMember.value;
+      if (!m.name.trim()) { toast('Name is required.', 'err'); return; }
+      if (!m.initials.trim()) m.initials = autoInitials(m.name);
+      m.initials = m.initials.toUpperCase().slice(0, 3);
+      const now = new Date().toISOString();
+      const fsData = {
+        name:          m.name,
+        email:         m.email       || '',
+        role:          m.role        || '',
+        department:    m.department,
+        avatarColor:   m.avatarColor,
+        avatarInitials:m.initials,
+        active:        m.active,
+        updatedAt:     now,
+        createdBy:     currentUser.value ? currentUser.value.uid : '',
+      };
+      try {
+        if (m.id) {
+          await updateTeamMember(m.id, fsData);
+          const idx = teamMembers.value.findIndex(x => x.id === m.id);
+          if (idx !== -1) teamMembers.value[idx] = { ...teamMembers.value[idx], ...m, updatedAt: now };
+        } else {
+          const created = await createTeamMember({ ...fsData, createdAt: now });
+          teamMembers.value.push({ ...created, initials: m.initials });
+        }
+        showMemberModal.value = false;
+        toast('Team member saved.', 'ok');
+      } catch(err) {
+        console.error('Save member error:', err);
+        toast('Failed to save: ' + (err.message || 'Unknown error'), 'err');
+      }
     }
 
     function deleteMember(id) {
-      confirmDlg.title='Delete Team Member';
-      confirmDlg.message='Remove this team member? Their name in existing projects will be preserved.';
-      confirmDlg.cb=()=>{teamMembers.value=teamMembers.value.filter(m=>m.id!==id);showMemberModal.value=false;toast('Deleted.','ok');};
-      confirmDlg.show=true;
+      confirmDlg.title   = 'Deactivate Team Member';
+      confirmDlg.message = 'This will mark the member as inactive and hide them from dropdowns. Their name in existing projects will be preserved.';
+      confirmDlg.cb = async () => {
+        try {
+          const now = new Date().toISOString();
+          await updateTeamMember(id, { active: false, updatedAt: now });
+          const idx = teamMembers.value.findIndex(m => m.id === id);
+          if (idx !== -1) teamMembers.value[idx] = { ...teamMembers.value[idx], active: false, updatedAt: now };
+          showMemberModal.value = false;
+          toast('Team member deactivated.', 'ok');
+        } catch(err) {
+          console.error('Deactivate error:', err);
+          toast('Failed to deactivate: ' + (err.message || 'Unknown error'), 'err');
+        }
+      };
+      confirmDlg.show = true;
     }
 
     // ===================== DEV NOTES =====================
@@ -2064,6 +2788,26 @@ createApp({
       if(!weeklyDevNotes.value[key]) weeklyDevNotes.value[key]={};
       if(!weeklyDevNotes.value[key][memberId]) weeklyDevNotes.value[key][memberId]={startOfWeek:'',endOfWeek:''};
       weeklyDevNotes.value[key][memberId][field]=value;
+      // Debounced Firestore save — clear timer key when save is in-flight so
+      // the snapshot callback can still update other members' notes during this window.
+      clearTimeout(_devNoteSaveTimers[memberId]);
+      _devNoteSaveTimers[memberId] = setTimeout(async () => {
+        delete _devNoteSaveTimers[memberId];
+        const notes = weeklyDevNotes.value[key]?.[memberId];
+        if (!notes) return;
+        const member = teamMembers.value.find(m => m.id === memberId);
+        try {
+          await saveWeeklyDevNote(key, memberId, {
+            memberId,
+            memberName:  member?.name || '',
+            weekKey:     key,
+            startOfWeek: notes.startOfWeek || '',
+            endOfWeek:   notes.endOfWeek   || '',
+            updatedAt:   new Date().toISOString(),
+            updatedBy:   currentUser.value?.name || '',
+          });
+        } catch(err) { console.error('Dev note save error:', err); }
+      }, 1500);
     }
 
     function devNoteStatus(weekKey,memberId) {
@@ -2073,11 +2817,26 @@ createApp({
       return 'partial';
     }
 
-    function copyPrevWeekStart(memberId) {
-      const prevKey=getWeekKey(dnWeekOffset.value-1);
-      const prev=weeklyDevNotes.value[prevKey]?.[memberId];
-      if(prev?.startOfWeek){setDevNote(memberId,'startOfWeek',prev.startOfWeek);toast('Copied from previous week.','ok');}
-      else toast('No notes found for the previous week.','err');
+    async function copyPrevWeekStart(memberId) {
+      const prevKey = getWeekKey(dnWeekOffset.value - 1);
+      let prevNotes = weeklyDevNotes.value[prevKey]?.[memberId];
+      if (!prevNotes?.startOfWeek) {
+        // Not in memory — fetch from Firestore
+        try {
+          const data = await getPrevWeekDevNote(prevKey, memberId);
+          if (data) {
+            if (!weeklyDevNotes.value[prevKey]) weeklyDevNotes.value[prevKey] = {};
+            prevNotes = { startOfWeek: data.startOfWeek || '', endOfWeek: data.endOfWeek || '' };
+            weeklyDevNotes.value[prevKey][memberId] = prevNotes;
+          }
+        } catch(e) { console.error('copyPrevWeekStart fetch error:', e); }
+      }
+      if (prevNotes?.startOfWeek) {
+        setDevNote(memberId, 'startOfWeek', prevNotes.startOfWeek);
+        toast('Copied from previous week.', 'ok');
+      } else {
+        toast('No notes found for the previous week.', 'err');
+      }
     }
 
     function printDevNotes() {
@@ -2135,17 +2894,34 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
     function importData(e) {
       const file=e.target.files[0]; if(!file) return;
       const reader=new FileReader();
-      reader.onload=ev=>{
+      reader.onload=async ev=>{
         try{
           const d=JSON.parse(ev.target.result);
-          if(d.projects) projects.value=d.projects.map(ensurePhases);
-          if(d.weeklyEntries) weeklyEntries.value=d.weeklyEntries;
+          if(d.projects && Array.isArray(d.projects) && d.projects.length) {
+            // Write imported projects to Firestore (setDoc preserves original IDs)
+            try {
+              await migrateProjectsToFirestore(d.projects);
+              toast('Projects imported to Firestore. Loading…','ok');
+            } catch(_) {}
+          }
+          if(d.weeklyEntries && Object.keys(d.weeklyEntries).length) {
+            try {
+              await migrateWeeklyTrackerToFirestore(d.weeklyEntries);
+              toast('Weekly tracker imported to Firestore.','ok');
+            } catch(_) {}
+          }
+          if(d.weeklyDevNotes && Object.keys(d.weeklyDevNotes).length) {
+            try {
+              const memberMap=Object.fromEntries(teamMembers.value.map(m=>[m.id,m.name]));
+              await migrateWeeklyDevNotesToFirestore(d.weeklyDevNotes, memberMap);
+              toast('Developer notes imported to Firestore.','ok');
+            } catch(_) {}
+          }
           if(d.settings) settings.value={...settings.value,...d.settings};
           if(d.teamMembers) teamMembers.value=d.teamMembers;
-          if(d.weeklyDevNotes) weeklyDevNotes.value=d.weeklyDevNotes;
           if(d.phaseConfig && Array.isArray(d.phaseConfig) && d.phaseConfig.length) {
             _phaseConfig.value=d.phaseConfig;
-            localStorage.setItem('pt_phase_config',JSON.stringify(d.phaseConfig));
+            try { await savePhaseConfigToFirestore(d.phaseConfig, currentUser.value?.uid || ''); } catch(_) {}
           }
           toast('Imported successfully.','ok');
         }catch{toast('Failed to import: invalid JSON.','err');}
@@ -2154,13 +2930,13 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
     }
 
     function clearAllData() {
-      confirmDlg.title='Clear All Data';
-      confirmDlg.message='This will permanently delete all data including team members. Are you sure?';
+      confirmDlg.title='Clear Local Cache';
+      confirmDlg.message='This clears any remaining legacy localStorage data. All Firestore data (projects, weekly tracker, dev notes, team members, phase config, notifications) is not affected. Continue?';
       confirmDlg.cb=()=>{
-        projects.value=[];weeklyEntries.value={};teamMembers.value=[];weeklyDevNotes.value={};
-        ['pt_projects','pt_weekly_tracker','pt_team_members','pt_weekly_dev_notes','pt_phase_config','pt_data'].forEach(k=>localStorage.removeItem(k));
-        _phaseConfig.value = DEFAULT_PHASE_CONFIG.map(p=>({...p,subPhases:[...(p.subPhases||[])]}));
-        toast('All data cleared.','ok');
+        Object.keys(localStorage)
+          .filter(k => k.startsWith('pt_'))
+          .forEach(k => localStorage.removeItem(k));
+        toast('Local cache cleared.','ok');
       };
       confirmDlg.show=true;
     }
@@ -2278,6 +3054,464 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
       });
     }
 
+    // ===================== AUTH ACTIONS =====================
+
+    async function handleSignIn() {
+      signInLoading.value = true;
+      authError.value = '';
+      try {
+        await signInWithGoogle();
+        // onAuthChange callback handles the state transition
+      } catch(err) {
+        if (err.code !== 'auth/popup-closed-by-user') {
+          authError.value = err.message || 'Sign-in failed. Please try again.';
+        }
+        signInLoading.value = false;
+      }
+    }
+
+    async function handleSignOut() {
+      stopProjectsListener();
+      stopWeeklyTrackerListener();
+      stopWeeklyDevNotesListener();
+      stopNotificationsListener();
+      _deadlineNotifGenerated  = false;
+      projects.value           = [];
+      projectComments.value    = [];
+      projectActivityLog.value = [];
+      weeklyEntries.value      = {};
+      weeklyDevNotes.value     = {};
+      notifications.value      = [];
+      showNotifPanel.value     = false;
+      try { await signOutUser(); } catch(_) {}
+      currentUser.value = null;
+      authState.value   = 'unauthenticated';
+    }
+
+    async function handleFirstRunSetup() {
+      if (!setupForm.name.trim()) { toast('Name is required.', 'err'); return; }
+      setupLoading.value = true;
+      try {
+        const googleUser = auth.currentUser;
+        const memberData = {
+          name:       setupForm.name.trim(),
+          email:      setupForm.email,
+          initials:   autoInitials(setupForm.name),
+          avatarColor:AVATAR_COLORS[0],
+          department: 'Manager',
+          role:       'Manager',
+          active:     true,
+          uid:        googleUser ? googleUser.uid : '',
+          createdAt:  new Date().toISOString(),
+        };
+        const newMemberDoc = await createTeamMember(memberData);
+        currentUser.value = {
+          uid:        memberData.uid,
+          name:       memberData.name,
+          email:      memberData.email,
+          role:       'Manager',
+          department: 'Manager',
+          avatarColor:memberData.avatarColor,
+        };
+        startProjectsListener();
+        startWeeklyTrackerListener(weekKey.value);
+        startWeeklyDevNotesListener(dnWeekKey.value);
+        startNotificationsListener();
+        loadData();
+        teamMembers.value = [newMemberDoc];
+        authState.value   = 'authenticated';
+        toast('Welcome! Manager account created.', 'ok');
+      } catch(err) {
+        console.error('First-run setup error:', err);
+        toast('Setup failed: ' + (err.message || 'Unknown error'), 'err');
+      } finally {
+        setupLoading.value = false;
+      }
+    }
+
+    // ===================== TEAM MEMBER MIGRATION =====================
+
+    async function migrateTeamMembers() {
+      const raw = localStorage.getItem('pt_team_members');
+      if (!raw) { toast('No local team member data found.', 'err'); return; }
+      let members;
+      try { members = JSON.parse(raw); } catch(_) { toast('Could not parse local data.', 'err'); return; }
+      if (!Array.isArray(members) || !members.length) {
+        localStorage.removeItem('pt_team_members');
+        hasMigrationData.value = false;
+        toast('Nothing to migrate.', 'ok');
+        return;
+      }
+      migrating.value = true;
+      try {
+        await migrateTeamMembersToFirestore(members);
+        localStorage.removeItem('pt_team_members');
+        hasMigrationData.value = false;
+        teamMembers.value = await getTeamMembersFromFirestore();
+        toast(`${members.length} team member(s) migrated to Firestore.`, 'ok');
+      } catch(err) {
+        console.error('Migration error:', err);
+        toast('Migration failed: ' + (err.message || 'Unknown error'), 'err');
+      } finally {
+        migrating.value = false;
+      }
+    }
+
+    // ===================== PHASE CONFIG (FIRESTORE) =====================
+
+    async function loadPhaseConfigFromFirestore() {
+      try {
+        const data = await getPhaseConfigFromFirestore();
+        if (data && Array.isArray(data.phases) && data.phases.length) {
+          _phaseConfig.value = data.phases;
+        } else {
+          // Document doesn't exist — seed Firestore with current defaults
+          await savePhaseConfigToFirestore(_phaseConfig.value, currentUser.value?.uid || 'system');
+        }
+      } catch(err) {
+        console.error('Phase config load error:', err);
+        // Fall through — _phaseConfig stays as DEFAULT_PHASE_CONFIG
+      }
+    }
+
+    async function migratePhaseConfig() {
+      const raw = localStorage.getItem('pt_phase_config');
+      if (!raw) { toast('No local phase config data found.', 'err'); return; }
+      let phases;
+      try { phases = JSON.parse(raw); } catch(_) { toast('Could not parse local data.', 'err'); return; }
+      if (!Array.isArray(phases) || !phases.length) {
+        localStorage.removeItem('pt_phase_config');
+        hasPhaseConfigMigration.value = false;
+        toast('Nothing to migrate.', 'ok');
+        return;
+      }
+      migratingPhaseConfig.value = true;
+      try {
+        await savePhaseConfigToFirestore(phases, currentUser.value?.uid || '');
+        _phaseConfig.value = phases;
+        localStorage.removeItem('pt_phase_config');
+        hasPhaseConfigMigration.value = false;
+        toast('Phase config migrated to Firestore.', 'ok');
+      } catch(err) {
+        console.error('Phase config migration error:', err);
+        toast('Migration failed: ' + (err.message || 'Unknown error'), 'err');
+      } finally {
+        migratingPhaseConfig.value = false;
+      }
+    }
+
+    // ===================== PROJECTS (FIRESTORE) =====================
+
+    // Tracks the active onSnapshot unsubscribe function.
+    let unsubscribeProjects = null;
+
+    function startProjectsListener() {
+      if (unsubscribeProjects) unsubscribeProjects(); // clean up any previous listener
+      projectsLoading.value = true;
+      unsubscribeProjects = subscribeToProjects(
+        snapshot => {
+          if (snapshot.docs.length > 0) {
+            // Firestore has projects — use as single source of truth
+            projects.value = snapshot.docs
+              .map(d => ensurePhases({ id: d.id, ...d.data() }))
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          }
+          // If snapshot is empty (pre-migration) keep whatever projects.value has from localStorage
+          projectsLoading.value = false;
+          // Generate deadline notifications once per session, after first project load
+          if (!_deadlineNotifGenerated && currentUser.value?.uid) {
+            _deadlineNotifGenerated = true;
+            generateDeadlineNotifications().catch(console.error);
+          }
+        },
+        err => {
+          console.error('Projects listener error:', err);
+          firestoreError.value = 'Could not load projects from Firestore';
+          projectsLoading.value = false;
+        }
+      );
+    }
+
+    function stopProjectsListener() {
+      if (unsubscribeProjects) { unsubscribeProjects(); unsubscribeProjects = null; }
+      projectsLoading.value = false;
+    }
+
+    // ── Weekly Tracker Listener ───────────────────────────────────────────────
+
+    let unsubscribeWeeklyTracker = null;
+
+    function startWeeklyTrackerListener(wk) {
+      if (unsubscribeWeeklyTracker) unsubscribeWeeklyTracker();
+      weeklyTrackerLoading.value = true;
+      unsubscribeWeeklyTracker = subscribeToWeeklyTracker(
+        wk,
+        snap => {
+          weeklyEntries.value[wk] = snap.exists() ? snap.data() : emptyWeekEntry();
+          weeklyTrackerLoading.value = false;
+        },
+        err => {
+          console.error('Weekly tracker listener error:', err);
+          weeklyTrackerLoading.value = false;
+        }
+      );
+    }
+
+    function stopWeeklyTrackerListener() {
+      if (unsubscribeWeeklyTracker) { unsubscribeWeeklyTracker(); unsubscribeWeeklyTracker = null; }
+      weeklyTrackerLoading.value = false;
+    }
+
+    // ── Weekly Dev Notes Listener ─────────────────────────────────────────────
+
+    let unsubscribeWeeklyDevNotes = null;
+    // Tracks members whose notes are being actively typed (debounce pending).
+    // Keys: memberId; presence means "don't overwrite from snapshot".
+    const _devNoteSaveTimers = {};
+
+    function startWeeklyDevNotesListener(wk) {
+      if (unsubscribeWeeklyDevNotes) unsubscribeWeeklyDevNotes();
+      weeklyDevNotesLoading.value = true;
+      if (!weeklyDevNotes.value[wk]) weeklyDevNotes.value[wk] = {};
+      unsubscribeWeeklyDevNotes = subscribeToWeeklyDevNotes(
+        wk,
+        snap => {
+          if (!weeklyDevNotes.value[wk]) weeklyDevNotes.value[wk] = {};
+          snap.forEach(d => {
+            const data = d.data();
+            // Skip members whose notes are actively being typed (save timer pending)
+            if (!_devNoteSaveTimers[data.memberId]) {
+              weeklyDevNotes.value[wk][data.memberId] = {
+                startOfWeek: data.startOfWeek || '',
+                endOfWeek:   data.endOfWeek   || '',
+              };
+            }
+          });
+          weeklyDevNotesLoading.value = false;
+        },
+        err => {
+          console.error('Dev notes listener error:', err);
+          weeklyDevNotesLoading.value = false;
+        }
+      );
+    }
+
+    function stopWeeklyDevNotesListener() {
+      if (unsubscribeWeeklyDevNotes) { unsubscribeWeeklyDevNotes(); unsubscribeWeeklyDevNotes = null; }
+      weeklyDevNotesLoading.value = false;
+    }
+
+    // ── Notifications Listener ────────────────────────────────────────────────
+
+    let unsubscribeNotifications = null;
+    let _deadlineNotifGenerated  = false;
+
+    function startNotificationsListener() {
+      if (unsubscribeNotifications) unsubscribeNotifications();
+      const uid = currentUser.value?.uid;
+      if (!uid) return;
+      notifLoading.value = true;
+      unsubscribeNotifications = subscribeToNotifications(
+        uid,
+        snap => {
+          notifications.value = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          notifLoading.value = false;
+        },
+        err => {
+          console.error('Notifications listener error:', err);
+          notifLoading.value = false;
+        }
+      );
+    }
+
+    function stopNotificationsListener() {
+      if (unsubscribeNotifications) { unsubscribeNotifications(); unsubscribeNotifications = null; }
+      notifLoading.value = false;
+    }
+
+    async function generateDeadlineNotifications() {
+      const uid = currentUser.value?.uid;
+      if (!uid) return;
+      const today  = new Date().toISOString().slice(0, 10);
+      const now    = new Date().toISOString();
+      const nowMs  = Date.now();
+
+      for (const p of projects.value) {
+        if (!p.liveDate || p.currentPhase === 'live') continue;
+        const liveDateMs = new Date(p.liveDate + 'T00:00:00').getTime();
+        const daysUntil  = Math.ceil((liveDateMs - nowMs) / 86400000);
+
+        let type = null, message = null;
+        if (daysUntil < 0) {
+          type    = 'deadline_overdue';
+          message = `"${p.name}" is overdue — live date was ${p.liveDate}`;
+        } else if (daysUntil <= 7) {
+          type    = 'deadline_warning';
+          const when = daysUntil === 0 ? 'today' : daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`;
+          message = `"${p.name}" goes live ${when} (${p.liveDate})`;
+        }
+        if (!type) continue;
+
+        // Deterministic doc ID — one per user/project/day, idempotent
+        const docId = `${type}_${uid}_${p.id}_${today}`;
+        setNotificationIfNotExists(docId, {
+          userId: uid, type, message,
+          projectId: p.id, projectName: p.name,
+          read: false, createdAt: now, createdDate: today,
+        }).catch(err => console.error('Deadline notif error:', err));
+      }
+    }
+
+    async function markNotifRead(id) {
+      const n = notifications.value.find(x => x.id === id);
+      if (!n || n.read) return;
+      n.read = true; // optimistic
+      markNotificationRead(id).catch(console.error);
+    }
+
+    async function markAllNotifsRead() {
+      const unread = notifications.value.filter(n => !n.read);
+      unread.forEach(n => { n.read = true; }); // optimistic
+      unread.forEach(n => markNotificationRead(n.id).catch(console.error));
+    }
+
+    async function handleNotifClick(n) {
+      markNotifRead(n.id);
+      if (n.projectId) {
+        const proj = projects.value.find(p => p.id === n.projectId);
+        if (proj) openProject(proj);
+      }
+      showNotifPanel.value = false;
+    }
+
+    // Sanitises a project object for Firestore (no undefined values).
+    function buildProjectDoc(p) {
+      return {
+        name:            p.name            || '',
+        url:             p.url             || '',
+        platform:        p.platform        || '',
+        developer:       p.developer       || '',
+        kickstartDate:   p.kickstartDate   || '',
+        liveDate:        p.liveDate        || '',
+        currentPhase:    p.currentPhase    || 'kickstart',
+        currentSubPhase: p.currentSubPhase || null,
+        activePhases:    p.activePhases    || [],
+        phaseStates:     p.phaseStates     || {},
+        originalSite:    p.originalSite    || '',
+        language:        p.language        || '',
+        projectType:     p.projectType     || 'website',
+        sitemapUrl:      p.sitemapUrl      || '',
+        builderLink:     p.builderLink     || '',
+        briefingUrl:     p.briefingUrl     || '',
+        googleKeepUrl:   p.googleKeepUrl   || '',
+        logoSetUrl:      p.logoSetUrl      || '',
+        googleSheets:    p.googleSheets    || [],
+        notes:           p.notes           || '',
+        phases:          p.phases          || {},
+        phaseHistory:    p.phaseHistory    || [],
+        archived:        p.archived === true,
+        archivedAt:      p.archivedAt      || null,
+        archivedBy:      p.archivedBy      || null,
+        createdAt:       p.createdAt       || new Date().toISOString(),
+        updatedAt:       new Date().toISOString(),
+        createdBy:       p.createdBy       || '',
+      };
+    }
+
+    async function migrateProjects() {
+      if (projects.value.length > 0) {
+        toast('Firestore already has projects. Migration is not needed.', 'err');
+        return;
+      }
+      const raw = localStorage.getItem('pt_projects');
+      if (!raw) { toast('No local project data found.', 'err'); return; }
+      let proj;
+      try { proj = JSON.parse(raw); } catch(_) { toast('Could not parse local data.', 'err'); return; }
+      if (!Array.isArray(proj) || !proj.length) {
+        localStorage.removeItem('pt_projects');
+        hasProjectsMigration.value = false;
+        toast('Nothing to migrate.', 'ok');
+        return;
+      }
+      migratingProjects.value = true;
+      try {
+        await migrateProjectsToFirestore(proj);
+        localStorage.removeItem('pt_projects');
+        hasProjectsMigration.value = false;
+        toast(`${proj.length} project(s) migrated to Firestore.`, 'ok');
+      } catch(err) {
+        console.error('Project migration error:', err);
+        toast('Migration failed: ' + (err.message || 'Unknown error'), 'err');
+      } finally {
+        migratingProjects.value = false;
+      }
+    }
+
+    async function migrateWeeklyTracker() {
+      const raw = localStorage.getItem('pt_weekly_tracker');
+      if (!raw) { toast('No local weekly tracker data found.', 'err'); return; }
+      let parsed;
+      try { parsed = JSON.parse(raw); } catch(_) { toast('Could not parse local data.', 'err'); return; }
+      const entries = parsed.weeklyEntries;
+      const weekCount = entries ? Object.keys(entries).length : 0;
+      if (!weekCount) {
+        // Preserve settings even if no entries
+        if (parsed.settings) {
+          settings.value = {...settings.value, ...parsed.settings};
+          saveSettings();
+        }
+        localStorage.removeItem('pt_weekly_tracker');
+        hasWeeklyTrackerMigration.value = false;
+        toast('No weekly tracker entries to migrate.', 'ok');
+        return;
+      }
+      migratingWeeklyTracker.value = true;
+      try {
+        await migrateWeeklyTrackerToFirestore(entries);
+        if (parsed.settings) {
+          settings.value = {...settings.value, ...parsed.settings};
+          saveSettings();
+        }
+        localStorage.removeItem('pt_weekly_tracker');
+        hasWeeklyTrackerMigration.value = false;
+        toast(`${weekCount} week(s) of tracker data migrated to Firestore.`, 'ok');
+      } catch(err) {
+        console.error('Weekly tracker migration error:', err);
+        toast('Migration failed: ' + (err.message || 'Unknown error'), 'err');
+      } finally {
+        migratingWeeklyTracker.value = false;
+      }
+    }
+
+    async function migrateDevNotes() {
+      const raw = localStorage.getItem('pt_weekly_dev_notes');
+      if (!raw) { toast('No local developer notes data found.', 'err'); return; }
+      let parsed;
+      try { parsed = JSON.parse(raw); } catch(_) { toast('Could not parse local data.', 'err'); return; }
+      if (!parsed || !Object.keys(parsed).length) {
+        localStorage.removeItem('pt_weekly_dev_notes');
+        hasDevNotesMigration.value = false;
+        toast('No developer notes to migrate.', 'ok');
+        return;
+      }
+      migratingDevNotes.value = true;
+      try {
+        const memberMap = Object.fromEntries(teamMembers.value.map(m => [m.id, m.name]));
+        await migrateWeeklyDevNotesToFirestore(parsed, memberMap);
+        localStorage.removeItem('pt_weekly_dev_notes');
+        hasDevNotesMigration.value = false;
+        const weeks = Object.keys(parsed).length;
+        toast(`Developer notes for ${weeks} week(s) migrated to Firestore.`, 'ok');
+      } catch(err) {
+        console.error('Dev notes migration error:', err);
+        toast('Migration failed: ' + (err.message || 'Unknown error'), 'err');
+      } finally {
+        migratingDevNotes.value = false;
+      }
+    }
+
     // ===================== TOAST + KEYBOARD =====================
 
     function toast(msg,type='ok'){
@@ -2285,14 +3519,80 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
       setTimeout(()=>{toasts.value=toasts.value.filter(t=>t.id!==id);},3000);
     }
 
-    onMounted(()=>{
-      loadData();
+    onMounted(async ()=>{
       document.addEventListener('keydown',e=>{
         if(e.key!=='Escape') return;
         if(confirmDlg.show){confirmDlg.show=false;return;}
         if(showMemberModal.value){closeMemberModal();return;}
         if(view.value==='project'){backFromProject();return;}
         if(view.value==='phase-settings'){view.value='settings';return;}
+      });
+
+      // Ensure auth persists across page refreshes (Firebase default is LOCAL, this is explicit)
+      try { await initAuthPersistence(); } catch(_) {}
+
+      // React to sign-in / sign-out / page refresh
+      onAuthChange(async firebaseUser => {
+        signInLoading.value = false;
+
+        if (!firebaseUser) {
+          currentUser.value = null;
+          authState.value   = 'unauthenticated';
+          return;
+        }
+
+        try {
+          const members = await getTeamMembersFromFirestore();
+
+          // ── First-run: no team members exist yet ──
+          if (members.length === 0) {
+            setupForm.name  = firebaseUser.displayName || '';
+            setupForm.email = firebaseUser.email       || '';
+            authState.value = 'first-run';
+            return;
+          }
+
+          // ── Check if this Google account is a registered team member ──
+          const member = members.find(m =>
+            (m.email || '').toLowerCase() === (firebaseUser.email || '').toLowerCase()
+          );
+
+          if (!member) {
+            currentUser.value = { email: firebaseUser.email };
+            authState.value   = 'access-denied';
+            return;
+          }
+
+          // Link Firebase UID to the member document on first login
+          if (!member.uid) {
+            try { await updateMemberUID(member.id, firebaseUser.uid); } catch(_) {}
+            member.uid = firebaseUser.uid;
+          }
+
+          // ── Authorised — set profile and load app data ──
+          currentUser.value = {
+            uid:        firebaseUser.uid,
+            name:       member.name        || firebaseUser.displayName || '',
+            email:      firebaseUser.email,
+            role:       member.role        || '',
+            department: member.department  || '',
+            avatarColor:member.avatarColor || AVATAR_COLORS[0],
+          };
+          startProjectsListener();             // real-time Firestore subscription for projects
+          startWeeklyTrackerListener(weekKey.value);    // real-time weekly tracker for current week
+          startWeeklyDevNotesListener(dnWeekKey.value); // real-time dev notes for current week
+          startNotificationsListener();        // real-time notifications for this user
+          loadData();                         // settings from localStorage
+          teamMembers.value = members;        // override with Firestore source of truth
+          await loadPhaseConfigFromFirestore(); // load phase config from Firestore (seeds if missing)
+          authState.value   = 'authenticated';
+
+        } catch(err) {
+          console.error('Auth check error:', err);
+          authError.value = 'Could not verify team membership. Check your connection and try again.';
+          try { await signOutUser(); } catch(_) {}
+          authState.value = 'unauthenticated';
+        }
       });
     });
 
@@ -2368,27 +3668,37 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
     }
     function psDragEnd() { psDragIdx.value = null; psDragOverIdx.value = null; }
 
-    function savePhaseConfig() {
-      // Validate: at least one phase, all must have labels + unique keys
+    async function savePhaseConfig() {
       if (!psPhases.value.length) { toast('Need at least one phase.','err'); return; }
       const keys = psPhases.value.map(p=>p.key);
       if (new Set(keys).size !== keys.length) { toast('Phase keys must be unique.','err'); return; }
-      _phaseConfig.value = JSON.parse(JSON.stringify(psPhases.value));
-      localStorage.setItem('pt_phase_config', JSON.stringify(_phaseConfig.value));
-      // Re-ensure all loaded projects have entries for new phases
-      projects.value = projects.value.map(ensurePhases);
-      toast('Phase configuration saved.','ok');
-      view.value = 'settings';
+      const newConfig = JSON.parse(JSON.stringify(psPhases.value));
+      try {
+        await savePhaseConfigToFirestore(newConfig, currentUser.value?.uid || '');
+        _phaseConfig.value = newConfig;
+        projects.value = projects.value.map(ensurePhases);
+        toast('Phase configuration saved.','ok');
+        view.value = 'settings';
+      } catch(err) {
+        console.error('Save phase config error:', err);
+        toast('Failed to save: ' + (err.message || 'Unknown error'), 'err');
+      }
     }
 
     function resetPhaseConfig() {
       confirmDlg.title = 'Reset Phase Config';
       confirmDlg.message = 'This will restore the default phase list. Custom phases will be removed. Continue?';
-      confirmDlg.cb = () => {
-        localStorage.removeItem('pt_phase_config');
-        _phaseConfig.value = DEFAULT_PHASE_CONFIG.map(p=>({...p, subPhases:[...(p.subPhases||[])]}));
-        psPhases.value = JSON.parse(JSON.stringify(_phaseConfig.value));
-        toast('Phase config reset to defaults.','ok');
+      confirmDlg.cb = async () => {
+        try {
+          const defaults = DEFAULT_PHASE_CONFIG.map(p=>({...p, subPhases:[...(p.subPhases||[])]}));
+          await savePhaseConfigToFirestore(defaults, currentUser.value?.uid || '');
+          _phaseConfig.value = defaults;
+          psPhases.value = JSON.parse(JSON.stringify(defaults));
+          toast('Phase config reset to defaults.','ok');
+        } catch(err) {
+          console.error('Reset phase config error:', err);
+          toast('Reset failed: ' + (err.message || 'Unknown error'), 'err');
+        }
       };
       confirmDlg.show = true;
     }
@@ -2396,6 +3706,14 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
     return {
       PHASES,PARALLEL_PHASES,PHASE_OPTIONS,ALL_PHASE_SECTIONS,PRESET_COLORS:PRESET_COLORS_EXP,AVATAR_COLORS,
       projects,weeklyEntries,settings,teamMembers,weeklyDevNotes,
+      authState,currentUser,authError,signInLoading,setupForm,setupLoading,
+      handleSignIn,handleSignOut,handleFirstRunSetup,
+      hasMigrationData,migrating,migrateTeamMembers,
+      hasPhaseConfigMigration,migratingPhaseConfig,migratePhaseConfig,
+      hasProjectsMigration,migratingProjects,migrateProjects,projectsLoading,
+      projectComments,projectActivityLog,commentsLoading,newCommentText,addComment,
+      hasWeeklyTrackerMigration,migratingWeeklyTracker,migrateWeeklyTracker,weeklyTrackerLoading,
+      hasDevNotesMigration,migratingDevNotes,migrateDevNotes,weeklyDevNotesLoading,
       view,
       editingProject,editingPhaseValue,projTab,activePhaseTab,
       newChecklistTexts,showAddSheet,newSheet,showProjectDetails,
@@ -2407,10 +3725,16 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
       dnWeekOffset,dnWeekKey,dnWeekLabel,dnWeekRange,dnCompletion,
       draggingId,dragOverPhase,
       confirmDlg,toasts,
-      fmtDate,isUrgent,phaseInfo,allPhaseInfos,memberByName,deptBadgeClass,projectName,isCurrentPhaseSection,
+      notifications,showNotifPanel,notifLoading,unreadCount,
+      markNotifRead,markAllNotifsRead,handleNotifClick,
+      firestoreError,retryFirestore,
+      archivedProjects,archivedLoading,archivedError,loadArchivedProjects,
+      upcomingDeadlineCount,overdueCount,upcomingProjects,
+      isDark,toggleTheme,
+      fmtDate,fmtDateTime,isUrgent,phaseInfo,allPhaseInfos,memberByName,deptBadgeClass,projectName,isCurrentPhaseSection,
       ptStatus,ptDate,ptSubLabel,ptParallelStatus,
       phaseCardCollapsed,togglePhaseCard,setPhaseStatus,phaseCardSectionKey,setPhaseCardNote,setPhaseDate,setSubPhase,isoToDateInput,
-      goList,openProject,openNewProject,backFromProject,applyPhaseValue,saveProject,deleteProject,
+      goList,openProject,openNewProject,backFromProject,applyPhaseValue,saveProject,archiveProject,
       addChecklistItem,removeChecklistItem,addSheet,removeSheet,
       onDragStart,onDragEnd,onDrop,clearFilters,
       toggleWAdd,addWeekItem,removeWeekItem,
