@@ -513,7 +513,12 @@ a.ext:hover{text-decoration:underline}
 </div><!-- end #auth-root -->
 
 <!-- Vue app — hidden until auth succeeds, then mounted by doAuthSuccess() -->
-<div id="app" style="display:none">
+<!-- Vue app mount target — empty div; content is in #app-tpl below -->
+<div id="app" style="display:none"></div>
+
+<!-- Vue template — stored as raw text so the browser HTML parser
+     cannot mangle attribute values before Vue's compiler sees them -->
+<script type="text/x-template" id="app-tpl">
 
 <!-- SIDEBAR -->
 <nav class="sb">
@@ -1803,7 +1808,7 @@ a.ext:hover{text-decoration:underline}
   <div v-for="t in toasts" :key="t.id" class="toast" :class="t.type">{{t.msg}}</div>
 </div>
 
-</div><!-- end #app -->
+</script>
 
 <script type="module">
 import { initAuthPersistence, signInWithGoogle, signOutUser,
@@ -1910,11 +1915,10 @@ async function doAuthSuccess(fbUser, member) {
     avatarColor:member.avatarColor || '#6366f1',
     initials:   member.initials    || member.avatarInitials || '',
   };
-  // Switch from auth screens to app
+  // Mount Vue first (into the hidden #app div), then reveal it
+  if (!_vueApp) _vueApp = mountVueApp();
   document.getElementById('auth-root').style.display = 'none';
   document.getElementById('app').style.display = '';
-  // Mount Vue once
-  if (!_vueApp) _vueApp = mountVueApp();
 }
 
 // Firebase Auth state listener — the single entry point for auth
@@ -2237,6 +2241,7 @@ const SAMPLE_PROJECTS = [
 // ===================== APP =====================
 
 const _appDef = createApp({
+  template: '#app-tpl',
   setup() {
     const projects       = ref([]);
     const weeklyEntries  = ref({});
