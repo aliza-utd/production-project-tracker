@@ -835,7 +835,7 @@ a.ext:hover{text-decoration:underline}
                   <div class="pt-node" :class="ptStatus('production')">
                     <div class="pt-dot">{{ptStatus('production')==='done'?'✓':''}}</div>
                     <div class="pt-lbl">Production</div>
-                    <div class="pt-sub-lbl" v-if="editingProject.phaseStates?.production?.subPhase">
+                    <div class="pt-sub-lbl" v-if="editingProject.phaseStates&&editingProject.phaseStates.production&&editingProject.phaseStates.production.subPhase">
                       {{ptSubLabel('production', editingProject.phaseStates.production.subPhase)}}
                     </div>
                     <div class="pt-date">{{ptDate('production')}}</div>
@@ -845,7 +845,7 @@ a.ext:hover{text-decoration:underline}
                   <div class="pt-node" :class="ptStatus('qa')">
                     <div class="pt-dot">{{ptStatus('qa')==='done'?'✓':''}}</div>
                     <div class="pt-lbl">QA</div>
-                    <div class="pt-sub-lbl" v-if="editingProject.phaseStates?.qa?.subPhase">
+                    <div class="pt-sub-lbl" v-if="editingProject.phaseStates&&editingProject.phaseStates.qa&&editingProject.phaseStates.qa.subPhase">
                       {{ptSubLabel('qa', editingProject.phaseStates.qa.subPhase)}}
                     </div>
                     <div class="pt-date">{{ptDate('qa')}}</div>
@@ -1034,13 +1034,13 @@ a.ext:hover{text-decoration:underline}
                   <div class="form-group" style="margin-bottom:0">
                     <label class="form-label">Date Started</label>
                     <input type="date" class="form-input"
-                      :value="isoToDateInput(editingProject.phaseStates?.[ph.key]?.startedAt)"
+                      :value="isoToDateInput(editingProject.phaseStates&&editingProject.phaseStates[ph.key]&&editingProject.phaseStates[ph.key].startedAt)"
                       @input="setPhaseDate(ph.key,'startedAt',$event.target.value)">
                   </div>
                   <div v-if="ptStatus(ph.key)==='done'" class="form-group" style="margin-bottom:0">
                     <label class="form-label">Date Completed</label>
                     <input type="date" class="form-input"
-                      :value="isoToDateInput(editingProject.phaseStates?.[ph.key]?.completedAt)"
+                      :value="isoToDateInput(editingProject.phaseStates&&editingProject.phaseStates[ph.key]&&editingProject.phaseStates[ph.key].completedAt)"
                       @input="setPhaseDate(ph.key,'completedAt',$event.target.value)">
                   </div>
                 </div>
@@ -1049,7 +1049,7 @@ a.ext:hover{text-decoration:underline}
                 <div v-if="ph.subPhases && ph.subPhases.length" class="form-group">
                   <label class="form-label">Sub-phase</label>
                   <select class="form-select"
-                    :value="editingProject.phaseStates?.[ph.key]?.subPhase||ph.subPhases[0].key"
+                    :value="(editingProject.phaseStates&&editingProject.phaseStates[ph.key]&&editingProject.phaseStates[ph.key].subPhase)||ph.subPhases[0].key"
                     @change="setSubPhase(ph.key,$event.target.value)">
                     <option v-for="sp in ph.subPhases" :key="sp.key" :value="sp.key">{{sp.label}}</option>
                   </select>
@@ -1062,7 +1062,7 @@ a.ext:hover{text-decoration:underline}
                 <div class="form-group">
                   <label class="form-label">Notes</label>
                   <textarea class="form-textarea" rows="3"
-                    :value="editingProject.phases[phaseCardSectionKey(ph.key)]?.notes||''"
+                    :value="(editingProject.phases[phaseCardSectionKey(ph.key)]&&editingProject.phases[phaseCardSectionKey(ph.key)].notes)||''"
                     @input="setPhaseCardNote(ph.key,$event.target.value)"
                     :placeholder="'Notes for '+ph.label+'…'"></textarea>
                 </div>
@@ -1070,7 +1070,7 @@ a.ext:hover{text-decoration:underline}
                 <!-- Checklist -->
                 <div class="form-group" style="margin-bottom:0">
                   <label class="form-label">Checklist</label>
-                  <div v-if="(editingProject.phases[phaseCardSectionKey(ph.key)]?.checklist||[]).length"
+                  <div v-if="((editingProject.phases[phaseCardSectionKey(ph.key)]&&editingProject.phases[phaseCardSectionKey(ph.key)].checklist)||[]).length"
                     style="background:#f8fafc;border:1px solid var(--border);border-radius:var(--r);padding:4px 12px;margin-bottom:8px">
                     <div v-for="item in editingProject.phases[phaseCardSectionKey(ph.key)].checklist" :key="item.id" class="checklist-item">
                       <input type="checkbox" v-model="item.done">
