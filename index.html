@@ -417,85 +417,104 @@ a.ext:hover{text-decoration:underline}
 </style>
 </head>
 <body>
-<div id="app" v-cloak>
 
-<!-- ── LOADING ── -->
-<div v-if="authState==='loading'" class="auth-loading">
-  <div class="spinner"></div>
-  <div style="color:var(--muted);font-size:14px">Loading…</div>
-</div>
+<!-- ================================================================
+     AUTH ROOT — plain HTML, no Vue required
+     Shows before Vue mounts; hidden on auth success
+     ================================================================ -->
+<div id="auth-root">
 
-<!-- ── LOGIN ── -->
-<div v-else-if="authState==='unauthenticated'" class="auth-wrap">
-  <div class="auth-card">
-    <div class="auth-logo">🚀</div>
-    <div class="auth-title">Project Tracker</div>
-    <div class="auth-sub" style="margin-bottom:24px">Web Dev Team</div>
-    <div v-if="authError" class="auth-error">{{authError}}</div>
-    <button class="btn-google" @click="handleSignIn" :disabled="signInLoading">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">
-        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-      </svg>
-      <span>{{signInLoading ? 'Signing in…' : 'Sign in with Google'}}</span>
-    </button>
-    <div class="auth-note">
-      Access is restricted to team members.<br>
-      Contact your manager if you cannot log in.
-    </div>
+  <!-- Loading -->
+  <div id="auth-screen-loading" class="auth-loading">
+    <div class="spinner"></div>
+    <div style="color:var(--muted);font-size:14px">Loading…</div>
   </div>
-</div>
 
-<!-- ── ACCESS DENIED ── -->
-<div v-else-if="authState==='access-denied'" class="auth-wrap">
-  <div class="auth-card">
-    <div class="auth-logo">🚫</div>
-    <div class="auth-title">Access Denied</div>
-    <div class="auth-sub">
-      Your account (<strong>{{currentUser&&currentUser.email}}</strong>) is not registered as a team member.<br>
-      Please contact your manager.
-    </div>
-    <button class="btn btn-secondary" style="width:100%;justify-content:center" @click="handleSignOut">
-      Sign Out
-    </button>
-  </div>
-</div>
-
-<!-- ── FIRST-RUN SETUP ── -->
-<div v-else-if="authState==='first-run'" class="auth-wrap">
-  <div class="auth-card" style="text-align:left;max-width:460px">
-    <div style="text-align:center;margin-bottom:24px">
+  <!-- Login -->
+  <div id="auth-screen-login" class="auth-wrap" style="display:none">
+    <div class="auth-card">
       <div class="auth-logo">🚀</div>
-      <div class="auth-title">First-Time Setup</div>
-      <div class="auth-sub" style="margin-bottom:0">
-        No team members found.<br>Set up the first Manager account.
+      <div class="auth-title">Project Tracker</div>
+      <div class="auth-sub" style="margin-bottom:24px">Web Dev Team</div>
+      <div id="auth-error" class="auth-error" style="display:none"></div>
+      <button id="auth-btn-signin" class="btn-google" onclick="handleSignIn()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        <span id="auth-signin-label">Sign in with Google</span>
+      </button>
+      <div class="auth-note">
+        Access is restricted to team members.<br>
+        Contact your manager if you cannot log in.
       </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Full Name</label>
-      <input class="form-input" v-model="setupForm.name" placeholder="Your full name…">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Email</label>
-      <input class="form-input" :value="setupForm.email" readonly style="background:#f8fafc;color:var(--muted)">
-    </div>
-    <div class="form-group" style="margin-bottom:20px">
-      <label class="form-label">Role</label>
-      <input class="form-input" value="Manager" readonly style="background:#f8fafc;color:var(--muted)">
-    </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center" @click="handleFirstRunSetup" :disabled="setupLoading">
-      {{setupLoading ? 'Setting up…' : '✓ Confirm &amp; Enter App'}}
-    </button>
-    <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:8px" @click="handleSignOut">
-      Sign Out
-    </button>
   </div>
-</div>
 
-<!-- ── AUTHENTICATED APP ── -->
-<template v-else-if="authState==='authenticated'">
+  <!-- Access Denied -->
+  <div id="auth-screen-denied" class="auth-wrap" style="display:none">
+    <div class="auth-card">
+      <div class="auth-logo">🚫</div>
+      <div class="auth-title">Access Denied</div>
+      <div class="auth-sub">
+        Your account (<strong id="auth-denied-email"></strong>) is not registered as a team member.<br>
+        Please contact your manager.
+      </div>
+      <button class="btn btn-secondary" style="width:100%;justify-content:center;margin-top:20px" onclick="handleSignOut()">
+        Sign Out
+      </button>
+    </div>
+  </div>
+
+  <!-- First-Run Setup -->
+  <div id="auth-screen-setup" class="auth-wrap" style="display:none">
+    <div class="auth-card" style="text-align:left;max-width:460px">
+      <div style="text-align:center;margin-bottom:24px">
+        <div class="auth-logo">🚀</div>
+        <div class="auth-title">First-Time Setup</div>
+        <div class="auth-sub" style="margin-bottom:0">No team members found.<br>Set up the first Manager account.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input class="form-input" id="setup-name" placeholder="Your full name…">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="setup-email" readonly style="background:#f8fafc;color:var(--muted)">
+      </div>
+      <div class="form-group" style="margin-bottom:20px">
+        <label class="form-label">Role</label>
+        <input class="form-input" value="Manager" readonly style="background:#f8fafc;color:var(--muted)">
+      </div>
+      <button id="setup-btn" class="btn btn-primary" style="width:100%;justify-content:center" onclick="handleFirstRunSetup()">
+        ✓ Confirm &amp; Enter App
+      </button>
+      <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:8px" onclick="handleSignOut()">
+        Sign Out
+      </button>
+    </div>
+  </div>
+
+  <!-- Connection Error -->
+  <div id="auth-screen-error" class="auth-wrap" style="display:none">
+    <div class="auth-card" style="text-align:center">
+      <div class="auth-logo" style="font-size:32px">⚠️</div>
+      <div class="auth-title">Connection Error</div>
+      <div class="auth-sub">
+        Could not connect to the database.<br>
+        Please check your connection and try again.
+      </div>
+      <button class="btn btn-secondary" style="width:100%;justify-content:center;margin-top:4px" onclick="location.reload()">
+        Refresh
+      </button>
+      <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:8px" onclick="handleSignOut()">
+        Sign Out
+      </button>
+    </div>
+  </div>
+
+</div><!-- end #auth-root -->
+
+<!-- Vue app — hidden until auth succeeds, then mounted by doAuthSuccess() -->
+<div id="app" style="display:none">
+<template>
 
 <!-- SIDEBAR -->
 <nav class="sb">
@@ -1780,9 +1799,9 @@ a.ext:hover{text-decoration:underline}
   </template>
 </Teleport>
 
-</template><!-- end authenticated app -->
+</template><!-- end app template -->
 
-<!-- TOASTS — always visible regardless of auth state -->
+<!-- TOASTS -->
 <div class="toast-wrap">
   <div v-for="t in toasts" :key="t.id" class="toast" :class="t.type">{{t.msg}}</div>
 </div>
@@ -1790,7 +1809,7 @@ a.ext:hover{text-decoration:underline}
 </div><!-- end #app -->
 
 <script type="module">
-import { auth, initAuthPersistence, signInWithGoogle, signOutUser,
+import { initAuthPersistence, signInWithGoogle, signOutUser,
          onAuthChange, getTeamMembersFromFirestore, createTeamMember,
          updateTeamMember, updateMemberUID, migrateTeamMembersToFirestore,
          getPhaseConfigFromFirestore, savePhaseConfigToFirestore,
@@ -1805,6 +1824,155 @@ import { auth, initAuthPersistence, signInWithGoogle, signOutUser,
   from './firebase-service.js';
 
 const { createApp, ref, computed, reactive, watch, onMounted } = Vue;
+
+// =====================================================================
+// AUTH FLOW — plain JS, runs before Vue mounts
+// Vue is only created inside doAuthSuccess() once auth is confirmed.
+// =====================================================================
+
+// Module-level vars shared between auth flow and Vue
+let _currentUser   = null;  // set by auth flow before mountVueApp()
+let _teamMembers   = [];    // set by auth flow before mountVueApp()
+let _vueApp        = null;  // Vue app instance (created at most once)
+let _pendingFbUser = null;  // Firebase user awaiting first-run setup
+
+// Apply dark/light theme to <body> immediately (before Vue mounts)
+// so auth screens are also themed correctly.
+;(function applyInitialTheme() {
+  if (localStorage.getItem('pt_theme') === 'dark') document.body.classList.add('dark');
+})();
+
+function showAuthScreen(name) {
+  ['loading','login','denied','setup','error'].forEach(id => {
+    const el = document.getElementById('auth-screen-' + id);
+    if (el) el.style.display = id === name ? 'flex' : 'none';
+  });
+}
+
+window.handleSignIn = async function() {
+  console.log('Sign-in button clicked');
+  const btn = document.getElementById('auth-btn-signin');
+  const lbl = document.getElementById('auth-signin-label');
+  const err = document.getElementById('auth-error');
+  if (btn) btn.disabled = true;
+  if (lbl) lbl.textContent = 'Signing in…';
+  if (err) err.style.display = 'none';
+  try {
+    await signInWithGoogle();
+    // onAuthChange handles the transition — no action needed here
+  } catch(e) {
+    if (e.code !== 'auth/popup-closed-by-user') {
+      if (err) { err.textContent = e.message || 'Sign-in failed. Please try again.'; err.style.display = 'block'; }
+    }
+    if (btn) btn.disabled = false;
+    if (lbl) lbl.textContent = 'Sign in with Google';
+  }
+};
+
+window.handleSignOut = async function() {
+  console.log('Sign out initiated');
+  try { await signOutUser(); } catch(_) {}
+  // onAuthChange fires → shows login screen
+};
+
+window.handleFirstRunSetup = async function() {
+  const name = (document.getElementById('setup-name')?.value || '').trim();
+  if (!name) { alert('Please enter your full name.'); return; }
+  const btn = document.getElementById('setup-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Setting up…'; }
+  try {
+    const fbUser = _pendingFbUser;
+    const initials = name.split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    const memberData = {
+      name, email: fbUser.email, initials,
+      avatarColor: '#6366f1', department: 'Manager', role: 'Manager',
+      active: true, uid: fbUser.uid, createdAt: new Date().toISOString(),
+    };
+    const newMember = await createTeamMember(memberData);
+    _teamMembers = [newMember];
+    await doAuthSuccess(fbUser, newMember);
+  } catch(e) {
+    console.error('First-run setup error:', e);
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Confirm & Enter App'; }
+    alert('Setup failed: ' + (e.message || 'Unknown error'));
+  }
+};
+
+async function doAuthSuccess(fbUser, member) {
+  // Link Firebase UID to member document on first login
+  if (!member.uid) {
+    try { await updateMemberUID(member.id, fbUser.uid); } catch(_) {}
+    member.uid = fbUser.uid;
+  }
+  _currentUser = {
+    uid:        fbUser.uid,
+    name:       member.name        || fbUser.displayName || '',
+    email:      fbUser.email,
+    role:       member.role        || '',
+    department: member.department  || '',
+    avatarColor:member.avatarColor || '#6366f1',
+    initials:   member.initials    || member.avatarInitials || '',
+  };
+  // Switch from auth screens to app
+  document.getElementById('auth-root').style.display = 'none';
+  document.getElementById('app').style.display = '';
+  // Mount Vue once
+  if (!_vueApp) _vueApp = mountVueApp();
+}
+
+// Firebase Auth state listener — the single entry point for auth
+;(async function initAuth() {
+  try { await initAuthPersistence(); } catch(_) {}
+
+  onAuthChange(async (fbUser) => {
+    console.log('Step 1: Auth state changed, user =', fbUser ? fbUser.email : 'null');
+
+    if (!fbUser) {
+      // Restore auth root visibility (handles sign-out from inside the app)
+      document.getElementById('auth-root').style.display = '';
+      document.getElementById('app').style.display = 'none';
+      showAuthScreen('login');
+      return;
+    }
+
+    showAuthScreen('loading');
+
+    console.log('Step 2: Checking team_members collection…');
+    try {
+      const members = await getTeamMembersFromFirestore();
+      console.log('Step 3: Found', members.length, 'team members');
+
+      if (members.length === 0) {
+        _pendingFbUser = fbUser;
+        const nameEl  = document.getElementById('setup-name');
+        const emailEl = document.getElementById('setup-email');
+        if (nameEl)  nameEl.value  = fbUser.displayName || '';
+        if (emailEl) emailEl.value = fbUser.email || '';
+        showAuthScreen('setup');
+        return;
+      }
+
+      const member = members.find(m =>
+        (m.email || '').toLowerCase() === (fbUser.email || '').toLowerCase()
+      );
+      console.log('Step 4:', member ? 'User found in team_members' : 'User NOT found in team_members');
+
+      if (!member) {
+        const el = document.getElementById('auth-denied-email');
+        if (el) el.textContent = fbUser.email;
+        showAuthScreen('denied');
+        return;
+      }
+
+      _teamMembers = members;
+      await doAuthSuccess(fbUser, member);
+
+    } catch(err) {
+      console.error('Firestore error during auth check:', err);
+      showAuthScreen('error');
+    }
+  });
+})();
 
 // ===================== CONSTANTS =====================
 
@@ -2059,12 +2227,12 @@ const SAMPLE_PROJECTS = [
 
 // ===================== APP =====================
 
-createApp({
+const _appDef = createApp({
   setup() {
     const projects       = ref([]);
     const weeklyEntries  = ref({});
     const settings       = ref({ developers:[] });
-    const teamMembers    = ref([]);
+    const teamMembers    = ref([..._teamMembers]); // pre-populated by auth flow
     const weeklyDevNotes = ref({});
 
     const view           = ref('dashboard');
@@ -2100,24 +2268,19 @@ createApp({
     const toasts     = ref([]);
 
     // ===================== AUTH STATE =====================
+    // currentUser and teamMembers are pre-populated by the auth flow
+    // before Vue mounts, so they start in the authenticated state.
 
-    const authState     = ref('loading'); // 'loading' | 'unauthenticated' | 'access-denied' | 'first-run' | 'authenticated'
-    const currentUser   = ref(null);      // { uid, name, email, role, department, avatarColor }
-    const authError     = ref('');
-
+    const currentUser = ref(_currentUser); // set by auth flow
     const isDark = ref(localStorage.getItem('pt_theme') === 'dark');
     function applyTheme() {
-      document.getElementById('app').classList.toggle('dark', isDark.value);
+      document.body.classList.toggle('dark', isDark.value);
     }
     function toggleTheme() {
       isDark.value = !isDark.value;
       localStorage.setItem('pt_theme', isDark.value ? 'dark' : 'light');
       applyTheme();
     }
-    applyTheme();
-    const signInLoading = ref(false);
-    const setupForm     = reactive({ name: '', email: '' });
-    const setupLoading  = ref(false);
     const hasMigrationData        = ref(!!localStorage.getItem('pt_team_members'));
     const migrating               = ref(false);
     const hasPhaseConfigMigration = ref(!!localStorage.getItem('pt_phase_config'));
@@ -3056,21 +3219,8 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
 
     // ===================== AUTH ACTIONS =====================
 
-    async function handleSignIn() {
-      signInLoading.value = true;
-      authError.value = '';
-      try {
-        await signInWithGoogle();
-        // onAuthChange callback handles the state transition
-      } catch(err) {
-        if (err.code !== 'auth/popup-closed-by-user') {
-          authError.value = err.message || 'Sign-in failed. Please try again.';
-        }
-        signInLoading.value = false;
-      }
-    }
-
     async function handleSignOut() {
+      // Stop all Firestore listeners before signing out
       stopProjectsListener();
       stopWeeklyTrackerListener();
       stopWeeklyDevNotesListener();
@@ -3084,49 +3234,7 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
       notifications.value      = [];
       showNotifPanel.value     = false;
       try { await signOutUser(); } catch(_) {}
-      currentUser.value = null;
-      authState.value   = 'unauthenticated';
-    }
-
-    async function handleFirstRunSetup() {
-      if (!setupForm.name.trim()) { toast('Name is required.', 'err'); return; }
-      setupLoading.value = true;
-      try {
-        const googleUser = auth.currentUser;
-        const memberData = {
-          name:       setupForm.name.trim(),
-          email:      setupForm.email,
-          initials:   autoInitials(setupForm.name),
-          avatarColor:AVATAR_COLORS[0],
-          department: 'Manager',
-          role:       'Manager',
-          active:     true,
-          uid:        googleUser ? googleUser.uid : '',
-          createdAt:  new Date().toISOString(),
-        };
-        const newMemberDoc = await createTeamMember(memberData);
-        currentUser.value = {
-          uid:        memberData.uid,
-          name:       memberData.name,
-          email:      memberData.email,
-          role:       'Manager',
-          department: 'Manager',
-          avatarColor:memberData.avatarColor,
-        };
-        startProjectsListener();
-        startWeeklyTrackerListener(weekKey.value);
-        startWeeklyDevNotesListener(dnWeekKey.value);
-        startNotificationsListener();
-        loadData();
-        teamMembers.value = [newMemberDoc];
-        authState.value   = 'authenticated';
-        toast('Welcome! Manager account created.', 'ok');
-      } catch(err) {
-        console.error('First-run setup error:', err);
-        toast('Setup failed: ' + (err.message || 'Unknown error'), 'err');
-      } finally {
-        setupLoading.value = false;
-      }
+      // onAuthChange fires → auth flow shows login screen
     }
 
     // ===================== TEAM MEMBER MIGRATION =====================
@@ -3528,72 +3636,19 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
         if(view.value==='phase-settings'){view.value='settings';return;}
       });
 
-      // Ensure auth persists across page refreshes (Firebase default is LOCAL, this is explicit)
-      try { await initAuthPersistence(); } catch(_) {}
-
-      // React to sign-in / sign-out / page refresh
-      onAuthChange(async firebaseUser => {
-        signInLoading.value = false;
-
-        if (!firebaseUser) {
-          currentUser.value = null;
-          authState.value   = 'unauthenticated';
-          return;
-        }
-
-        try {
-          const members = await getTeamMembersFromFirestore();
-
-          // ── First-run: no team members exist yet ──
-          if (members.length === 0) {
-            setupForm.name  = firebaseUser.displayName || '';
-            setupForm.email = firebaseUser.email       || '';
-            authState.value = 'first-run';
-            return;
-          }
-
-          // ── Check if this Google account is a registered team member ──
-          const member = members.find(m =>
-            (m.email || '').toLowerCase() === (firebaseUser.email || '').toLowerCase()
-          );
-
-          if (!member) {
-            currentUser.value = { email: firebaseUser.email };
-            authState.value   = 'access-denied';
-            return;
-          }
-
-          // Link Firebase UID to the member document on first login
-          if (!member.uid) {
-            try { await updateMemberUID(member.id, firebaseUser.uid); } catch(_) {}
-            member.uid = firebaseUser.uid;
-          }
-
-          // ── Authorised — set profile and load app data ──
-          currentUser.value = {
-            uid:        firebaseUser.uid,
-            name:       member.name        || firebaseUser.displayName || '',
-            email:      firebaseUser.email,
-            role:       member.role        || '',
-            department: member.department  || '',
-            avatarColor:member.avatarColor || AVATAR_COLORS[0],
-          };
-          startProjectsListener();             // real-time Firestore subscription for projects
-          startWeeklyTrackerListener(weekKey.value);    // real-time weekly tracker for current week
-          startWeeklyDevNotesListener(dnWeekKey.value); // real-time dev notes for current week
-          startNotificationsListener();        // real-time notifications for this user
-          loadData();                         // settings from localStorage
-          teamMembers.value = members;        // override with Firestore source of truth
-          await loadPhaseConfigFromFirestore(); // load phase config from Firestore (seeds if missing)
-          authState.value   = 'authenticated';
-
-        } catch(err) {
-          console.error('Auth check error:', err);
-          authError.value = 'Could not verify team membership. Check your connection and try again.';
-          try { await signOutUser(); } catch(_) {}
-          authState.value = 'unauthenticated';
-        }
-      });
+      // Auth is already confirmed by the time Vue mounts.
+      // Start all real-time Firestore listeners immediately.
+      try {
+        startProjectsListener();
+        startWeeklyTrackerListener(weekKey.value);
+        startWeeklyDevNotesListener(dnWeekKey.value);
+        startNotificationsListener();
+        loadData();
+        await loadPhaseConfigFromFirestore();
+      } catch(err) {
+        console.error('Error starting app listeners:', err);
+        firestoreError.value = 'Connection error — please refresh and try again.';
+      }
     });
 
     // ── Reactive phase config computeds (exposed to template) ──────
@@ -3705,9 +3760,7 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
 
     return {
       PHASES,PARALLEL_PHASES,PHASE_OPTIONS,ALL_PHASE_SECTIONS,PRESET_COLORS:PRESET_COLORS_EXP,AVATAR_COLORS,
-      projects,weeklyEntries,settings,teamMembers,weeklyDevNotes,
-      authState,currentUser,authError,signInLoading,setupForm,setupLoading,
-      handleSignIn,handleSignOut,handleFirstRunSetup,
+      projects,weeklyEntries,settings,teamMembers,weeklyDevNotes,currentUser,handleSignOut,
       hasMigrationData,migrating,migrateTeamMembers,
       hasPhaseConfigMigration,migratingPhaseConfig,migratePhaseConfig,
       hasProjectsMigration,migratingProjects,migrateProjects,projectsLoading,
@@ -3746,7 +3799,14 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
       psDragStart,psDragOver,psDragEnd,savePhaseConfig,resetPhaseConfig,
     };
   }
-}).mount('#app');
+});
+
+// ── mountVueApp ────────────────────────────────────────────────────────────────
+// Called by doAuthSuccess() once auth is confirmed. Returns the Vue app instance.
+function mountVueApp() {
+  _appDef.mount('#app');
+  return _appDef;
+}
 </script>
 </body>
 </html>
