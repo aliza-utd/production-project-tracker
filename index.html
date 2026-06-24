@@ -514,7 +514,6 @@ a.ext:hover{text-decoration:underline}
 
 <!-- Vue app — hidden until auth succeeds, then mounted by doAuthSuccess() -->
 <div id="app" style="display:none">
-<template>
 
 <!-- SIDEBAR -->
 <nav class="sb">
@@ -1799,8 +1798,6 @@ a.ext:hover{text-decoration:underline}
   </template>
 </Teleport>
 
-</template><!-- end app template -->
-
 <!-- TOASTS -->
 <div class="toast-wrap">
   <div v-for="t in toasts" :key="t.id" class="toast" :class="t.type">{{t.msg}}</div>
@@ -1938,6 +1935,7 @@ async function doAuthSuccess(fbUser, member) {
     showAuthScreen('loading');
 
     console.log('Step 2: Checking team_members collection…');
+    let successMember = null;
     try {
       const members = await getTeamMembersFromFirestore();
       console.log('Step 3: Found', members.length, 'team members');
@@ -1965,10 +1963,21 @@ async function doAuthSuccess(fbUser, member) {
       }
 
       _teamMembers = members;
-      await doAuthSuccess(fbUser, member);
+      // Firestore check complete — hand off to doAuthSuccess outside this try/catch
+      // so Vue mount errors are not swallowed as "Firestore errors"
+      successMember = member;
 
     } catch(err) {
       console.error('Firestore error during auth check:', err);
+      showAuthScreen('error');
+      return;
+    }
+
+    // Mount Vue (separate try/catch so compile errors surface clearly)
+    try {
+      await doAuthSuccess(fbUser, successMember);
+    } catch(err) {
+      console.error('Error mounting Vue app:', err);
       showAuthScreen('error');
     }
   });
