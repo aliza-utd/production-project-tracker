@@ -555,8 +555,8 @@ a.ext:hover{text-decoration:underline}
   </div>
   <div class="sb-bottom">
     <div class="sb-user">
-      <div class="avatar avatar-sm" :style="`background:${currentUser&&currentUser.avatarColor||'#6366f1'}`">
-        {{currentUser&&currentUser.name?currentUser.name.trim().split(/\s+/).slice(0,2).map(function(w){return w[0]}).join('').toUpperCase():''}}
+      <div class="avatar avatar-sm" :style="'background:'+(currentUser&&currentUser.avatarColor||'#6366f1')">
+        {{currentUser&&currentUser.initials||''}}
       </div>
       <div class="sb-user-info">
         <div class="sb-user-name">{{currentUser&&currentUser.name||''}}</div>
@@ -685,7 +685,7 @@ a.ext:hover{text-decoration:underline}
               <td><span class="badge" :class="p.platform==='WordPress'?'badge-wp':'badge-blogger'">{{p.platform}}</span></td>
               <td>
                 <div style="display:flex;align-items:center;gap:7px">
-                  <div v-if="memberByName(p.developer)" class="avatar avatar-sm" :style="`background:${memberByName(p.developer).avatarColor}`">
+                  <div v-if="memberByName(p.developer)" class="avatar avatar-sm" :style="'background:'+memberByName(p.developer).avatarColor">
                     {{memberByName(p.developer).initials}}
                   </div>
                   {{p.developer||'—'}}
@@ -696,8 +696,8 @@ a.ext:hover{text-decoration:underline}
               <td>
                 <div style="display:flex;flex-wrap:wrap;gap:3px">
                   <span v-for="info in allPhaseInfos(p)" :key="info.label"
-                    class="badge" :style="`background:${info.bg};color:${info.color}`">
-                    <span class="phase-dot" :style="`background:${info.color}`"></span>
+                    class="badge" :style="'background:'+info.bg+';color:'+info.color">
+                    <span class="phase-dot" :style="'background:'+info.color"></span>
                     {{info.label}}
                   </span>
                 </div>
@@ -715,9 +715,9 @@ a.ext:hover{text-decoration:underline}
         <span>Loading projects…</span>
       </div>
       <div v-for="phase in PHASES" :key="phase.key" class="kb-col">
-        <div class="kb-col-hdr" :style="`background:${phase.bg};color:${phase.color}`">
+        <div class="kb-col-hdr" :style="'background:'+phase.bg+';color:'+phase.color">
           <div class="kb-col-title">
-            <span class="phase-dot" :style="`background:${phase.color}`"></span>{{phase.label}}
+            <span class="phase-dot" :style="'background:'+phase.color"></span>{{phase.label}}
           </div>
           <span class="kb-count">{{kanbanCounts[phase.key]||0}}</span>
         </div>
@@ -736,7 +736,7 @@ a.ext:hover{text-decoration:underline}
               <div v-if="p.liveDate" class="kb-date" :class="{urgent:isUrgent(p.liveDate)}">📅 {{fmtDate(p.liveDate)}}</div>
               <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:5px">
                 <span v-for="info in allPhaseInfos(p)" :key="info.label"
-                  class="kb-subphase" :style="`background:${info.bg};color:${info.color};border:none`">
+                  class="kb-subphase" :style="'background:'+info.bg+';color:'+info.color+';border:none'">
                   {{info.label}}
                 </span>
               </div>
@@ -760,13 +760,13 @@ a.ext:hover{text-decoration:underline}
             {{editingProject.platform}}
           </span>
           <span v-for="info in allPhaseInfos(editingProject)" :key="info.label"
-            class="badge" :style="`background:${info.bg};color:${info.color}`">
-            <span class="phase-dot" :style="`background:${info.color}`"></span>
+            class="badge" :style="'background:'+info.bg+';color:'+info.color">
+            <span class="phase-dot" :style="'background:'+info.color"></span>
             {{info.label}}
           </span>
           <span v-if="isUrgent(editingProject.liveDate)" class="urgent-pill">⚡ Urgent</span>
           <span v-if="editingProject.developer" style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px">
-            <div v-if="memberByName(editingProject.developer)" class="avatar avatar-sm" :style="`background:${memberByName(editingProject.developer).avatarColor}`">
+            <div v-if="memberByName(editingProject.developer)" class="avatar avatar-sm" :style="'background:'+memberByName(editingProject.developer).avatarColor">
               {{memberByName(editingProject.developer).initials}}
             </div>
             {{editingProject.developer}}
@@ -996,11 +996,11 @@ a.ext:hover{text-decoration:underline}
             <div v-for="ph in PHASES" :key="ph.key"
               class="ph-card"
               :class="{'ph-card-wide': ph.subPhases && ph.subPhases.length}"
-              :style="`border-left:4px solid ${ph.color}`">
+              :style="'border-left:4px solid '+ph.color">
 
               <!-- Card header (click to collapse / expand) -->
               <div class="ph-card-hdr" @click="togglePhaseCard(ph.key)">
-                <div class="ph-card-dot" :style="`background:${ph.color}`"></div>
+                <div class="ph-card-dot" :style="'background:'+ph.color"></div>
                 <div class="ph-card-name">{{ph.label}}</div>
                 <div class="ph-card-chips">
                   <span v-if="PARALLEL_PHASES.has(ph.key)" class="ph-parallel-chip">⇄ Can overlap</span>
@@ -1059,7 +1059,7 @@ a.ext:hover{text-decoration:underline}
                   <textarea class="form-textarea" rows="3"
                     :value="editingProject.phases[phaseCardSectionKey(ph.key)]?.notes||''"
                     @input="setPhaseCardNote(ph.key,$event.target.value)"
-                    :placeholder="`Notes for ${ph.label}…`"></textarea>
+                    :placeholder="'Notes for '+ph.label+'…'"></textarea>
                 </div>
 
                 <!-- Checklist -->
@@ -1135,7 +1135,7 @@ a.ext:hover{text-decoration:underline}
             <div v-if="projectComments.length===0" style="color:var(--muted);font-size:14px;margin-bottom:20px">No comments yet. Be the first to comment.</div>
             <div v-for="c in projectComments" :key="c.id"
               style="display:flex;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)">
-              <div class="avatar avatar-sm" :style="`background:${c.authorColor||'#6366f1'};flex-shrink:0`">{{c.authorInitials||'?'}}</div>
+              <div class="avatar avatar-sm" :style="'background:'+(c.authorColor||'#6366f1')+';flex-shrink:0'">{{c.authorInitials||'?'}}</div>
               <div style="flex:1;min-width:0">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
                   <span style="font-weight:600;font-size:14px">{{c.authorName||'Unknown'}}</span>
@@ -1251,7 +1251,7 @@ a.ext:hover{text-decoration:underline}
       <div class="summary-banner">
         <div class="summary-stat"><strong>{{dnCompletion.complete}}</strong> / {{dnCompletion.total}} completed</div>
         <div class="progress-bar-wrap">
-          <div class="progress-bar-fill" :style="`width:${dnCompletion.total?Math.round(dnCompletion.complete/dnCompletion.total*100):0}%`"></div>
+          <div class="progress-bar-fill" :style="'width:'+(dnCompletion.total?Math.round(dnCompletion.complete/dnCompletion.total*100):0)+'%'"></div>
         </div>
         <div style="font-size:13px;color:var(--muted)">{{dnCompletion.total?Math.round(dnCompletion.complete/dnCompletion.total*100):0}}%</div>
         <div style="display:flex;gap:8px;margin-left:auto">
@@ -1269,7 +1269,7 @@ a.ext:hover{text-decoration:underline}
       <div v-else class="dn-grid">
         <div v-for="m in devAndProdMembers" :key="m.id" class="dn-card">
           <div class="dn-card-hdr">
-            <div class="avatar" :style="`background:${m.avatarColor}`">{{m.initials}}</div>
+            <div class="avatar" :style="'background:'+m.avatarColor">{{m.initials}}</div>
             <div class="dn-card-info">
               <div class="dn-card-name">{{m.name}}</div>
               <div class="dn-card-role">{{m.role||m.department}}</div>
@@ -1288,14 +1288,14 @@ a.ext:hover{text-decoration:underline}
                 <button class="btn btn-ghost btn-xs" @click="copyPrevWeekStart(m.id)">↩ Copy prev week</button>
               </div>
               <textarea class="dn-textarea"
-                :placeholder="`Plans for ${m.name.split(' ')[0]} this week…`"
+                :placeholder="'Plans for '+m.name.split(' ')[0]+' this week…'"
                 :value="getDevNote(m.id,'startOfWeek')"
                 @input="setDevNote(m.id,'startOfWeek',$event.target.value)"></textarea>
             </div>
             <div class="dn-section">
               <div class="dn-field-label">📋 End of Week Summary</div>
               <textarea class="dn-textarea"
-                :placeholder="`Accomplishments, blockers, carryovers…`"
+                :placeholder="'Accomplishments, blockers, carryovers…'"
                 :value="getDevNote(m.id,'endOfWeek')"
                 @input="setDevNote(m.id,'endOfWeek',$event.target.value)"></textarea>
             </div>
@@ -1317,7 +1317,7 @@ a.ext:hover{text-decoration:underline}
           <div class="tm-grid">
             <div v-for="m in membersByDept[dept]" :key="m.id" class="tm-card" @click="openEditMember(m)">
               <div class="tm-card-hdr">
-                <div class="avatar" :style="`background:${m.avatarColor}`">{{m.initials}}</div>
+                <div class="avatar" :style="'background:'+m.avatarColor">{{m.initials}}</div>
                 <div>
                   <div class="tm-card-name">{{m.name}}</div>
                   <div class="tm-card-role">{{m.role||'—'}}</div>
@@ -1339,7 +1339,7 @@ a.ext:hover{text-decoration:underline}
         <div v-if="showInactive" class="tm-grid" style="margin-top:10px">
           <div v-for="m in inactiveMembers" :key="m.id" class="tm-card" style="opacity:.6" @click="openEditMember(m)">
             <div class="tm-card-hdr">
-              <div class="avatar" :style="`background:${m.avatarColor};filter:grayscale(0.5)`">{{m.initials}}</div>
+              <div class="avatar" :style="'background:'+m.avatarColor+';filter:grayscale(0.5)'">{{m.initials}}</div>
               <div><div class="tm-card-name">{{m.name}}</div><div class="tm-card-role">{{m.role||'—'}}</div></div>
             </div>
             <div class="tm-card-footer">
@@ -1376,7 +1376,7 @@ a.ext:hover{text-decoration:underline}
         <!-- Row header -->
         <div class="ps-phase-hdr" @click="ph._open=!ph._open">
           <span class="ps-drag-handle" @click.stop>⠿</span>
-          <div class="ps-phase-dot" :style="`background:${ph.color}`"></div>
+          <div class="ps-phase-dot" :style="'background:'+ph.color"></div>
           <input class="ps-phase-label-input" :value="ph.label"
             @input="ph.label=$event.target.value" @click.stop
             placeholder="Phase name…">
@@ -1399,7 +1399,7 @@ a.ext:hover{text-decoration:underline}
                 <div v-for="p in PRESET_COLORS" :key="p.color"
                   class="ps-color-swatch"
                   :class="{selected: ph.color===p.color}"
-                  :style="`background:${p.color}`"
+                  :style="'background:'+p.color"
                   @click="psPickColor(ph,p)"
                   :title="p.color"></div>
               </div>
@@ -1583,12 +1583,12 @@ a.ext:hover{text-decoration:underline}
       <div class="card" style="margin-bottom:20px">
         <div style="font-weight:600;font-size:15px;margin-bottom:14px">Projects by Phase</div>
         <div v-for="ph in PHASES.filter(p=>!p.canOverlap)" :key="ph.key" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-          <div style="width:12px;height:12px;border-radius:50%;flex-shrink:0" :style="`background:${ph.color}`"></div>
+          <div style="width:12px;height:12px;border-radius:50%;flex-shrink:0" :style="'background:'+ph.color"></div>
           <div style="font-size:13px;flex:1">{{ph.label}}</div>
           <div style="font-size:13px;font-weight:600;color:var(--muted)">{{projects.filter(p=>p.currentPhase===ph.key).length}}</div>
           <div style="width:100px;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
             <div style="height:100%;border-radius:3px;transition:width .3s"
-              :style="`background:${ph.color};width:${projects.length?Math.round(projects.filter(p=>p.currentPhase===ph.key).length/projects.length*100):0}%`"></div>
+              :style="'background:'+ph.color+';width:'+(projects.length?Math.round(projects.filter(p=>p.currentPhase===ph.key).length/projects.length*100):0)+'%'"></div>
           </div>
         </div>
       </div>
@@ -1618,7 +1618,7 @@ a.ext:hover{text-decoration:underline}
             <tbody>
               <tr v-for="ph in PHASES.filter(p=>!p.canOverlap)" :key="ph.key" style="border-bottom:1px solid var(--border)">
                 <td style="padding:8px 12px;display:flex;align-items:center;gap:8px">
-                  <span style="width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0" :style="`background:${ph.color}`"></span>
+                  <span style="width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0" :style="'background:'+ph.color"></span>
                   {{ph.label}}
                 </td>
                 <td style="padding:8px 12px;text-align:right;font-weight:600">{{projects.filter(p=>p.currentPhase===ph.key).length}}</td>
@@ -1636,7 +1636,7 @@ a.ext:hover{text-decoration:underline}
             <div style="font-size:14px;font-weight:500">{{p.name}}</div>
             <div style="font-size:12px;color:var(--muted)">Developer: {{p.developer||'—'}}</div>
           </div>
-          <div :style="`font-size:13px;font-weight:600;color:${new Date(p.liveDate)>=new Date()?'var(--text)':'var(--danger)'}`">{{p.liveDate}}</div>
+          <div :style="'font-size:13px;font-weight:600;color:'+(new Date(p.liveDate)>=new Date()?'var(--text)':'var(--danger)')">{{p.liveDate}}</div>
         </div>
       </div>
       <div class="settings-sec">
@@ -1692,7 +1692,7 @@ a.ext:hover{text-decoration:underline}
   <div class="modal" style="max-width:520px">
     <div class="modal-hdr">
       <div style="display:flex;align-items:center;gap:12px;flex:1">
-        <div class="avatar" :style="`background:${editingMember.avatarColor}`">{{editingMember.initials||'?'}}</div>
+        <div class="avatar" :style="'background:'+editingMember.avatarColor">{{editingMember.initials||'?'}}</div>
         <div class="modal-title">{{editingMember.id?'Edit Member':'New Team Member'}}</div>
       </div>
       <button class="modal-close" @click="closeMemberModal">×</button>
@@ -1726,7 +1726,7 @@ a.ext:hover{text-decoration:underline}
         <label class="form-label">Avatar Color</label>
         <div class="color-swatches">
           <div v-for="c in AVATAR_COLORS" :key="c" class="color-swatch"
-            :style="`background:${c}`" :class="{selected:editingMember.avatarColor===c}"
+            :style="'background:'+c" :class="{selected:editingMember.avatarColor===c}"
             @click="editingMember.avatarColor=c"></div>
         </div>
       </div>
