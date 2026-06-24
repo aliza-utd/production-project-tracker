@@ -1618,7 +1618,7 @@ a.ext:hover{text-decoration:underline}
             <div style="font-size:14px;font-weight:500">{{p.name}}</div>
             <div style="font-size:12px;color:var(--muted)">Developer: {{p.developer||'—'}}</div>
           </div>
-          <div :style="`font-size:13px;font-weight:600;color:${new Date(p.liveDate)<new Date()?'var(--danger)':'var(--text)'}`">{{p.liveDate}}</div>
+          <div :style="`font-size:13px;font-weight:600;color:${new Date(p.liveDate)>=new Date()?'var(--text)':'var(--danger)'}`">{{p.liveDate}}</div>
         </div>
       </div>
       <div class="settings-sec">
