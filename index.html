@@ -1573,7 +1573,7 @@ a.ext:hover{text-decoration:underline}
           <div style="font-size:13px;color:var(--muted);margin-top:4px">Active Projects</div>
         </div>
         <div class="card" style="text-align:center;padding:24px">
-          <div style="font-size:36px;font-weight:700;color:var(--success)">{{projects.filter(p=>p.currentPhase==='live').length}}</div>
+          <div style="font-size:36px;font-weight:700;color:var(--success)">{{liveProjectsCount}}</div>
           <div style="font-size:13px;color:var(--muted);margin-top:4px">Live</div>
         </div>
         <div class="card" style="text-align:center;padding:24px">
@@ -1587,19 +1587,19 @@ a.ext:hover{text-decoration:underline}
       </div>
       <div class="card" style="margin-bottom:20px">
         <div style="font-weight:600;font-size:15px;margin-bottom:14px">Projects by Phase</div>
-        <div v-for="ph in PHASES.filter(p=>!p.canOverlap)" :key="ph.key" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div v-for="ph in nonOverlapPhases" :key="ph.key" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
           <div style="width:12px;height:12px;border-radius:50%;flex-shrink:0" :style="'background:'+ph.color"></div>
           <div style="font-size:13px;flex:1">{{ph.label}}</div>
-          <div style="font-size:13px;font-weight:600;color:var(--muted)">{{projects.filter(p=>p.currentPhase===ph.key).length}}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--muted)">{{projectCountByPhase(ph.key)}}</div>
           <div style="width:100px;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
             <div style="height:100%;border-radius:3px;transition:width .3s"
-              :style="'background:'+ph.color+';width:'+(projects.length?Math.round(projects.filter(p=>p.currentPhase===ph.key).length/projects.length*100):0)+'%'"></div>
+              :style="'background:'+ph.color+';width:'+projectPctByPhase(ph.key)+'%'"></div>
           </div>
         </div>
       </div>
-      <div v-if="notifications.filter(n=>!n.read).length" class="card">
+      <div v-if="unreadCount" class="card">
         <div style="font-weight:600;font-size:15px;margin-bottom:14px">Unread Notifications</div>
-        <div v-for="n in notifications.filter(n=>!n.read).slice(0,5)" :key="n.id" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer" @click="handleNotifClick(n)">
+        <div v-for="n in recentUnreadNotifs" :key="n.id" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer" @click="handleNotifClick(n)">
           <span>{{n.type==='deadline_overdue'?'🚨':n.type==='deadline_warning'?'⏰':'💬'}}</span>
           <div style="flex:1;font-size:13px">{{n.message}}</div>
           <div style="font-size:12px;color:var(--muted)">{{fmtDateTime(n.createdAt)}}</div>
@@ -1621,13 +1621,13 @@ a.ext:hover{text-decoration:underline}
               </tr>
             </thead>
             <tbody>
-              <tr v-for="ph in PHASES.filter(p=>!p.canOverlap)" :key="ph.key" style="border-bottom:1px solid var(--border)">
+              <tr v-for="ph in nonOverlapPhases" :key="ph.key" style="border-bottom:1px solid var(--border)">
                 <td style="padding:8px 12px;display:flex;align-items:center;gap:8px">
                   <span style="width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0" :style="'background:'+ph.color"></span>
                   {{ph.label}}
                 </td>
-                <td style="padding:8px 12px;text-align:right;font-weight:600">{{projects.filter(p=>p.currentPhase===ph.key).length}}</td>
-                <td style="padding:8px 12px;text-align:right;color:var(--muted)">{{projects.length?Math.round(projects.filter(p=>p.currentPhase===ph.key).length/projects.length*100):0}}%</td>
+                <td style="padding:8px 12px;text-align:right;font-weight:600">{{projectCountByPhase(ph.key)}}</td>
+                <td style="padding:8px 12px;text-align:right;color:var(--muted)">{{projectPctByPhase(ph.key)}}%</td>
               </tr>
             </tbody>
           </table>
@@ -3681,6 +3681,18 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
     const ALL_PHASE_SECTIONS = computed(() => computeAllPhaseSections(_phaseConfig.value));
     const PRESET_COLORS_EXP  = PRESET_COLORS; // pass preset list to template
 
+    // ── Template helpers: arrow-fn-free versions for Vue CDN runtime compiler ──
+    const nonOverlapPhases  = computed(() => PHASES.value.filter(ph => !ph.canOverlap));
+    const liveProjectsCount = computed(() => projects.value.filter(p => p.currentPhase === 'live').length);
+    const recentUnreadNotifs= computed(() => notifications.value.filter(n => !n.read).slice(0, 5));
+    function projectCountByPhase(phaseKey) {
+      return projects.value.filter(p => p.currentPhase === phaseKey).length;
+    }
+    function projectPctByPhase(phaseKey) {
+      if (!projects.value.length) return 0;
+      return Math.round(projectCountByPhase(phaseKey) / projects.value.length * 100);
+    }
+
     // ── Phase Settings (Manage Phases) ─────────────────────────────
     const psPhases    = ref([]);       // deep-clone of config being edited
     const psDragIdx   = ref(null);
@@ -3801,7 +3813,8 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
       dnWeekOffset,dnWeekKey,dnWeekLabel,dnWeekRange,dnCompletion,
       draggingId,dragOverPhase,
       confirmDlg,toasts,
-      notifications,showNotifPanel,notifLoading,unreadCount,
+      notifications,showNotifPanel,notifLoading,unreadCount,recentUnreadNotifs,
+      nonOverlapPhases,liveProjectsCount,projectCountByPhase,projectPctByPhase,
       markNotifRead,markAllNotifsRead,handleNotifClick,
       firestoreError,retryFirestore,
       archivedProjects,archivedLoading,archivedError,loadArchivedProjects,
