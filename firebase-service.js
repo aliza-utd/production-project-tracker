@@ -127,6 +127,16 @@ export async function savePhaseConfigToFirestore(phases, updatedBy) {
   });
 }
 
+// Real-time listener on phase_config/default.
+// Returns the unsubscribe function. onNext receives the raw Firestore DocumentSnapshot.
+export function subscribeToPhaseConfig(onNext, onError) {
+  return onSnapshot(
+    doc(db, 'phase_config', 'default'),
+    onNext,
+    onError || (err => console.error('Phase config snapshot error:', err))
+  );
+}
+
 // ── Projects (Firestore) ──────────────────────────────────────────────────────
 
 // Real-time listener on all non-archived projects.
@@ -304,10 +314,12 @@ export async function migrateProjectsToFirestore(projects) {
       developer:       p.developer       || '',
       kickstartDate:   p.kickstartDate   || '',
       liveDate:        p.liveDate        || '',
+      siteStatus:      p.siteStatus      || 'development',
+      assignedMembers: p.assignedMembers || [],
       currentPhase:    p.currentPhase    || 'kickstart',
       currentSubPhase: p.currentSubPhase || null,
       activePhases:    p.activePhases    || [],
-      phaseStates:     p.phaseStates     || {},
+      phaseData:       p.phaseData       || {},
       originalSite:    p.originalSite    || '',
       language:        p.language        || '',
       projectType:     p.projectType     || 'website',
@@ -318,7 +330,6 @@ export async function migrateProjectsToFirestore(projects) {
       logoSetUrl:      p.logoSetUrl      || '',
       googleSheets:    p.googleSheets    || [],
       notes:           p.notes           || '',
-      phases:          p.phases          || {},
       phaseHistory:    p.phaseHistory    || [],
       archived:        false,
       archivedAt:      null,
