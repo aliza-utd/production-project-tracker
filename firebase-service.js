@@ -2,17 +2,14 @@ import { initializeApp }                                      from "https://www.
 import { getAuth, GoogleAuthProvider, signInWithPopup,
          signOut, onAuthStateChanged,
          setPersistence, browserLocalPersistence }            from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+import { getFirestore,
          collection, getDocs, query, where, addDoc, updateDoc, doc,
          getDoc, setDoc, onSnapshot, orderBy }               from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { firebaseConfig }                                    from "./firebase-config.js";
 
 const app      = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-// Initialise Firestore with multi-tab IndexedDB persistence for offline support.
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-});
+export const db   = getFirestore(app);
 
 const googleProvider = new GoogleAuthProvider();
 

@@ -1822,8 +1822,10 @@ import { initAuthPersistence, signInWithGoogle, signOutUser,
          subscribeToWeeklyDevNotes, saveWeeklyDevNote, getPrevWeekDevNote,
          migrateWeeklyDevNotesToFirestore,
          subscribeToNotifications, createNotification, setNotificationIfNotExists,
-         markNotificationRead, markAllNotificationsRead }
+         markNotificationRead, markAllNotificationsRead,
+         db }
   from './firebase-service.js';
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const { createApp, ref, computed, reactive, watch, onMounted } = Vue;
 
@@ -1915,6 +1917,13 @@ async function doAuthSuccess(fbUser, member) {
     avatarColor:member.avatarColor || '#6366f1',
     initials:   member.initials    || member.avatarInitials || '',
   };
+  // Connection ping — confirms Firestore is reachable before mounting Vue
+  try {
+    await getDoc(doc(db, 'team_members', 'ping-test'));
+    console.log('Firestore ping OK');
+  } catch(e) {
+    console.error('Firestore ping FAILED:', e.code, e.message);
+  }
   // Mount Vue first (into the hidden #app div), then reveal it
   if (!_vueApp) _vueApp = mountVueApp();
   document.getElementById('auth-root').style.display = 'none';
@@ -3347,8 +3356,8 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
           }
         },
         err => {
-          console.error('Projects listener error:', err);
-          firestoreError.value = 'Could not load projects from Firestore';
+          console.error('Projects listener error:', err.code, err.message, err);
+          firestoreError.value = 'Could not load projects from Firestore ('+err.code+')';
           projectsLoading.value = false;
         }
       );
@@ -3373,7 +3382,7 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
           weeklyTrackerLoading.value = false;
         },
         err => {
-          console.error('Weekly tracker listener error:', err);
+          console.error('Weekly tracker listener error:', err.code, err.message, err);
           weeklyTrackerLoading.value = false;
         }
       );
@@ -3412,7 +3421,7 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
           weeklyDevNotesLoading.value = false;
         },
         err => {
-          console.error('Dev notes listener error:', err);
+          console.error('Dev notes listener error:', err.code, err.message, err);
           weeklyDevNotesLoading.value = false;
         }
       );
@@ -3442,7 +3451,7 @@ h1{font-size:22px;font-weight:700;margin-bottom:4px}.sub{color:#64748b;font-size
           notifLoading.value = false;
         },
         err => {
-          console.error('Notifications listener error:', err);
+          console.error('Notifications listener error:', err.code, err.message, err);
           notifLoading.value = false;
         }
       );
