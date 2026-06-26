@@ -598,22 +598,35 @@
                 <span style="animation:spin 1s linear infinite">⏳</span> Loading logs…
               </div>
               <div v-else>
-                <div v-if="!projectActivityLog.length" style="color:var(--muted);font-size:14px">
+                <div v-if="!projectActivityLog.length" style="color:var(--muted);font-size:14px;padding:8px 0">
                   No activity recorded yet.
                 </div>
                 <!-- Timeline feed -->
                 <div v-else style="display:flex;flex-direction:column">
                   <div v-for="entry in projectActivityLog" :key="entry.id"
-                    style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
-                    <div style="width:34px;height:34px;border-radius:50%;background:var(--surface2,#f1f5f9);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">
+                    style="display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)">
+                    <!-- Icon bubble -->
+                    <div style="width:36px;height:36px;border-radius:50%;background:var(--surface2,#f1f5f9);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:1px">
                       {{ activityIcon(entry.action) }}
                     </div>
-                    <div style="flex:1;min-width:0;padding-top:5px">
-                      <div style="font-size:14px;font-weight:500;color:var(--text)">{{ entry.detail }}</div>
-                      <div style="font-size:12px;color:var(--muted);margin-top:3px;display:flex;gap:5px;align-items:center">
-                        <span>{{ entry.userName || 'System' }}</span>
-                        <span style="opacity:.4">·</span>
-                        <span>{{ fmtDateTime(entry.timestamp) }}</span>
+                    <div style="flex:1;min-width:0">
+                      <!-- Action description + timestamp on one row -->
+                      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                        <div style="font-size:14px;font-weight:600;color:var(--text)">
+                          {{ describeActivity(entry) }}
+                        </div>
+                        <div style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0">
+                          {{ formatDate(entry.timestamp) }}
+                        </div>
+                      </div>
+                      <!-- Detail line (structured details shown as readable text) -->
+                      <div v-if="activityDetail(entry)"
+                        style="font-size:12px;color:var(--muted);margin-top:3px">
+                        {{ activityDetail(entry) }}
+                      </div>
+                      <!-- By line -->
+                      <div style="font-size:12px;color:var(--muted);margin-top:2px">
+                        By: {{ entry.performedBy?.name || entry.userName || 'System' }}
                       </div>
                     </div>
                   </div>
@@ -773,7 +786,8 @@ import { usePhasesStore } from '@/stores/phases'
 import { useTeamStore } from '@/stores/team'
 import { useAuthStore } from '@/stores/auth'
 import { usePhaseLogic } from '@/composables/usePhaseLogic'
-import { subscribeToProject, getProjectComments, addProjectComment, updateProjectComment, deleteProjectComment, getProjectActivityLog, addProjectActivityEntry, logActivity, createNotification } from '@/firebase-service'
+import { subscribeToProject, getProjectComments, addProjectComment, updateProjectComment, deleteProjectComment, getProjectActivityLog, createNotification } from '@/firebase-service'
+import { useActivityLog } from '@/composables/useActivityLog'
 import OnHoldBanner from '@/components/shared/OnHoldBanner.vue'
 import ConfirmModal from '@/components/shared/ConfirmModal.vue'
 import PhaseCard from '@/components/phases/PhaseCard.vue'
@@ -791,7 +805,8 @@ const router       = useRouter()
 const projectsStore = useProjectsStore()
 const phasesStore  = usePhasesStore()
 const teamStore    = useTeamStore()
-const authStore    = useAuthStore()
+const authStore       = useAuthStore()
+const { logActivity } = useActivityLog()
 const { emptyPhaseEntry, autoCompletePreviousPhases } = usePhaseLogic()
 
 // ── Core project state ────────────────────────────────────────────────────────
@@ -908,14 +923,103 @@ function projectTypeLabel(type) {
 
 function activityIcon(action) {
   const icons = {
-    created: '✨', updated: '✏️', phase_changed: '🔄', phase_status_changed: '🔄',
-    phase_assigned: '👤', archived: '🗂️', comment_added: '💬', comment_edited: '✏️',
-    comment_deleted: '🗑️', status_changed: '🔁', restored: '♻️', on_hold: '⏸️',
-    reactivated: '▶️', sheet_added: '📊', sheet_removed: '📊', lang_status: '🌐',
+    project_created:         '✨',
+    field_updated:           '✏️',
+    phase_status_changed:    '🔄',
+    phase_assigned:          '👤',
+    checklist_updated:       '☑️',
+    time_logged:             '⏱️',
+    comment_added:           '💬',
+    comment_edited:          '✏️',
+    comment_deleted:         '🗑️',
+    link_updated:            '📊',
+    site_status_changed:     '🔁',
+    project_on_hold:         '⏸️',
+    project_reactivated:     '▶️',
+    project_archived:        '🗂️',
+    language_status_changed: '🌐',
+    // legacy action names
+    created: '✨', updated: '✏️', phase_changed: '🔄', archived: '🗂️',
+    status_changed: '🔁', on_hold: '⏸️', reactivated: '▶️',
+    sheet_added: '📊', sheet_removed: '📊', lang_status: '🌐',
     checklist_added: '☑️', checklist_removed: '☑️', checklist_toggled: '✅',
     timelog_added: '⏱️', timelog_deleted: '⏱️',
   }
   return icons[action] || '📌'
+}
+
+function describeActivity(entry) {
+  const d = entry.details || {}
+  const STATUS_LABEL = { 'not-started': 'Not Started', 'active': 'Active', 'blocked': 'Blocked', 'done': 'Done', 'live': 'Live', 'development': 'Development', 'on-hold': 'On Hold', 'cancelled': 'Cancelled', 'in-production': 'In Production' }
+  switch (entry.action) {
+    case 'project_created':
+      return 'Project created'
+    case 'field_updated':
+      return `${d.field} changed${d.oldValue ? ` from "${d.oldValue}"` : ''} to "${d.newValue}"`
+    case 'phase_status_changed':
+      return `${d.phase} marked as ${STATUS_LABEL[d.to] || d.to}`
+    case 'phase_assigned':
+      return `${d.phase} assigned to ${d.assignedTo}`
+    case 'checklist_updated':
+      return `Checklist item ${d.action}: "${d.item}"`
+    case 'time_logged':
+      return d.action === 'deleted'
+        ? `${d.hours}h removed from ${d.phase}`
+        : `${d.hours}h logged on ${d.phase}`
+    case 'comment_added':
+      return 'Comment posted'
+    case 'comment_edited':
+      return 'Comment edited'
+    case 'comment_deleted':
+      return 'Comment deleted'
+    case 'link_updated':
+      return `Link ${d.action}: ${d.label}`
+    case 'site_status_changed':
+      return `Site status changed to ${STATUS_LABEL[d.to] || d.to}`
+    case 'project_on_hold':
+      return d.reason ? `Project put on hold: ${d.reason}` : 'Project put on hold'
+    case 'project_reactivated':
+      return 'Project reactivated'
+    case 'project_archived':
+      return 'Project archived'
+    case 'language_status_changed':
+      return `${d.language} marked as ${STATUS_LABEL[d.status] || d.status}`
+    default:
+      return entry.detail || entry.action || '—'
+  }
+}
+
+function activityDetail(entry) {
+  const d = entry.details || {}
+  switch (entry.action) {
+    case 'time_logged':
+      return d.description ? `${d.description}` : null
+    case 'comment_added':
+    case 'comment_edited':
+    case 'comment_deleted':
+      return d.preview ? `"${d.preview}${d.preview.length >= 50 ? '…' : ''}"` : null
+    default:
+      return null
+  }
+}
+
+function formatDate(value) {
+  if (!value) return '—'
+  let date
+  if (value && typeof value.toDate === 'function') {
+    date = value.toDate()
+  } else if (value instanceof Date) {
+    date = value
+  } else if (value?.seconds) {
+    date = new Date(value.seconds * 1000)
+  } else {
+    date = new Date(value)
+  }
+  if (isNaN(date.getTime())) return '—'
+  return date.toLocaleString('en-GB', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
 }
 
 function langStatusClass(status) {
@@ -936,21 +1040,7 @@ function langStatusText(status) {
   return 'Not Started'
 }
 
-function fmtDateTime(s) {
-  if (!s) return '—'
-  let date
-  if (typeof s?.toDate === 'function') {
-    date = s.toDate()
-  } else if (s instanceof Date) {
-    date = s
-  } else if (s?.seconds) {
-    date = new Date(s.seconds * 1000)
-  } else {
-    date = new Date(s)
-  }
-  if (isNaN(date.getTime())) return '—'
-  return date.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
+function fmtDateTime(s) { return formatDate(s) }
 
 const TAG_STYLES = {
   general:  { color: '#6b7280', bg: '#f3f4f6', label: 'General' },
@@ -1074,7 +1164,7 @@ async function saveEditComment(commentId) {
   try {
     await updateProjectComment(localProject.value.id, commentId, { text, editedAt })
     projectComments.value[idx] = { ...projectComments.value[idx], text, editedAt }
-    logActivity(localProject.value.id, 'comment_edited', `Comment edited by ${authStore.currentUser?.name || 'user'}`, authStore.currentUser).catch(() => {})
+    logActivity(localProject.value.id, 'comment_edited', { preview: text.substring(0, 50) }).catch(() => {})
     cancelEditComment()
   } catch (err) {
     console.error('Edit comment error:', err)
@@ -1084,10 +1174,11 @@ async function saveEditComment(commentId) {
 async function deleteComment(commentId) {
   if (!localProject.value?.id) return
   if (!window.confirm('Delete this comment?')) return
+  const comment = projectComments.value.find(c => c.id === commentId)
   try {
     await deleteProjectComment(localProject.value.id, commentId)
     projectComments.value = projectComments.value.filter(c => c.id !== commentId)
-    logActivity(localProject.value.id, 'comment_deleted', `Comment deleted by ${authStore.currentUser?.name || 'user'}`, authStore.currentUser).catch(() => {})
+    logActivity(localProject.value.id, 'comment_deleted', { preview: (comment?.text || '').substring(0, 50) }).catch(() => {})
   } catch (err) {
     console.error('Delete comment error:', err)
   }
@@ -1322,9 +1413,14 @@ async function infoSave() {
     localProject.value.developer = fields.developer
     const FIELD_LABELS = { name: 'Name', url: 'Site URL', originalSite: 'Original Site', platform: 'Platform', projectType: 'Type', language: 'Language', kickstartDate: 'Kickstart Date', liveDate: 'Live Date', sitemapUrl: 'Sitemap', builderLink: 'Builder Link', briefingUrl: 'Briefing', googleKeepUrl: 'Google Keep', logoSetUrl: 'Google Drive' }
     const snap = latestSnapshot.value || {}
-    const changed = Object.keys(FIELD_LABELS).filter(f => (localProject.value[f] || '') !== (snap[f] || ''))
-    const detail = changed.length ? `Updated: ${changed.map(f => FIELD_LABELS[f]).join(', ')}` : `Project info saved`
-    logActivity(localProject.value.id, 'updated', detail, authStore.currentUser).catch(() => {})
+    const changedFields = Object.keys(FIELD_LABELS).filter(f => (localProject.value[f] || '') !== (snap[f] || ''))
+    for (const f of changedFields) {
+      logActivity(localProject.value.id, 'field_updated', {
+        field:    FIELD_LABELS[f],
+        oldValue: snap[f] || '',
+        newValue: localProject.value[f] || '',
+      }).catch(() => {})
+    }
     infoEditMode.value = false
   } catch (err) {
     console.error('Info save error:', err)
@@ -1342,7 +1438,7 @@ async function saveLangStatus(lang, status) {
     langStatus: { ...localProject.value.langStatus },
     updatedAt: new Date().toISOString(),
   }).catch(err => console.error('Lang status save error:', err))
-  logActivity(localProject.value.id, 'lang_status', `${lang} language status → ${status}`, authStore.currentUser).catch(() => {})
+  logActivity(localProject.value.id, 'language_status_changed', { language: lang, status }).catch(() => {})
   // Auto-set site to live when any language goes live
   if (status === 'live' && localProject.value.siteStatus !== 'live') {
     await changeSiteStatus('live')
@@ -1362,7 +1458,7 @@ async function addSheet() {
       googleSheets: localProject.value.googleSheets,
       updatedAt: new Date().toISOString(),
     }).catch(() => {})
-    logActivity(localProject.value.id, 'sheet_added', `Google Sheet added: ${label}`, authStore.currentUser).catch(() => {})
+    logActivity(localProject.value.id, 'link_updated', { action: 'added', label }).catch(() => {})
   }
 }
 
@@ -1375,7 +1471,7 @@ async function removeSheet(sheetId) {
       googleSheets: localProject.value.googleSheets,
       updatedAt: new Date().toISOString(),
     }).catch(() => {})
-    if (sheet) logActivity(localProject.value.id, 'sheet_removed', `Google Sheet removed: ${sheet.label || sheet.url}`, authStore.currentUser).catch(() => {})
+    if (sheet) logActivity(localProject.value.id, 'link_updated', { action: 'deleted', label: sheet.label || sheet.url }).catch(() => {})
   }
 }
 
@@ -1410,7 +1506,7 @@ async function addComment() {
     mentionDropdown.show = false
     const pid  = localProject.value.id
     const name = localProject.value.name
-    logActivity(pid, 'comment_added', `Comment added by ${comment.authorName}`, authStore.currentUser).catch(() => {})
+    logActivity(pid, 'comment_added', { preview: text.substring(0, 50) }).catch(() => {})
     const notifBase = {
       type: 'comment',
       message: `New comment on "${name}" by ${comment.authorName}`,
@@ -1496,17 +1592,12 @@ async function changeSiteStatus(newStatus, opts = {}) {
 
   try {
     await projectsStore.updateProject(localProject.value.id, firestoreUpdate)
-    let detail = ''
-    if      (newStatus === 'on-hold')                  detail = `Project put on hold by ${by}`
-    else if (newStatus === 'development' && prev === 'on-hold') detail = `Project reactivated by ${by}`
-    else if (newStatus === 'live')                     detail = `Site marked as live by ${by}`
-    else if (newStatus === 'cancelled')                detail = `Project cancelled by ${by}`
-    if (detail) {
-      addProjectActivityEntry(localProject.value.id, {
-        action: 'status_changed', detail,
-        userName: by, userUid: authStore.currentUser?.uid || '',
-        timestamp: now,
-      }).catch(() => {})
+    if (newStatus === 'on-hold') {
+      logActivity(localProject.value.id, 'project_on_hold', { reason: opts.onHoldReason || '' }).catch(() => {})
+    } else if (newStatus === 'development' && prev === 'on-hold') {
+      logActivity(localProject.value.id, 'project_reactivated', {}).catch(() => {})
+    } else {
+      logActivity(localProject.value.id, 'site_status_changed', { from: prev, to: newStatus }).catch(() => {})
     }
     if (newStatus === 'cancelled') router.push('/projects')
   } catch (err) {
@@ -1535,11 +1626,7 @@ async function archiveProject() {
     const now = new Date().toISOString()
     const by  = authStore.currentUser?.name || ''
     await projectsStore.archiveProject(localProject.value.id, by, now)
-    addProjectActivityEntry(localProject.value.id, {
-      action: 'archived', detail: `Project archived by ${by}`,
-      userName: by, userUid: authStore.currentUser?.uid || '',
-      timestamp: now,
-    }).catch(() => {})
+    logActivity(localProject.value.id, 'project_archived', {}).catch(() => {})
     router.push('/projects')
   } catch (err) {
     console.error('Archive error:', err)

@@ -166,7 +166,7 @@ import { usePhaseLogic } from '@/composables/usePhaseLogic'
 import { useProjectsStore } from '@/stores/projects'
 import { usePhasesStore } from '@/stores/phases'
 import { useAuthStore } from '@/stores/auth'
-import { logActivity } from '@/firebase-service'
+import { useActivityLog } from '@/composables/useActivityLog'
 import SubPhaseCard from '@/components/phases/SubPhaseCard.vue'
 import TimeLogSection from '@/components/phases/TimeLogSection.vue'
 import SaveIndicator from '@/components/shared/SaveIndicator.vue'
@@ -182,9 +182,10 @@ const props = defineProps({
 const emit = defineEmits(['update-phase', 'activation-complete', 'next-phase-started'])
 
 const { uid, isoToDateInput, fmtHours, deepCopy, applyStatus, emptyPhaseEntry, computeActivePhases } = usePhaseLogic()
-const projectsStore = useProjectsStore()
-const phasesStore   = usePhasesStore()
-const authStore     = useAuthStore()
+const projectsStore    = useProjectsStore()
+const phasesStore      = usePhasesStore()
+const authStore        = useAuthStore()
+const { logActivity }  = useActivityLog()
 
 const localPhase = ref(deepCopy(props.phase))
 
@@ -275,7 +276,7 @@ function onStatusChange(status) {
   applyStatus(localPhase.value, status)
   if (status === 'active' || status === 'blocked') isCollapsed.value = false
   if (oldStatus !== status) {
-    logActivity(props.projectId, 'phase_status_changed', `${props.phaseDef.name}: ${oldStatus} → ${status}`, authStore.currentUser).catch(() => {})
+    logActivity(props.projectId, 'phase_status_changed', { phase: props.phaseDef.name, from: oldStatus, to: status }).catch(() => {})
   }
   autosave(status === 'done')
   if (props.phaseId === 'activation' && status === 'done') {
@@ -297,7 +298,7 @@ function setAssignee(id) {
   const newName = id ? (props.teamMembers.find(m => m.id === id)?.name || id) : 'Unassigned'
   localPhase.value.assignedTo = id || null
   assigneeOpen.value = false
-  logActivity(props.projectId, 'phase_assigned', `${props.phaseDef.name}: assigned to ${newName}`, authStore.currentUser).catch(() => {})
+  logActivity(props.projectId, 'phase_assigned', { phase: props.phaseDef.name, assignedTo: newName }).catch(() => {})
   autosave()
 }
 function onAssigneeBlur() {
@@ -311,17 +312,17 @@ function addChecklistItem() {
   if (!localPhase.value.checklist) localPhase.value.checklist = []
   localPhase.value.checklist.push({ id: uid(), text, done: false })
   newChecklistText.value = ''
-  logActivity(props.projectId, 'checklist_added', `${props.phaseDef.name}: checklist item added — "${text}"`, authStore.currentUser).catch(() => {})
+  logActivity(props.projectId, 'checklist_updated', { phase: props.phaseDef.name, item: text, action: 'added' }).catch(() => {})
   autosave()
 }
 function removeChecklistItem(itemId) {
   const item = (localPhase.value.checklist || []).find(i => i.id === itemId)
   localPhase.value.checklist = (localPhase.value.checklist || []).filter(i => i.id !== itemId)
-  if (item) logActivity(props.projectId, 'checklist_removed', `${props.phaseDef.name}: checklist item removed — "${item.text}"`, authStore.currentUser).catch(() => {})
+  if (item) logActivity(props.projectId, 'checklist_updated', { phase: props.phaseDef.name, item: item.text, action: 'deleted' }).catch(() => {})
   autosave()
 }
 function onChecklistToggle(item) {
-  logActivity(props.projectId, 'checklist_toggled', `${props.phaseDef.name}: "${item.text}" ${item.done ? 'checked' : 'unchecked'}`, authStore.currentUser).catch(() => {})
+  logActivity(props.projectId, 'checklist_updated', { phase: props.phaseDef.name, item: item.text, action: item.done ? 'checked' : 'unchecked' }).catch(() => {})
   autosave()
 }
 
@@ -336,13 +337,13 @@ function addTimeLog(logData) {
       name: authStore.currentUser?.name || '',
     },
   })
-  logActivity(props.projectId, 'timelog_added', `${props.phaseDef.name}: ${logData.hours}h logged`, authStore.currentUser).catch(() => {})
+  logActivity(props.projectId, 'time_logged', { phase: props.phaseDef.name, hours: logData.hours, description: logData.description || '', action: 'added' }).catch(() => {})
   autosave()
 }
 function deleteTimeLog(logId) {
   const log = (localPhase.value.timeLogs || []).find(l => l.id === logId)
   localPhase.value.timeLogs = (localPhase.value.timeLogs || []).filter(l => l.id !== logId)
-  if (log) logActivity(props.projectId, 'timelog_deleted', `${props.phaseDef.name}: ${log.hours}h time log removed`, authStore.currentUser).catch(() => {})
+  if (log) logActivity(props.projectId, 'time_logged', { phase: props.phaseDef.name, hours: log.hours, description: '', action: 'deleted' }).catch(() => {})
   autosave()
 }
 

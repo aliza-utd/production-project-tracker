@@ -157,7 +157,7 @@ import { usePhasesStore } from '@/stores/phases'
 import { useAuthStore } from '@/stores/auth'
 import { useTeamStore } from '@/stores/team'
 import { usePhaseLogic } from '@/composables/usePhaseLogic'
-import { addProjectActivityEntry } from '@/firebase-service'
+import { useActivityLog } from '@/composables/useActivityLog'
 
 const emit = defineEmits(['created', 'cancel'])
 const router = useRouter()
@@ -166,6 +166,7 @@ const phasesStore   = usePhasesStore()
 const authStore     = useAuthStore()
 const teamStore     = useTeamStore()
 const { emptyPhaseEntry, autoCompletePreviousPhases } = usePhaseLogic()
+const { logActivity } = useActivityLog()
 
 const form = reactive({
   name: '', url: '', originalSite: '',
@@ -260,13 +261,7 @@ async function create() {
     }
 
     const created = await projectsStore.createProject(docData)
-    addProjectActivityEntry(created.id, {
-      action:    'created',
-      detail:    `Project "${docData.name}" created`,
-      userName:  authStore.currentUser?.name || '',
-      userUid:   authStore.currentUser?.uid  || '',
-      timestamp: now,
-    }).catch(() => {})
+    logActivity(created.id, 'project_created', { name: docData.name }).catch(() => {})
 
     emit('created', created)
     router.push('/projects/' + created.id)
