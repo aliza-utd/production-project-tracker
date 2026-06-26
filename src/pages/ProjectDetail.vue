@@ -18,78 +18,91 @@
 
     <div v-else-if="localProject" class="pd-wrap">
 
-      <!-- ── Back button (above header) ── -->
+      <!-- ── Back button (above header card) ── -->
       <div style="margin-bottom:10px">
         <button class="pd-back-btn" @click="router.push('/projects')">← Back to Projects</button>
       </div>
 
-      <!-- ── Header ── -->
+      <!-- ── Header card ── -->
       <div class="pd-header">
-        <div style="flex:1;min-width:0">
-          <!-- Project name (plain text — edit in Project Details tab) -->
-          <div style="font-size:20px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:8px">
-            {{ localProject.name }}
-          </div>
-          <!-- Site URL first -->
-          <div v-if="localProject.url" style="margin-bottom:8px">
-            <a :href="localProject.url" target="_blank" class="ext"
-              style="font-size:13px;color:var(--primary);text-decoration:none;display:inline-flex;align-items:center;gap:4px">
-              🔗 {{ localProject.url }}
-            </a>
-          </div>
-          <!-- Badges row -->
-          <div class="pd-badge-row">
-            <span class="badge" :class="localProject.platform === 'WordPress' ? 'badge-wp' : 'badge-blogger'">
-              {{ localProject.platform }}
-            </span>
-            <span v-if="localProject.projectType" class="pd-type-badge">
-              {{ projectTypeLabel(localProject.projectType) }}
-            </span>
-            <span v-for="lang in langPills(localProject.language)" :key="lang" class="pd-lang-pill">
-              {{ lang }}
-            </span>
-            <SiteStatusBadge :status="localProject.siteStatus || 'development'" />
-            <span v-if="isUrgent(localProject.liveDate)" class="urgent-pill">⚡ Urgent</span>
-            <span v-if="localProject.liveDate" style="font-size:12px;color:var(--muted)">
-              📅 {{ fmtDate(localProject.liveDate) }}
-            </span>
-          </div>
-          <!-- Language status row (multi-language projects only) -->
-          <div v-if="langStatusGroups.length" class="pd-lang-status-row">
-            <template v-for="(group, gi) in langStatusGroups" :key="group.status">
-              <span v-if="gi > 0" class="pd-lang-status-sep">·</span>
-              <span class="pd-lang-status-item">
-                <span class="pd-lang-dot" :data-status="group.status"></span>
-                {{ langStatusText(group.status) }} ({{ group.langs.join(', ') }})
-              </span>
-            </template>
-          </div>
-        </div>
-        <div class="pd-header-right">
-          <!-- Share -->
-          <div style="position:relative">
-            <button class="btn btn-secondary btn-sm" @click="shareProject" title="Copy project link">🔗 Share</button>
-            <span v-if="shareCopied" class="pd-tip">Link copied!</span>
-          </div>
-          <!-- Export -->
-          <div style="position:relative;display:flex;gap:4px">
+
+        <!-- Top row: project name + action buttons -->
+        <div class="pd-header-top">
+          <div class="pd-header-title">{{ localProject.name }}</div>
+          <div class="pd-header-actions">
+            <!-- Share -->
+            <div style="position:relative">
+              <button class="btn btn-secondary btn-sm" @click="shareProject" title="Copy project link">🔗 Share</button>
+              <span v-if="shareCopied" class="pd-tip">Link copied!</span>
+            </div>
+            <!-- Export -->
             <button class="btn btn-secondary btn-sm" @click="exportCurrentCSV" title="Download as CSV">⬇ CSV</button>
             <div style="position:relative">
               <button class="btn btn-secondary btn-sm" @click="copyCurrentTSV" title="Copy as TSV for Google Sheets">⎘ TSV</button>
               <span v-if="tsvCopied" class="pd-tip">Copied!</span>
             </div>
-          </div>
-          <!-- Time Calculator -->
-          <div style="position:relative">
-            <button class="btn btn-secondary btn-sm" @click="showTimeCalc = !showTimeCalc" title="Working day calculator">⏱</button>
-            <div v-if="showTimeCalc" class="pd-timecalc-popup">
-              <TimeCalcWidget :closeable="true" @close="showTimeCalc = false" />
+            <!-- Time Calculator -->
+            <div style="position:relative">
+              <button class="btn btn-secondary btn-sm" @click="showTimeCalc = !showTimeCalc" title="Working day calculator">⏱</button>
+              <div v-if="showTimeCalc" class="pd-timecalc-popup">
+                <TimeCalcWidget :closeable="true" @close="showTimeCalc = false" />
+              </div>
             </div>
+            <!-- Archive -->
+            <button v-if="localProject.id" class="btn btn-secondary btn-sm" @click="showArchiveConfirm = true">
+              🗂️ Archive
+            </button>
           </div>
-          <button v-if="localProject.id" class="btn btn-secondary btn-sm" @click="showArchiveConfirm = true">
-            🗂️ Archive
-          </button>
         </div>
+
+        <!-- Site URL -->
+        <div v-if="localProject.url" class="pd-header-url">
+          <a :href="localProject.url" target="_blank" class="ext"
+            style="font-size:13px;color:var(--primary);text-decoration:none;display:inline-flex;align-items:center;gap:4px">
+            🔗 {{ localProject.url }}
+          </a>
+        </div>
+
+        <!-- Badges row -->
+        <div class="pd-badge-row" style="margin-top:10px">
+          <span class="badge" :class="localProject.platform === 'WordPress' ? 'badge-wp' : 'badge-blogger'">
+            {{ localProject.platform }}
+          </span>
+          <span v-if="localProject.projectType" class="pd-type-badge">
+            {{ projectTypeLabel(localProject.projectType) }}
+          </span>
+          <span v-for="lang in langPills(localProject.language)" :key="lang" class="pd-lang-pill">
+            {{ lang }}
+          </span>
+          <SiteStatusBadge :status="localProject.siteStatus || 'development'" />
+          <span v-if="isUrgent(localProject.liveDate)" class="urgent-pill">⚡ Urgent</span>
+          <span v-if="localProject.liveDate" style="font-size:12px;color:var(--muted)">
+            📅 {{ fmtDate(localProject.liveDate) }}
+          </span>
+        </div>
+
+        <!-- Language status row (multi-language projects only) -->
+        <div v-if="langStatusGroups.length" class="pd-lang-status-row">
+          <template v-for="(group, gi) in langStatusGroups" :key="group.status">
+            <span v-if="gi > 0" class="pd-lang-status-sep">·</span>
+            <span class="pd-lang-status-item">
+              <span class="pd-lang-dot" :data-status="group.status"></span>
+              {{ langStatusText(group.status) }} ({{ group.langs.join(', ') }})
+            </span>
+          </template>
+        </div>
+
+        <!-- Divider before timeline -->
+        <div class="pd-header-div"></div>
+
+        <!-- Phase Timeline -->
+        <PhaseTimeline
+          v-if="localProject.id && phasesStore.phaseConfig.length"
+          :phaseData="localProject.phaseData || {}"
+          :phaseConfig="phasesStore.phaseConfig"
+          @scroll-to-phase="scrollToPhase"
+        />
+
       </div>
 
       <!-- ── On-Hold Banner ── -->
@@ -99,18 +112,6 @@
         :reason="localProject.onHoldReason"
         :canReactivate="authStore.isManager"
         @reactivate="changeSiteStatus('development')"
-      />
-
-      <!-- ── Phase Progress Checklist (always visible) ── -->
-      <PhaseChecklist
-        v-if="localProject.id"
-        :phaseData="localProject.phaseData || {}"
-        :phaseConfig="dynamicPhaseConfig"
-        :teamMembers="teamStore.teamMembers"
-        :siteStatus="localProject.siteStatus"
-        :readonly="readonly"
-        @scroll-to-phase="scrollToPhase"
-        style="margin-top:12px"
       />
 
       <!-- ── Body: Main + Right Panel ── -->
@@ -157,7 +158,7 @@
               </div>
 
               <!-- Cards View -->
-              <div v-if="phaseView === 'cards'" style="margin-top:16px;display:flex;flex-direction:column;gap:12px">
+              <div v-if="phaseView === 'cards'" style="margin-top:16px;display:flex;flex-direction:column;gap:16px">
                 <PhaseCard
                   v-for="ph in dynamicPhaseConfig"
                   :key="ph.id"
@@ -775,7 +776,6 @@ import { usePhaseLogic } from '@/composables/usePhaseLogic'
 import { subscribeToProject, getProjectComments, addProjectComment, updateProjectComment, deleteProjectComment, getProjectActivityLog, addProjectActivityEntry, logActivity, createNotification } from '@/firebase-service'
 import OnHoldBanner from '@/components/shared/OnHoldBanner.vue'
 import ConfirmModal from '@/components/shared/ConfirmModal.vue'
-import PhaseChecklist from '@/components/phases/PhaseChecklist.vue'
 import PhaseCard from '@/components/phases/PhaseCard.vue'
 import PhaseListView from '@/components/phases/PhaseListView.vue'
 import PhaseKanbanView from '@/components/phases/PhaseKanbanView.vue'
@@ -783,6 +783,7 @@ import TeamMemberPicker from '@/components/shared/TeamMemberPicker.vue'
 import MultilanguageLiveModal from '@/components/projects/MultilanguageLiveModal.vue'
 import SiteStatusBadge from '@/components/shared/SiteStatusBadge.vue'
 import TimeCalcWidget from '@/components/shared/TimeCalcWidget.vue'
+import PhaseTimeline from '@/components/phases/PhaseTimeline.vue'
 import { downloadCSV, copyTSV } from '@/utils/exportUtils'
 
 const route        = useRoute()
