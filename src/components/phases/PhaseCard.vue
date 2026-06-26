@@ -179,7 +179,7 @@ const props = defineProps({
   teamMembers: { type: Array,  default: () => [] },
   readonly:    { type: Boolean, default: false },
 })
-const emit = defineEmits(['update-phase', 'activation-complete', 'next-phase-started'])
+const emit = defineEmits(['update-phase', 'activation-complete', 'next-phase-started', 'phase-toast'])
 
 const { uid, isoToDateInput, fmtHours, deepCopy, applyStatus, emptyPhaseEntry, computeActivePhases } = usePhaseLogic()
 const projectsStore    = useProjectsStore()
@@ -286,6 +286,45 @@ function onStatusChange(status) {
   const oldStatus = localPhase.value.status || 'not-started'
   applyStatus(localPhase.value, status)
   if (status === 'active' || status === 'blocked') isCollapsed.value = false
+
+  // Propagate status change to sub-phases based on mode
+  const subDefs = props.phaseDef.subPhases || []
+  const mode    = props.phaseDef.subPhaseMode || 'simultaneous'
+
+  if (subDefs.length > 0) {
+    if (!localPhase.value.subPhases) localPhase.value.subPhases = {}
+
+    if (status === 'done') {
+      // Always mark all sub-phases done when parent is manually set to done
+      for (const sp of subDefs) {
+        if (!localPhase.value.subPhases[sp.id]) localPhase.value.subPhases[sp.id] = emptyPhaseEntry()
+        if (localPhase.value.subPhases[sp.id].status !== 'done') {
+          applyStatus(localPhase.value.subPhases[sp.id], 'done')
+        }
+      }
+    } else if (status === 'active') {
+      if (mode === 'simultaneous') {
+        for (const sp of subDefs) {
+          if (!localPhase.value.subPhases[sp.id]) localPhase.value.subPhases[sp.id] = emptyPhaseEntry()
+          if ((localPhase.value.subPhases[sp.id].status || 'not-started') === 'not-started') {
+            applyStatus(localPhase.value.subPhases[sp.id], 'active')
+          }
+        }
+        emit('phase-toast', `All ${props.phaseDef.name} sub-phases are now Active`)
+      } else {
+        // sequential: only the first not-yet-started sub-phase
+        const firstPending = subDefs.find(sp =>
+          (localPhase.value.subPhases[sp.id]?.status || 'not-started') === 'not-started'
+        )
+        if (firstPending) {
+          if (!localPhase.value.subPhases[firstPending.id]) localPhase.value.subPhases[firstPending.id] = emptyPhaseEntry()
+          applyStatus(localPhase.value.subPhases[firstPending.id], 'active')
+          emit('phase-toast', `${firstPending.name} is now Active`)
+        }
+      }
+    }
+  }
+
   if (oldStatus !== status) {
     logActivity(props.projectId, 'phase_status_changed', { phase: props.phaseDef.name, from: oldStatus, to: status }).catch(() => {})
   }
@@ -369,8 +408,10 @@ function onUpdateSub({ subId, data }) {
     isCollapsed.value = false
   }
 
-  // Roll up parent status from all defined sub-phases
-  const subIds = props.phaseDef.subPhases?.map(sp => sp.id) || []
+  const subDefs = props.phaseDef.subPhases || []
+  const mode    = props.phaseDef.subPhaseMode || 'simultaneous'
+  const subIds  = subDefs.map(sp => sp.id)
+
   if (subIds.length > 0) {
     const allDone = subIds.every(id =>
       (localPhase.value.subPhases?.[id]?.status || 'not-started') === 'done'
@@ -378,11 +419,25 @@ function onUpdateSub({ subId, data }) {
     const anyActive = subIds.some(id =>
       (localPhase.value.subPhases?.[id]?.status || 'not-started') === 'active'
     )
+
     if (allDone && localPhase.value.status !== 'done') {
       applyStatus(localPhase.value, 'done')
       autosave(true)  // all sub-phases done → parent done → auto-start next phase
       return
-    } else if (!allDone && anyActive && localPhase.value.status === 'not-started') {
+    }
+
+    // Sequential mode: activate the next pending sub-phase when current one finishes
+    if (mode === 'sequential' && data.status === 'done' && !allDone) {
+      const doneIdx = subDefs.findIndex(sp => sp.id === subId)
+      const nextDef = subDefs[doneIdx + 1]
+      if (nextDef && (localPhase.value.subPhases?.[nextDef.id]?.status || 'not-started') === 'not-started') {
+        if (!localPhase.value.subPhases[nextDef.id]) localPhase.value.subPhases[nextDef.id] = emptyPhaseEntry()
+        applyStatus(localPhase.value.subPhases[nextDef.id], 'active')
+        emit('phase-toast', `${nextDef.name} is now Active`)
+      }
+    }
+
+    if (!allDone && anyActive && localPhase.value.status === 'not-started') {
       applyStatus(localPhase.value, 'active')
       isCollapsed.value = false
     } else if (!allDone && localPhase.value.status === 'done') {

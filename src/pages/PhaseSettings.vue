@@ -84,6 +84,19 @@
             🌐 All sub-phases below are templates — each will be duplicated per language in multi-language projects.
           </div>
 
+          <!-- Sub-phase mode (only meaningful when sub-phases exist) -->
+          <div v-if="(ph.subPhases || []).length" class="ps-submode-wrap">
+            <div class="ps-sub-title" style="margin-bottom:6px">Sub-phase mode:</div>
+            <label class="ps-radio-opt">
+              <input type="radio" :name="'spm-' + ph.id" value="simultaneous" v-model="ph.subPhaseMode">
+              <span><strong>Simultaneous</strong> — all activate at once</span>
+            </label>
+            <label class="ps-radio-opt">
+              <input type="radio" :name="'spm-' + ph.id" value="sequential" v-model="ph.subPhaseMode">
+              <span><strong>Sequential</strong> — one at a time, in order</span>
+            </label>
+          </div>
+
           <div class="ps-sub-title">Sub-phases for <strong>{{ ph.name }}</strong></div>
 
           <div v-for="(sp, spIdx) in (ph.subPhases || [])" :key="sp.id" class="ps-sub-row">
@@ -204,6 +217,7 @@ function addPhase() {
     color:           '#6366f1',
     subPhases:       [],
     languageDynamic: false,
+    subPhaseMode:    'simultaneous',
     order:           phases.length,
   })
 }
@@ -272,6 +286,7 @@ async function save() {
       color:           ph.color,
       order:           i,
       languageDynamic: !!ph.languageDynamic,
+      subPhaseMode:    ph.subPhaseMode || 'simultaneous',
       subPhases:       (ph.subPhases || [])
         .filter(sp => sp.name.trim())
         .map(sp => ({
@@ -373,6 +388,9 @@ function reset() {
 }
 
 .ps-sub-title { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+.ps-submode-wrap { margin-bottom: 12px; padding: 8px 10px; background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; }
+.ps-radio-opt { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; padding: 3px 0; }
+.ps-radio-opt input { margin: 0; cursor: pointer; }
 .ps-sub-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 
 /* Preview */

@@ -43,9 +43,21 @@
         <option value="Blogger">Blogger</option>
       </select>
       <button v-if="hasFilters" class="btn btn-ghost btn-sm" @click="clearFilters">✕ Clear</button>
+      <div class="filter-sep"></div>
+      <span class="filter-label">Sort:</span>
+      <select class="filter-select" v-model="sortBy">
+        <option value="created_desc">Newest First</option>
+        <option value="created_asc">Oldest First</option>
+        <option value="kickstart_desc">Kickstart ↓</option>
+        <option value="kickstart_asc">Kickstart ↑</option>
+        <option value="live_asc">Live Date ↑</option>
+        <option value="live_desc">Live Date ↓</option>
+        <option value="phase_asc">Phase A→Z</option>
+        <option value="phase_desc">Phase Z→A</option>
+      </select>
       <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
         <span style="font-size:13px;color:var(--muted)">
-          {{ filteredProjects.length }}{{ filteredProjects.length !== projectsStore.projects.length ? ' / ' + projectsStore.projects.length : '' }}
+          {{ sortedProjects.length }}{{ sortedProjects.length !== projectsStore.projects.length ? ' / ' + projectsStore.projects.length : '' }}
           project{{ projectsStore.projects.length !== 1 ? 's' : '' }}
         </span>
         <div style="position:relative;display:flex;gap:4px">
@@ -69,7 +81,7 @@
 
     <!-- Project List -->
     <ProjectListView
-      :projects="filteredProjects"
+      :projects="sortedProjects"
       :phaseConfig="phasesStore.phaseConfig"
       :teamMembers="teamStore.teamMembers"
       :loading="projectsStore.loading"
@@ -87,7 +99,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectsStore } from '@/stores/projects'
 import { usePhasesStore } from '@/stores/phases'
@@ -102,6 +114,10 @@ const phasesStore   = usePhasesStore()
 const teamStore     = useTeamStore()
 
 const showCreateModal = ref(false)
+
+const SORT_KEY = 'pt_projects_sort'
+const sortBy   = ref(localStorage.getItem(SORT_KEY) || 'created_desc')
+watch(sortBy, v => localStorage.setItem(SORT_KEY, v))
 
 const filters = ref({
   search: '', year: '', dateField: 'kickstartDate', developer: '', phase: '', siteStatus: '', platform: '',
@@ -167,15 +183,45 @@ function clearFilters() {
   filters.value = { search: '', year: '', dateField: filters.value.dateField, developer: '', phase: '', siteStatus: '', platform: '' }
 }
 
+function toMs(v) {
+  if (!v) return null
+  if (typeof v?.toDate === 'function') return v.toDate().getTime()
+  if (v?.seconds) return v.seconds * 1000
+  const ms = new Date(v).getTime()
+  return isNaN(ms) ? null : ms
+}
+
+const sortedProjects = computed(() => {
+  const list = filteredProjects.value.slice()
+  const phaseOrder = Object.fromEntries(phasesStore.phaseConfig.map((ph, i) => [ph.id, i]))
+  const cmp = (a, b) => {
+    const ma = toMs(a), mb = toMs(b)
+    if (ma === null && mb === null) return 0
+    if (ma === null) return 1   // nulls always last
+    if (mb === null) return -1
+    return ma - mb
+  }
+  switch (sortBy.value) {
+    case 'created_asc':    return list.sort((a, b) =>  cmp(a.createdAt,    b.createdAt))
+    case 'kickstart_desc': return list.sort((a, b) =>  cmp(b.kickstartDate, a.kickstartDate))
+    case 'kickstart_asc':  return list.sort((a, b) =>  cmp(a.kickstartDate, b.kickstartDate))
+    case 'live_asc':       return list.sort((a, b) =>  cmp(a.liveDate,     b.liveDate))
+    case 'live_desc':      return list.sort((a, b) =>  cmp(b.liveDate,     a.liveDate))
+    case 'phase_asc':      return list.sort((a, b) => (phaseOrder[a.currentPhase] ?? 999) - (phaseOrder[b.currentPhase] ?? 999))
+    case 'phase_desc':     return list.sort((a, b) => (phaseOrder[b.currentPhase] ?? 999) - (phaseOrder[a.currentPhase] ?? 999))
+    default:               return list.sort((a, b) =>  cmp(b.createdAt,    a.createdAt))
+  }
+})
+
 const tsvCopied = ref(false)
 let _tsvTimer = null
 
 function exportCSV() {
-  downloadCSV(filteredProjects.value, phasesStore.phaseConfig)
+  downloadCSV(sortedProjects.value, phasesStore.phaseConfig)
 }
 
 function doTSV() {
-  copyTSV(filteredProjects.value, phasesStore.phaseConfig).then(() => {
+  copyTSV(sortedProjects.value, phasesStore.phaseConfig).then(() => {
     tsvCopied.value = true
     clearTimeout(_tsvTimer)
     _tsvTimer = setTimeout(() => { tsvCopied.value = false }, 2000)

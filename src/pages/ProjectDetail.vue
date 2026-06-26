@@ -161,6 +161,7 @@
                   @update-phase="onUpdatePhase"
                   @activation-complete="onActivationComplete"
                   @next-phase-started="onNextPhaseStarted"
+                  @phase-toast="showToast"
                 />
               </div>
 
@@ -691,29 +692,42 @@
             <div v-if="!dynamicPhaseConfig.length" style="font-size:12px;color:var(--muted)">No phases configured</div>
             <div v-else class="pd-pp-list">
               <div v-for="ph in dynamicPhaseConfig" :key="ph.id" class="pd-pp-group">
-                <div class="pd-pp-row" @click="scrollToPhase(ph.id)">
+                <!-- Parent row -->
+                <div class="pd-pp-row" @click="onSidebarPhaseClick(ph)">
                   <span class="pd-pp-icon" :data-st="getPhaseStatus(localProject.phaseData || {}, ph.id)">
                     {{ phProgressIcon(getPhaseStatus(localProject.phaseData || {}, ph.id)) }}
                   </span>
                   <span class="pd-pp-name">{{ ph.name }}</span>
-                  <span class="pd-pp-badge" :data-st="getPhaseStatus(localProject.phaseData || {}, ph.id)">
-                    {{ phProgressLabel(getPhaseStatus(localProject.phaseData || {}, ph.id)) }}
-                  </span>
+                  <!-- Done + has sub-phases → show count with expand toggle -->
+                  <template v-if="getPhaseStatus(localProject.phaseData || {}, ph.id) === 'done' && (ph.subPhases || []).length">
+                    <span class="pd-pp-badge" data-st="done" style="cursor:pointer;gap:3px">
+                      {{ doneSubCount(ph) }}/{{ ph.subPhases.length }}
+                      <span style="opacity:.6;font-size:9px">{{ sidebarExpanded[ph.id] ? '▾' : '▸' }}</span>
+                    </span>
+                  </template>
+                  <template v-else>
+                    <span class="pd-pp-badge" :data-st="getPhaseStatus(localProject.phaseData || {}, ph.id)">
+                      {{ phProgressLabel(getPhaseStatus(localProject.phaseData || {}, ph.id)) }}
+                    </span>
+                  </template>
                 </div>
-                <div
-                  v-for="sp in (ph.subPhases || [])"
-                  :key="sp.id"
-                  class="pd-pp-row pd-pp-sub"
-                  @click="scrollToPhase(ph.id)"
-                >
-                  <span class="pd-pp-icon" :data-st="getSubPhaseStatus(localProject.phaseData || {}, ph.id, sp.id)">
-                    {{ phProgressIcon(getSubPhaseStatus(localProject.phaseData || {}, ph.id, sp.id)) }}
-                  </span>
-                  <span class="pd-pp-name">{{ sp.name }}</span>
-                  <span class="pd-pp-badge" :data-st="getSubPhaseStatus(localProject.phaseData || {}, ph.id, sp.id)">
-                    {{ phProgressLabel(getSubPhaseStatus(localProject.phaseData || {}, ph.id, sp.id)) }}
-                  </span>
-                </div>
+                <!-- Sub-phases: shown when active/blocked, or manually expanded when done -->
+                <template v-if="shouldShowSubPhases(ph)">
+                  <div
+                    v-for="sp in (ph.subPhases || [])"
+                    :key="sp.id"
+                    class="pd-pp-row pd-pp-sub"
+                    @click="scrollToPhase(ph.id)"
+                  >
+                    <span class="pd-pp-icon" :data-st="getSubPhaseStatus(localProject.phaseData || {}, ph.id, sp.id)">
+                      {{ phProgressIcon(getSubPhaseStatus(localProject.phaseData || {}, ph.id, sp.id)) }}
+                    </span>
+                    <span class="pd-pp-name">{{ sp.name }}</span>
+                    <span class="pd-pp-badge" :data-st="getSubPhaseStatus(localProject.phaseData || {}, ph.id, sp.id)">
+                      {{ phProgressLabel(getSubPhaseStatus(localProject.phaseData || {}, ph.id, sp.id)) }}
+                    </span>
+                  </div>
+                </template>
               </div>
             </div>
           </div>
@@ -1101,6 +1115,32 @@ function phProgressLabel(status) {
   if (status === 'active')  return 'Active'
   if (status === 'blocked') return 'Blocked'
   return '—'
+}
+
+// ── Sidebar Phase Progress collapse ───────────────────────────────────────
+const sidebarExpanded = reactive({})
+
+function shouldShowSubPhases(ph) {
+  const status = getPhaseStatus(localProject.value?.phaseData || {}, ph.id)
+  if (status === 'active' || status === 'blocked') return true
+  if (status === 'done') return !!sidebarExpanded[ph.id]
+  return false  // not-started: always hidden
+}
+
+function onSidebarPhaseClick(ph) {
+  const status = getPhaseStatus(localProject.value?.phaseData || {}, ph.id)
+  if (status === 'done' && (ph.subPhases || []).length > 0) {
+    sidebarExpanded[ph.id] = !sidebarExpanded[ph.id]
+  } else {
+    scrollToPhase(ph.id)
+  }
+}
+
+function doneSubCount(ph) {
+  const phData = localProject.value?.phaseData || {}
+  return (ph.subPhases || []).filter(sp =>
+    getSubPhaseStatus(phData, ph.id, sp.id) === 'done'
+  ).length
 }
 
 function fmtDateTime(s) { return formatDate(s) }

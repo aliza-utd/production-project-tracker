@@ -1,63 +1,70 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import Dashboard     from '@/pages/Dashboard.vue'
+import Projects      from '@/pages/Projects.vue'
+import ProjectDetail from '@/pages/ProjectDetail.vue'
+import WeeklyTracker from '@/pages/WeeklyTracker.vue'
+import WeeklyNotes   from '@/pages/WeeklyNotes.vue'
+import Reports       from '@/pages/Reports.vue'
+import Archived      from '@/pages/Archived.vue'
+import Settings      from '@/pages/Settings.vue'
+import TeamMembers   from '@/pages/TeamMembers.vue'
+import PhaseSettings from '@/pages/PhaseSettings.vue'
 
 const routes = [
   {
     path: '/login',
-    // LoginPage is statically imported by App.vue; this route exists only for
-    // URL management (guard redirects + watcher). The component is never
-    // rendered via RouterView because App.vue uses v-if before <RouterView>.
     component: { template: '<div></div>' },
     meta: { public: true },
   },
   {
     path: '/',
-    component: () => import('@/pages/Dashboard.vue'),
+    component: Dashboard,
     meta: { requiresAuth: true },
   },
   {
     path: '/projects',
-    component: () => import('@/pages/Projects.vue'),
+    component: Projects,
     meta: { requiresAuth: true },
   },
   {
     path: '/projects/:id',
-    component: () => import('@/pages/ProjectDetail.vue'),
+    component: ProjectDetail,
     meta: { requiresAuth: true },
   },
   {
     path: '/weekly-tracker',
-    component: () => import('@/pages/WeeklyTracker.vue'),
+    component: WeeklyTracker,
     meta: { requiresAuth: true },
   },
   {
     path: '/weekly-notes',
-    component: () => import('@/pages/WeeklyNotes.vue'),
+    component: WeeklyNotes,
     meta: { requiresAuth: true },
   },
   {
     path: '/reports',
-    component: () => import('@/pages/Reports.vue'),
+    component: Reports,
     meta: { requiresAuth: true, requiresManager: true },
   },
   {
     path: '/archived',
-    component: () => import('@/pages/Archived.vue'),
+    component: Archived,
     meta: { requiresAuth: true },
   },
   {
     path: '/settings',
-    component: () => import('@/pages/Settings.vue'),
+    component: Settings,
     meta: { requiresAuth: true, requiresManager: true },
   },
   {
     path: '/team-members',
-    component: () => import('@/pages/TeamMembers.vue'),
+    component: TeamMembers,
     meta: { requiresAuth: true, requiresManager: true },
   },
   {
     path: '/phase-settings',
-    component: () => import('@/pages/PhaseSettings.vue'),
+    component: PhaseSettings,
     meta: { requiresAuth: true, requiresManager: true },
   },
 ]
@@ -67,29 +74,14 @@ const router = createRouter({
   routes,
 })
 
-// By the time this guard runs, initAuth() has already resolved in main.js,
-// so authState is never 'loading' on initial navigation.
 router.beforeEach((to) => {
   const auth = useAuthStore()
   const authenticated = auth.authState === 'authenticated'
 
-  // Auth still settling (sign-in / sign-out in flight) — let App.vue handle it
   if (auth.authState === 'loading') return true
-
-  // Non-public route but not authenticated → go to login
-  if (to.meta.requiresAuth && !authenticated) {
-    return '/login'
-  }
-
-  // Already authenticated, trying to hit /login → go home
-  if (to.path === '/login' && authenticated) {
-    return '/'
-  }
-
-  // Manager-only route but user is not a Manager → go home
-  if (to.meta.requiresManager && !auth.isManager) {
-    return '/'
-  }
+  if (to.meta.requiresAuth && !authenticated) return '/login'
+  if (to.path === '/login' && authenticated) return '/'
+  if (to.meta.requiresManager && !auth.isManager) return '/'
 })
 
 export default router
