@@ -23,70 +23,115 @@
 
     <!-- Phase list -->
     <div class="ps-list">
-      <div v-for="(ph, idx) in phases" :key="ph.id"
-        class="ps-row"
-        :class="{ 'ps-drag-over': dragOverIdx === idx }"
-        draggable="true"
-        @dragstart="onDragStart(idx, $event)"
-        @dragover.prevent="onDragOver(idx)"
-        @dragleave="onDragLeave"
-        @drop.prevent="onDrop(idx)">
+      <div v-for="(ph, idx) in phases" :key="ph.id">
 
-        <!-- Drag handle -->
-        <div class="ps-handle" title="Drag to reorder">⠿</div>
+        <!-- Phase row -->
+        <div
+          class="ps-row"
+          :class="{ 'ps-drag-over': dragOverIdx === idx }"
+          draggable="true"
+          @dragstart="onDragStart(idx, $event)"
+          @dragover.prevent="onDragOver(idx)"
+          @dragleave="onDragLeave"
+          @drop.prevent="onDrop(idx)"
+        >
+          <!-- Drag handle -->
+          <div class="ps-handle" title="Drag to reorder">⠿</div>
 
-        <!-- Color swatch picker -->
-        <div style="position:relative">
-          <div class="ps-color-swatch" :style="'background:' + ph.color"
-            @click="toggleColorPicker(idx)"></div>
-          <div v-if="colorPickerIdx === idx" class="ps-color-panel">
-            <div v-for="c in COLOR_SWATCHES" :key="c"
-              class="ps-color-opt"
-              :style="'background:' + c + (ph.color === c ? ';outline:2px solid #111;outline-offset:1px' : '')"
-              @click="setColor(idx, c)"></div>
-            <input type="color" :value="ph.color" style="width:100%;height:24px;margin-top:6px;cursor:pointer"
-              @input="setColor(idx, $event.target.value)">
+          <!-- Color swatch picker -->
+          <div style="position:relative">
+            <div class="ps-color-swatch" :style="'background:' + ph.color"
+              @click="toggleColorPicker(idx)"></div>
+            <div v-if="colorPickerIdx === idx" class="ps-color-panel">
+              <div v-for="c in COLOR_SWATCHES" :key="c"
+                class="ps-color-opt"
+                :style="'background:' + c + (ph.color === c ? ';outline:2px solid #111;outline-offset:1px' : '')"
+                @click="setColor(idx, c)"></div>
+              <input type="color" :value="ph.color" style="width:100%;height:24px;margin-top:6px;cursor:pointer"
+                @input="setColor(idx, $event.target.value)">
+            </div>
           </div>
+
+          <!-- Phase name -->
+          <input class="form-input ps-name-input" v-model="ph.name" placeholder="Phase name">
+
+          <!-- Per-language toggle (parent level) -->
+          <label class="ps-lang-toggle"
+            :title="ph.languageDynamic ? 'All sub-phases duplicated per language' : 'Enable per-language mode'"
+          >
+            <input type="checkbox" v-model="ph.languageDynamic" style="margin:0">
+            <span :style="ph.languageDynamic ? 'color:var(--primary);font-weight:600' : ''">Per-lang</span>
+          </label>
+
+          <!-- Sub-phases expand button -->
+          <button class="btn btn-ghost btn-sm" style="white-space:nowrap" @click="toggleExpanded(idx)">
+            <template v-if="ph.subPhases?.length">
+              {{ ph.subPhases.length }} sub-phase{{ ph.subPhases.length !== 1 ? 's' : '' }}
+            </template>
+            <template v-else>+ Sub-phases</template>
+            {{ expandedIdx === idx ? '▾' : '▸' }}
+          </button>
+
+          <!-- Delete phase -->
+          <button class="btn-icon" style="color:var(--danger)" @click="removePhase(idx)" title="Delete phase">✕</button>
         </div>
 
-        <!-- Phase name -->
-        <input class="form-input ps-name-input" v-model="ph.name" placeholder="Phase name">
+        <!-- Sub-phases panel -->
+        <div v-show="expandedIdx === idx" class="ps-sub-panel">
 
-        <!-- Per-language toggle -->
-        <label class="ps-lang-toggle" :title="ph.languageDynamic ? 'Disable per-language sub-tasks' : 'Enable per-language sub-tasks'">
-          <input type="checkbox" v-model="ph.languageDynamic" style="margin:0">
-          Per-lang
-        </label>
+          <!-- Info banner when parent is languageDynamic -->
+          <div v-if="ph.languageDynamic" class="ps-lang-note">
+            🌐 All sub-phases below are templates — each will be duplicated per language in multi-language projects.
+          </div>
 
-        <!-- Sub-phases toggle (hidden when languageDynamic) -->
-        <button v-if="!ph.languageDynamic" class="btn btn-ghost btn-sm" style="white-space:nowrap"
-          @click="toggleExpanded(idx)">
-          {{ ph.subPhases?.length ? ph.subPhases.length + ' sub-phases' : '+ Sub-phases' }}
-          {{ expandedIdx === idx ? '▾' : '▸' }}
-        </button>
-        <span v-else style="font-size:11px;color:var(--primary);white-space:nowrap;font-style:italic">Auto sub-tasks</span>
+          <div class="ps-sub-title">Sub-phases for <strong>{{ ph.name }}</strong></div>
 
-        <!-- Delete phase -->
-        <button class="btn-icon" style="color:var(--danger)" @click="removePhase(idx)" title="Delete phase">✕</button>
-      </div>
+          <div v-for="(sp, spIdx) in (ph.subPhases || [])" :key="sp.id" class="ps-sub-row">
+            <input class="form-input" style="flex:1" v-model="sp.name" placeholder="Sub-phase name">
+            <select class="form-select" style="width:110px" v-model="sp.type">
+              <option value="">Type</option>
+              <option value="content">Content</option>
+              <option value="design">Design</option>
+              <option value="dev">Dev</option>
+              <option value="qa">QA</option>
+            </select>
+            <!-- Per-sub-phase language toggle (only meaningful when parent is NOT languageDynamic) -->
+            <label v-if="!ph.languageDynamic"
+              class="ps-lang-toggle"
+              style="font-size:11px"
+              :title="sp.languageDynamic ? 'Duplicated per language' : 'Duplicate this sub-phase per language'"
+            >
+              <input type="checkbox" v-model="sp.languageDynamic" style="margin:0">
+              <span :style="sp.languageDynamic ? 'color:var(--primary);font-weight:600' : ''">Per-lang</span>
+            </label>
+            <button class="btn-icon" style="color:var(--danger)" @click="removeSubPhase(idx, spIdx)">✕</button>
+          </div>
 
-      <!-- Sub-phases panel -->
-      <div v-for="(ph, idx) in phases" :key="ph.id + '-sp'" v-show="expandedIdx === idx" class="ps-sub-panel">
-        <div class="ps-sub-title">Sub-phases for <strong>{{ ph.name }}</strong></div>
-        <div v-for="(sp, spIdx) in (ph.subPhases || [])" :key="sp.id" class="ps-sub-row">
-          <input class="form-input" style="flex:1" v-model="sp.name" placeholder="Sub-phase name">
-          <select class="form-select" style="width:120px" v-model="sp.type">
-            <option value="">Type</option>
-            <option value="content">Content</option>
-            <option value="design">Design</option>
-            <option value="dev">Dev</option>
-            <option value="qa">QA</option>
-          </select>
-          <button class="btn-icon" style="color:var(--danger)" @click="removeSubPhase(idx, spIdx)">✕</button>
-        </div>
-        <button class="btn btn-ghost btn-sm" style="margin-top:8px" @click="addSubPhase(idx)">+ Add Sub-phase</button>
-      </div>
-    </div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:8px" @click="addSubPhase(idx)">+ Add Sub-phase</button>
+
+          <!-- Preview (only shown if there are sub-phases and any are dynamic) -->
+          <div
+            v-if="(ph.subPhases || []).length && (ph.languageDynamic || ph.subPhases.some(sp => sp.languageDynamic))"
+            class="ps-preview"
+          >
+            <div class="ps-preview-title">Preview (with NL, EN):</div>
+            <div class="ps-preview-phase">{{ ph.name }}</div>
+            <div
+              v-for="item in previewSubPhases(ph)"
+              :key="item.id"
+              class="ps-preview-sp"
+            >
+              <span class="ps-preview-corner">└</span>
+              <span v-if="item._lang" class="ps-preview-lang-pill"
+                :style="{ background: ph.color + '22', color: ph.color }">{{ item._lang }}</span>
+              {{ item.name }}
+            </div>
+          </div>
+
+        </div><!-- end sub-phases panel -->
+
+      </div><!-- end phase item -->
+    </div><!-- end ps-list -->
 
     <!-- Add phase -->
     <button class="btn btn-secondary btn-sm" style="margin-top:12px" @click="addPhase">+ Add Phase</button>
@@ -98,9 +143,13 @@
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { usePhasesStore }  from '@/stores/phases'
 import { useAuthStore }    from '@/stores/auth'
+import { usePhaseLogic }   from '@/composables/usePhaseLogic'
 
 const phasesStore = usePhasesStore()
 const authStore   = useAuthStore()
+const { generateDynamicPhaseConfig } = usePhaseLogic()
+
+const PREVIEW_LANGS = ['NL', 'EN']
 
 const COLOR_SWATCHES = [
   '#6366f1','#8b5cf6','#a855f7','#ec4899','#ef4444',
@@ -150,11 +199,12 @@ function toggleExpanded(idx) {
 
 function addPhase() {
   phases.push({
-    id:         Math.random().toString(36).slice(2),
-    name:       'New Phase',
-    color:      '#6366f1',
-    subPhases:  [],
-    order:      phases.length,
+    id:              Math.random().toString(36).slice(2),
+    name:            'New Phase',
+    color:           '#6366f1',
+    subPhases:       [],
+    languageDynamic: false,
+    order:           phases.length,
   })
 }
 
@@ -167,14 +217,21 @@ function removePhase(idx) {
 function addSubPhase(phaseIdx) {
   if (!phases[phaseIdx].subPhases) phases[phaseIdx].subPhases = []
   phases[phaseIdx].subPhases.push({
-    id:   Math.random().toString(36).slice(2),
-    name: '',
-    type: '',
+    id:              Math.random().toString(36).slice(2),
+    name:            '',
+    type:            '',
+    languageDynamic: false,
   })
 }
 
 function removeSubPhase(phaseIdx, spIdx) {
   phases[phaseIdx].subPhases.splice(spIdx, 1)
+}
+
+/** Generate a preview of sub-phases using PREVIEW_LANGS. */
+function previewSubPhases(ph) {
+  const expanded = generateDynamicPhaseConfig([ph], PREVIEW_LANGS)
+  return expanded[0]?.subPhases || []
 }
 
 // ── Drag & drop ───────────────────────────────────────────────────────────────
@@ -215,7 +272,14 @@ async function save() {
       color:           ph.color,
       order:           i,
       languageDynamic: !!ph.languageDynamic,
-      subPhases:       ph.languageDynamic ? [] : (ph.subPhases || []).filter(sp => sp.name.trim()),
+      subPhases:       (ph.subPhases || [])
+        .filter(sp => sp.name.trim())
+        .map(sp => ({
+          id:              sp.id,
+          name:            sp.name,
+          type:            sp.type || '',
+          languageDynamic: !!sp.languageDynamic,
+        })),
     }))
     await phasesStore.saveConfig(clean, authStore.currentUser?.uid)
     savedMsg.value = true
@@ -244,10 +308,13 @@ function reset() {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r);
-  margin-bottom: 6px;
+  margin-bottom: 0;
+  border-bottom: none;
+  border-radius: var(--r) var(--r) 0 0;
   cursor: grab;
   transition: background .15s;
 }
+.ps-row:last-of-type { border-radius: var(--r); border-bottom: 1px solid var(--border); margin-bottom: 6px; }
 .ps-row:active { cursor: grabbing; }
 .ps-drag-over { border-color: var(--primary); background: var(--primary-ghost, #eef2ff); }
 
@@ -280,17 +347,52 @@ function reset() {
 .ps-color-opt:hover { transform: scale(1.2); }
 
 .ps-name-input { flex: 1; min-width: 0; }
-.ps-lang-toggle { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--text); white-space:nowrap; cursor:pointer; }
+.ps-lang-toggle {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--text);
+  white-space: nowrap; cursor: pointer; flex-shrink: 0;
+}
 
 .ps-sub-panel {
   background: var(--bg);
   border: 1px solid var(--border);
   border-top: none;
   border-radius: 0 0 var(--r) var(--r);
-  padding: 12px 16px;
+  padding: 14px 16px;
   margin-bottom: 6px;
-  margin-top: -6px;
 }
+
+.ps-lang-note {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #1d4ed8;
+  margin-bottom: 12px;
+}
+
 .ps-sub-title { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
 .ps-sub-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+
+/* Preview */
+.ps-preview {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--r);
+  font-size: 12px;
+}
+.ps-preview-title { font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .05em; }
+.ps-preview-phase { font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.ps-preview-sp { display: flex; align-items: center; gap: 6px; color: var(--muted); padding: 2px 0; }
+.ps-preview-corner { opacity: .4; }
+.ps-preview-lang-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
 </style>

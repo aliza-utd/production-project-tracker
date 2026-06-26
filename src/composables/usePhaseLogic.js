@@ -132,6 +132,48 @@ export function usePhaseLogic() {
     }
   }
 
+  /**
+   * Expand phaseConfig sub-phases for a multi-language project.
+   *
+   * Rules:
+   *  - phase.languageDynamic = true  → ALL its sub-phases are duplicated per language
+   *  - sp.languageDynamic = true     → only that sub-phase is duplicated; others kept
+   *  - Generated sub-phase IDs:  `${sp.id}_${langKey}`  e.g. qa_golive_nl
+   *  - Generated sub-phase names: `${lang} — ${sp.name}` e.g. "NL — Go-Live"
+   */
+  function generateDynamicPhaseConfig(phaseConfig, languages) {
+    if (!languages || languages.length <= 1) return phaseConfig
+
+    return phaseConfig.map(ph => {
+      const subPhases      = ph.subPhases || []
+      const isParentDynamic = !!ph.languageDynamic
+      const hasDynamicSp   = subPhases.some(sp => sp.languageDynamic)
+
+      if (!isParentDynamic && !hasDynamicSp) return ph
+
+      const generated = []
+
+      for (const sp of subPhases) {
+        const spDynamic = isParentDynamic || sp.languageDynamic
+        if (spDynamic) {
+          for (const lang of languages) {
+            const langKey = lang.toLowerCase().replace(/[^a-z0-9]/g, '_')
+            generated.push({
+              id:   `${sp.id}_${langKey}`,
+              name: `${lang} — ${sp.name}`,
+              _lang:   lang,
+              _baseSp: sp.id,
+            })
+          }
+        } else {
+          generated.push(sp)
+        }
+      }
+
+      return { ...ph, subPhases: generated }
+    })
+  }
+
   return {
     uid,
     isoToDateInput,
@@ -147,5 +189,6 @@ export function usePhaseLogic() {
     autoCompletePreviousPhases,
     ptDateRange,
     computeActivePhases,
+    generateDynamicPhaseConfig,
   }
 }

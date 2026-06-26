@@ -807,7 +807,7 @@ const phasesStore  = usePhasesStore()
 const teamStore    = useTeamStore()
 const authStore       = useAuthStore()
 const { logActivity } = useActivityLog()
-const { emptyPhaseEntry, autoCompletePreviousPhases } = usePhaseLogic()
+const { emptyPhaseEntry, autoCompletePreviousPhases, generateDynamicPhaseConfig } = usePhaseLogic()
 
 // ── Core project state ────────────────────────────────────────────────────────
 const localProject   = ref(null)
@@ -1227,19 +1227,7 @@ const langStatusGroups = computed(() => {
 
 const dynamicPhaseConfig = computed(() => {
   if (!localProject.value) return phasesStore.phaseConfig
-  const langs = langPills(localProject.value.language)
-  if (langs.length <= 1) return phasesStore.phaseConfig
-  return phasesStore.phaseConfig.map(ph => {
-    if (!ph.languageDynamic) return ph
-    const subPhases = []
-    for (const lang of langs) {
-      const key = lang.toLowerCase().replace(/[^a-z0-9]/g, '_')
-      subPhases.push({ id: `${key}_initial`,      name: `${lang} — Initial` })
-      subPhases.push({ id: `${key}_golive`,        name: `${lang} — Go-Live` })
-      subPhases.push({ id: `${key}_live_checking`, name: `${lang} — Live Checking` })
-    }
-    return { ...ph, subPhases }
-  })
+  return generateDynamicPhaseConfig(phasesStore.phaseConfig, langPills(localProject.value.language))
 })
 
 const phaseOptions = computed(() => {
@@ -1380,6 +1368,44 @@ function cancelEdit() {
 
 async function infoSave() {
   if (!localProject.value?.name.trim() || !localProject.value?.id) return
+
+  // Detect removed languages — warn if they have existing sub-phase data
+  const oldLangs = langPills(latestSnapshot.value?.language || '')
+  const newLangs = langPills(localProject.value.language || '')
+  const removedLangs = oldLangs.filter(l => !newLangs.includes(l))
+  if (removedLangs.length) {
+    const affectedPhases = phasesStore.phaseConfig.filter(ph =>
+      ph.languageDynamic || (ph.subPhases || []).some(sp => sp.languageDynamic)
+    )
+    const hasData = affectedPhases.some(ph =>
+      removedLangs.some(lang => {
+        const langKey = lang.toLowerCase().replace(/[^a-z0-9]/g, '_')
+        return (ph.subPhases || []).some(sp => {
+          const subId = `${sp.id}_${langKey}`
+          const entry = localProject.value.phaseData?.[ph.id]?.subPhases?.[subId]
+          return entry && entry.status !== 'not-started'
+        })
+      })
+    )
+    const msg = hasData
+      ? `Removing ${removedLangs.join(', ')} will delete language-specific sub-phase data for those languages. This cannot be undone. Continue?`
+      : `Remove language(s): ${removedLangs.join(', ')}?`
+    if (!window.confirm(msg)) return
+
+    // Strip removed-language sub-phase keys from phaseData
+    const phaseData = JSON.parse(JSON.stringify(localProject.value.phaseData || {}))
+    for (const ph of affectedPhases) {
+      if (!phaseData[ph.id]?.subPhases) continue
+      for (const lang of removedLangs) {
+        const langKey = lang.toLowerCase().replace(/[^a-z0-9]/g, '_')
+        for (const sp of (ph.subPhases || [])) {
+          delete phaseData[ph.id].subPhases[`${sp.id}_${langKey}`]
+        }
+      }
+    }
+    localProject.value.phaseData = phaseData
+  }
+
   infoSaving.value = true
   const now = new Date().toISOString()
   try {

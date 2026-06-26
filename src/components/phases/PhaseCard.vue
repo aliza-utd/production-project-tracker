@@ -351,11 +351,33 @@ function deleteTimeLog(logId) {
 function onUpdateSub({ subId, data }) {
   if (!localPhase.value.subPhases) localPhase.value.subPhases = {}
   localPhase.value.subPhases[subId] = data
-  // Auto-activate parent when a sub-phase becomes active
+
+  // Auto-activate parent when any sub-phase becomes active
   if (data.status === 'active' && localPhase.value.status === 'not-started') {
     applyStatus(localPhase.value, 'active')
     isCollapsed.value = false
   }
+
+  // Roll up parent status from all defined sub-phases
+  const subIds = props.phaseDef.subPhases?.map(sp => sp.id) || []
+  if (subIds.length > 0) {
+    const allDone = subIds.every(id =>
+      (localPhase.value.subPhases?.[id]?.status || 'not-started') === 'done'
+    )
+    const anyActive = subIds.some(id =>
+      (localPhase.value.subPhases?.[id]?.status || 'not-started') === 'active'
+    )
+    if (allDone && localPhase.value.status !== 'done') {
+      applyStatus(localPhase.value, 'done')
+    } else if (!allDone && anyActive && localPhase.value.status === 'not-started') {
+      applyStatus(localPhase.value, 'active')
+      isCollapsed.value = false
+    } else if (!allDone && localPhase.value.status === 'done') {
+      // A sub-phase was moved back from done — revert parent to active
+      applyStatus(localPhase.value, 'active')
+    }
+  }
+
   autosave()
 }
 </script>
