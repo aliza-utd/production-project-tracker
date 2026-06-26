@@ -18,17 +18,26 @@
 
     <div v-else-if="localProject" class="pd-wrap">
 
+      <!-- ── Back button (above header) ── -->
+      <div style="margin-bottom:10px">
+        <button class="pd-back-btn" @click="router.push('/projects')">← Back to Projects</button>
+      </div>
+
       <!-- ── Header ── -->
       <div class="pd-header">
         <div style="flex:1;min-width:0">
-          <div class="pd-breadcrumb">
-            <button class="pd-back-btn" @click="router.push('/projects')">← Back</button>
-            <span class="pd-sep">/</span>
-            <input class="pd-name-input"
-              v-model="localProject.name"
-              placeholder="Project name…"
-              @blur="saveName">
+          <!-- Project name (plain text — edit in Project Details tab) -->
+          <div style="font-size:20px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:8px">
+            {{ localProject.name }}
           </div>
+          <!-- Site URL first -->
+          <div v-if="localProject.url" style="margin-bottom:8px">
+            <a :href="localProject.url" target="_blank" class="ext"
+              style="font-size:13px;color:var(--primary);text-decoration:none;display:inline-flex;align-items:center;gap:4px">
+              🔗 {{ localProject.url }}
+            </a>
+          </div>
+          <!-- Badges row -->
           <div class="pd-badge-row">
             <span class="badge" :class="localProject.platform === 'WordPress' ? 'badge-wp' : 'badge-blogger'">
               {{ localProject.platform }}
@@ -44,9 +53,6 @@
             <span v-if="localProject.liveDate" style="font-size:12px;color:var(--muted)">
               📅 {{ fmtDate(localProject.liveDate) }}
             </span>
-            <a v-if="localProject.url" :href="localProject.url" target="_blank" class="ext" style="font-size:12px">
-              ↗ {{ localProject.url }}
-            </a>
           </div>
         </div>
         <div class="pd-header-right">
@@ -75,7 +81,7 @@
               Phases
             </div>
             <div class="proj-tab" :class="{ active: projTab === 'info' }" @click="projTab = 'info'">
-              Info &amp; Links
+              Project Details
             </div>
             <div v-if="localProject.id" class="proj-tab" :class="{ active: projTab === 'comments' }"
               @click="projTab = 'comments'">
@@ -162,7 +168,7 @@
               </div>
             </div>
 
-            <!-- ══ INFO & LINKS TAB ══ -->
+            <!-- ══ PROJECT DETAILS TAB ══ -->
             <div v-else-if="projTab === 'info'">
 
               <!-- Project Info Section -->
@@ -287,6 +293,10 @@
 
                 <!-- EDIT MODE -->
                 <div v-else>
+                  <div class="form-group" style="margin-bottom:12px">
+                    <label class="form-label">Project Name</label>
+                    <input class="form-input" v-model="localProject.name" placeholder="Project name…">
+                  </div>
                   <div class="il-row" style="margin-bottom:12px">
                     <div class="form-group" style="margin-bottom:0">
                       <label class="form-label">Site URL</label>
@@ -729,7 +739,7 @@ const localProject   = ref(null)
 const latestSnapshot = ref(null)
 const pageLoading    = ref(true)
 let   unsubProject   = null
-const projTab       = ref('phases')
+const projTab       = ref('info')
 const phaseView     = ref('cards')
 const infoEditMode  = ref(false)
 const infoSaving    = ref(false)
@@ -960,7 +970,7 @@ async function loadProjectExtras(id) {
 
 function initLocalProject(p) {
   localProject.value   = JSON.parse(JSON.stringify(p))
-  projTab.value        = 'phases'
+  projTab.value        = 'info'
   phaseView.value      = 'cards'
   infoEditMode.value   = false
   showAddSheet.value   = false
@@ -1024,15 +1034,6 @@ function scrollToPhase(phaseId) {
     const el = document.getElementById('ph-card-' + phaseId)
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, 50)
-}
-
-// ── Name save ─────────────────────────────────────────────────────────────────
-async function saveName() {
-  if (!localProject.value?.id || !localProject.value?.name.trim()) return
-  projectsStore.updateProject(localProject.value.id, {
-    name: localProject.value.name.trim(),
-    updatedAt: new Date().toISOString(),
-  }).catch(err => console.error('Name save error:', err))
 }
 
 // ── Info tab ──────────────────────────────────────────────────────────────────
