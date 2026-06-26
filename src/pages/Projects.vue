@@ -45,8 +45,16 @@
       <button v-if="hasFilters" class="btn btn-ghost btn-sm" @click="clearFilters">✕ Clear</button>
       <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
         <span style="font-size:13px;color:var(--muted)">
-          {{ projectsStore.projects.length }} project{{ projectsStore.projects.length !== 1 ? 's' : '' }}
+          {{ filteredProjects.length }}{{ filteredProjects.length !== projectsStore.projects.length ? ' / ' + projectsStore.projects.length : '' }}
+          project{{ projectsStore.projects.length !== 1 ? 's' : '' }}
         </span>
+        <div style="position:relative;display:flex;gap:4px">
+          <button class="btn btn-secondary btn-sm" @click="exportCSV" title="Download as CSV">⬇ CSV</button>
+          <div style="position:relative">
+            <button class="btn btn-secondary btn-sm" @click="doTSV" title="Copy as TSV for Google Sheets">⎘ TSV</button>
+            <span v-if="tsvCopied" class="pd-tip" style="right:0;left:auto">Copied!</span>
+          </div>
+        </div>
         <button class="btn btn-primary btn-sm" @click="showCreateModal = true">+ New Project</button>
       </div>
     </div>
@@ -86,6 +94,7 @@ import { usePhasesStore } from '@/stores/phases'
 import { useTeamStore } from '@/stores/team'
 import ProjectListView from '@/components/projects/ProjectListView.vue'
 import CreateProjectModal from '@/components/projects/CreateProjectModal.vue'
+import { downloadCSV, copyTSV } from '@/utils/exportUtils'
 
 const router        = useRouter()
 const projectsStore = useProjectsStore()
@@ -156,5 +165,20 @@ const filteredProjects = computed(() =>
 
 function clearFilters() {
   filters.value = { search: '', year: '', dateField: filters.value.dateField, developer: '', phase: '', siteStatus: '', platform: '' }
+}
+
+const tsvCopied = ref(false)
+let _tsvTimer = null
+
+function exportCSV() {
+  downloadCSV(filteredProjects.value, phasesStore.phaseConfig)
+}
+
+function doTSV() {
+  copyTSV(filteredProjects.value, phasesStore.phaseConfig).then(() => {
+    tsvCopied.value = true
+    clearTimeout(_tsvTimer)
+    _tsvTimer = setTimeout(() => { tsvCopied.value = false }, 2000)
+  }).catch(() => {})
 }
 </script>

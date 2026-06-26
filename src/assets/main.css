@@ -138,6 +138,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pd-status-cancelled{background:#fff1f2;color:#9f1239;border:1px solid #fecdd3}
 .pd-type-badge{background:var(--bg);color:var(--muted);font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px;border:1px solid var(--border);white-space:nowrap}
 .pd-lang-pill{display:inline-flex;align-items:center;background:#f1f5f9;color:#475569;font-size:11px;font-weight:600;padding:2px 8px;border-radius:100px;white-space:nowrap}
+.pd-lang-status-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--text);font-weight:500}
+.pd-lang-status-item{display:inline-flex;align-items:center;gap:4px}
+.pd-lang-status-sep{color:var(--muted);margin:0 2px}
+.pd-lang-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block}
+.pd-lang-dot[data-status="live"]{background:#22c55e}
+.pd-lang-dot[data-status="in-production"]{background:#3b82f6}
+.pd-lang-dot[data-status="not-started"]{background:#9ca3af}
+/* Share / Export tooltip */
+.pd-tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;font-size:11px;font-weight:600;white-space:nowrap;padding:4px 10px;border-radius:6px;pointer-events:none;z-index:300;animation:pdTipIn .15s ease}
+@keyframes pdTipIn{from{opacity:0;transform:translateX(-50%) translateY(4px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+/* Time calculator popup */
+.pd-timecalc-popup{position:absolute;right:0;top:calc(100% + 8px);z-index:400;width:340px;border:1px solid var(--border);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.15)}
 .pd-onhold-banner{background:#fffbeb;border:1px solid #fde68a;border-top:none;border-radius:0 0 var(--r) var(--r);padding:10px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;font-size:13px;color:#92400e;line-height:1.5}
 .pd-body{display:flex;gap:20px;align-items:flex-start;margin-top:16px}
 .pd-main{flex:1;min-width:0}
@@ -420,6 +432,10 @@ a.ext:hover{text-decoration:underline}
 /* Phase detail page toast notification */
 .pd-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:500;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.25);white-space:nowrap;animation:pdToastIn .2s ease}
 @keyframes pdToastIn{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.cm-mention-dd{position:absolute;left:0;top:100%;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:200px;max-height:200px;overflow-y:auto}
+.cm-mention-item{display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;font-size:13px;color:var(--text)}
+.cm-mention-item:hover{background:var(--bg)}
+.cm-mention{color:var(--primary);font-weight:600}
 .ph-view-toggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .ph-view-btn{padding:5px 14px;font-size:12px;font-weight:600;border:none;background:var(--surface);color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s}
 .ph-view-btn.active{background:var(--primary);color:#fff}

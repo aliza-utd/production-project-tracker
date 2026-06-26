@@ -52,12 +52,19 @@
         <!-- Phase name -->
         <input class="form-input ps-name-input" v-model="ph.name" placeholder="Phase name">
 
-        <!-- Sub-phases toggle -->
-        <button class="btn btn-ghost btn-sm" style="white-space:nowrap"
+        <!-- Per-language toggle -->
+        <label class="ps-lang-toggle" :title="ph.languageDynamic ? 'Disable per-language sub-tasks' : 'Enable per-language sub-tasks'">
+          <input type="checkbox" v-model="ph.languageDynamic" style="margin:0">
+          Per-lang
+        </label>
+
+        <!-- Sub-phases toggle (hidden when languageDynamic) -->
+        <button v-if="!ph.languageDynamic" class="btn btn-ghost btn-sm" style="white-space:nowrap"
           @click="toggleExpanded(idx)">
           {{ ph.subPhases?.length ? ph.subPhases.length + ' sub-phases' : '+ Sub-phases' }}
           {{ expandedIdx === idx ? '▾' : '▸' }}
         </button>
+        <span v-else style="font-size:11px;color:var(--primary);white-space:nowrap;font-style:italic">Auto sub-tasks</span>
 
         <!-- Delete phase -->
         <button class="btn-icon" style="color:var(--danger)" @click="removePhase(idx)" title="Delete phase">✕</button>
@@ -203,11 +210,12 @@ async function save() {
   saving.value = true
   try {
     const clean = phases.map((ph, i) => ({
-      id:        ph.id,
-      name:      ph.name,
-      color:     ph.color,
-      order:     i,
-      subPhases: (ph.subPhases || []).filter(sp => sp.name.trim()),
+      id:              ph.id,
+      name:            ph.name,
+      color:           ph.color,
+      order:           i,
+      languageDynamic: !!ph.languageDynamic,
+      subPhases:       ph.languageDynamic ? [] : (ph.subPhases || []).filter(sp => sp.name.trim()),
     }))
     await phasesStore.saveConfig(clean, authStore.currentUser?.uid)
     savedMsg.value = true
@@ -272,6 +280,7 @@ function reset() {
 .ps-color-opt:hover { transform: scale(1.2); }
 
 .ps-name-input { flex: 1; min-width: 0; }
+.ps-lang-toggle { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--text); white-space:nowrap; cursor:pointer; }
 
 .ps-sub-panel {
   background: var(--bg);

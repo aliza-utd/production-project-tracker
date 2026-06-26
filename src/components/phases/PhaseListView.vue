@@ -280,6 +280,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { usePhaseLogic } from '@/composables/usePhaseLogic'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
+import { logActivity } from '@/firebase-service'
 import TimeLogSection from '@/components/phases/TimeLogSection.vue'
 
 const props = defineProps({
@@ -350,13 +351,23 @@ function getTarget(phId, spId) {
 
 function setStatus(phId, spId, status) {
   const target = getTarget(phId, spId)
+  const oldStatus = target.status || 'not-started'
   applyStatus(target, status)
+  if (oldStatus !== status) {
+    const ph = props.phaseConfig.find(p => p.id === phId)
+    const spName = spId ? props.phaseConfig.find(p => p.id === phId)?.subPhases?.find(s => s.id === spId)?.name : null
+    const label = spName ? `${ph?.name || phId} / ${spName}` : (ph?.name || phId)
+    logActivity(props.projectId, 'phase_status_changed', `${label}: ${oldStatus} → ${status}`, authStore.currentUser).catch(() => {})
+  }
   autosave(phId, !spId && status === 'done')
 }
 
 function setAssignee(phId, spId, memberId) {
   const target = getTarget(phId, spId)
   target.assignedTo = memberId || null
+  const ph = props.phaseConfig.find(p => p.id === phId)
+  const newName = memberId ? (props.teamMembers.find(m => m.id === memberId)?.name || memberId) : 'Unassigned'
+  logActivity(props.projectId, 'phase_assigned', `${ph?.name || phId}: assigned to ${newName}`, authStore.currentUser).catch(() => {})
   autosave(phId)
 }
 
@@ -373,12 +384,19 @@ function addChecklist(phId, spId) {
   if (!target.checklist) target.checklist = []
   target.checklist.push({ id: uid(), text, done: false })
   newChecklistText[key] = ''
+  const ph = props.phaseConfig.find(p => p.id === phId)
+  logActivity(props.projectId, 'checklist_added', `${ph?.name || phId}: checklist item added — "${text}"`, authStore.currentUser).catch(() => {})
   autosave(phId)
 }
 
 function removeChecklist(phId, spId, itemId) {
   const target = getTarget(phId, spId)
+  const item = (target.checklist || []).find(i => i.id === itemId)
   target.checklist = (target.checklist || []).filter(i => i.id !== itemId)
+  if (item) {
+    const ph = props.phaseConfig.find(p => p.id === phId)
+    logActivity(props.projectId, 'checklist_removed', `${ph?.name || phId}: checklist item removed — "${item.text}"`, authStore.currentUser).catch(() => {})
+  }
   autosave(phId)
 }
 
@@ -390,12 +408,19 @@ function addTimeLog(phId, spId, logData) {
     ...logData,
     loggedBy: { uid: authStore.currentUser?.uid || '', name: authStore.currentUser?.name || '' },
   })
+  const ph = props.phaseConfig.find(p => p.id === phId)
+  logActivity(props.projectId, 'timelog_added', `${ph?.name || phId}: ${logData.hours}h logged`, authStore.currentUser).catch(() => {})
   autosave(phId)
 }
 
 function deleteTimeLog(phId, spId, logId) {
   const target = getTarget(phId, spId)
+  const log = (target.timeLogs || []).find(l => l.id === logId)
   target.timeLogs = (target.timeLogs || []).filter(l => l.id !== logId)
+  if (log) {
+    const ph = props.phaseConfig.find(p => p.id === phId)
+    logActivity(props.projectId, 'timelog_deleted', `${ph?.name || phId}: ${log.hours}h time log removed`, authStore.currentUser).catch(() => {})
+  }
   autosave(phId)
 }
 

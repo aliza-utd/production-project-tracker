@@ -51,6 +51,8 @@
 import { ref, watch } from 'vue'
 import { usePhaseLogic } from '@/composables/usePhaseLogic'
 import { useProjectsStore } from '@/stores/projects'
+import { useAuthStore } from '@/stores/auth'
+import { logActivity } from '@/firebase-service'
 
 const COLUMNS = [
   { id: 'not-started', label: 'Not Started' },
@@ -71,6 +73,7 @@ const emit = defineEmits(['update-phase', 'activation-complete', 'next-phase-sta
 
 const { fmtHours, deepCopy, applyStatus, emptyPhaseEntry, computeActivePhases } = usePhaseLogic()
 const projectsStore = useProjectsStore()
+const authStore     = useAuthStore()
 
 // Local mutable copy of phaseData — kept in sync with prop for real-time updates
 const local   = ref(deepCopy(props.phaseData))
@@ -154,20 +157,30 @@ async function onDrop(newStatus) {
     subId   = null
   }
 
+  let oldStatus
   if (subId) {
     if (!local.value[phaseId]) return
     if (!local.value[phaseId].subPhases) local.value[phaseId].subPhases = {}
     const sp = local.value[phaseId].subPhases[subId]
     if (!sp) return
+    oldStatus = sp.status || 'not-started'
     applyStatus(sp, newStatus)
   } else {
     const ph = local.value[phaseId]
     if (!ph) return
+    oldStatus = ph.status || 'not-started'
     applyStatus(ph, newStatus)
     // Activation phase done → trigger event
     if (phaseId === 'activation' && newStatus === 'done') {
       emit('activation-complete')
     }
+  }
+
+  if (oldStatus !== newStatus) {
+    const phCfg  = props.phaseConfig.find(p => p.id === phaseId)
+    const spName = subId ? phCfg?.subPhases?.find(s => s.id === subId)?.name : null
+    const label  = spName ? `${phCfg?.name || phaseId} / ${spName}` : (phCfg?.name || phaseId)
+    logActivity(props.projectId, 'phase_status_changed', `${label}: ${oldStatus} → ${newStatus}`, authStore.currentUser).catch(() => {})
   }
 
   await saveAll(phaseId, !subId && newStatus === 'done')

@@ -125,7 +125,7 @@
         <div v-if="localPhase.checklist && localPhase.checklist.length"
           style="background:#f8fafc;border:1px solid var(--border);border-radius:var(--r);padding:4px 12px;margin-bottom:8px">
           <div v-for="item in localPhase.checklist" :key="item.id" class="checklist-item">
-            <input type="checkbox" v-model="item.done" :disabled="readonly" @change="!readonly && autosave()" />
+            <input type="checkbox" v-model="item.done" :disabled="readonly" @change="!readonly && onChecklistToggle(item)" />
             <span class="checklist-text" :class="{ done: item.done }">{{ item.text }}</span>
             <button v-if="!readonly" class="btn-icon" @click="removeChecklistItem(item.id)">🗑️</button>
           </div>
@@ -166,6 +166,7 @@ import { usePhaseLogic } from '@/composables/usePhaseLogic'
 import { useProjectsStore } from '@/stores/projects'
 import { usePhasesStore } from '@/stores/phases'
 import { useAuthStore } from '@/stores/auth'
+import { logActivity } from '@/firebase-service'
 import SubPhaseCard from '@/components/phases/SubPhaseCard.vue'
 import TimeLogSection from '@/components/phases/TimeLogSection.vue'
 import SaveIndicator from '@/components/shared/SaveIndicator.vue'
@@ -270,8 +271,12 @@ function debounceSave() {
 
 // ── Status ────────────────────────────────────────────────────────────────
 function onStatusChange(status) {
+  const oldStatus = localPhase.value.status || 'not-started'
   applyStatus(localPhase.value, status)
   if (status === 'active' || status === 'blocked') isCollapsed.value = false
+  if (oldStatus !== status) {
+    logActivity(props.projectId, 'phase_status_changed', `${props.phaseDef.name}: ${oldStatus} → ${status}`, authStore.currentUser).catch(() => {})
+  }
   autosave(status === 'done')
   if (props.phaseId === 'activation' && status === 'done') {
     emit('activation-complete')
@@ -289,8 +294,10 @@ function setDate(field, val) {
 
 // ── Assignee ──────────────────────────────────────────────────────────────
 function setAssignee(id) {
+  const newName = id ? (props.teamMembers.find(m => m.id === id)?.name || id) : 'Unassigned'
   localPhase.value.assignedTo = id || null
   assigneeOpen.value = false
+  logActivity(props.projectId, 'phase_assigned', `${props.phaseDef.name}: assigned to ${newName}`, authStore.currentUser).catch(() => {})
   autosave()
 }
 function onAssigneeBlur() {
@@ -304,10 +311,17 @@ function addChecklistItem() {
   if (!localPhase.value.checklist) localPhase.value.checklist = []
   localPhase.value.checklist.push({ id: uid(), text, done: false })
   newChecklistText.value = ''
+  logActivity(props.projectId, 'checklist_added', `${props.phaseDef.name}: checklist item added — "${text}"`, authStore.currentUser).catch(() => {})
   autosave()
 }
 function removeChecklistItem(itemId) {
+  const item = (localPhase.value.checklist || []).find(i => i.id === itemId)
   localPhase.value.checklist = (localPhase.value.checklist || []).filter(i => i.id !== itemId)
+  if (item) logActivity(props.projectId, 'checklist_removed', `${props.phaseDef.name}: checklist item removed — "${item.text}"`, authStore.currentUser).catch(() => {})
+  autosave()
+}
+function onChecklistToggle(item) {
+  logActivity(props.projectId, 'checklist_toggled', `${props.phaseDef.name}: "${item.text}" ${item.done ? 'checked' : 'unchecked'}`, authStore.currentUser).catch(() => {})
   autosave()
 }
 
@@ -322,10 +336,13 @@ function addTimeLog(logData) {
       name: authStore.currentUser?.name || '',
     },
   })
+  logActivity(props.projectId, 'timelog_added', `${props.phaseDef.name}: ${logData.hours}h logged`, authStore.currentUser).catch(() => {})
   autosave()
 }
 function deleteTimeLog(logId) {
+  const log = (localPhase.value.timeLogs || []).find(l => l.id === logId)
   localPhase.value.timeLogs = (localPhase.value.timeLogs || []).filter(l => l.id !== logId)
+  if (log) logActivity(props.projectId, 'timelog_deleted', `${props.phaseDef.name}: ${log.hours}h time log removed`, authStore.currentUser).catch(() => {})
   autosave()
 }
 

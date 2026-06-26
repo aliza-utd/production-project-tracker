@@ -45,6 +45,11 @@
         </div>
       </div>
 
+      <!-- Time Calculator -->
+      <div class="dash-card" style="align-self:start">
+        <TimeCalcWidget />
+      </div>
+
       <!-- Notifications -->
       <div class="dash-card">
         <div class="dash-card-title" style="display:flex;justify-content:space-between;align-items:center">
@@ -73,6 +78,7 @@ import { computed } from 'vue'
 import { useProjectsStore }     from '@/stores/projects'
 import { usePhasesStore }       from '@/stores/phases'
 import { useNotificationsStore } from '@/stores/notifications'
+import TimeCalcWidget from '@/components/shared/TimeCalcWidget.vue'
 
 const projectsStore = useProjectsStore()
 const phasesStore   = usePhasesStore()

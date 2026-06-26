@@ -202,6 +202,17 @@ export async function addProjectActivityEntry(projectId, entry) {
   return addDoc(collection(db, 'projects', projectId, 'activity_log'), entry)
 }
 
+export async function logActivity(projectId, action, detail, user) {
+  return addDoc(collection(db, 'projects', projectId, 'activity_log'), {
+    action,
+    detail,
+    userName:    user?.name || 'System',
+    userUid:     user?.uid  || '',
+    performedBy: { uid: user?.uid || '', name: user?.name || '' },
+    timestamp:   new Date().toISOString(),
+  })
+}
+
 // ── Notifications (Firestore) ────────────────────────────────────────────────
 
 export function subscribeToNotifications(userId, onNext, onError) {

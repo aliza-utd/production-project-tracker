@@ -54,8 +54,38 @@
               📅 {{ fmtDate(localProject.liveDate) }}
             </span>
           </div>
+          <!-- Language status row (multi-language projects only) -->
+          <div v-if="langStatusGroups.length" class="pd-lang-status-row">
+            <template v-for="(group, gi) in langStatusGroups" :key="group.status">
+              <span v-if="gi > 0" class="pd-lang-status-sep">·</span>
+              <span class="pd-lang-status-item">
+                <span class="pd-lang-dot" :data-status="group.status"></span>
+                {{ langStatusText(group.status) }} ({{ group.langs.join(', ') }})
+              </span>
+            </template>
+          </div>
         </div>
         <div class="pd-header-right">
+          <!-- Share -->
+          <div style="position:relative">
+            <button class="btn btn-secondary btn-sm" @click="shareProject" title="Copy project link">🔗 Share</button>
+            <span v-if="shareCopied" class="pd-tip">Link copied!</span>
+          </div>
+          <!-- Export -->
+          <div style="position:relative;display:flex;gap:4px">
+            <button class="btn btn-secondary btn-sm" @click="exportCurrentCSV" title="Download as CSV">⬇ CSV</button>
+            <div style="position:relative">
+              <button class="btn btn-secondary btn-sm" @click="copyCurrentTSV" title="Copy as TSV for Google Sheets">⎘ TSV</button>
+              <span v-if="tsvCopied" class="pd-tip">Copied!</span>
+            </div>
+          </div>
+          <!-- Time Calculator -->
+          <div style="position:relative">
+            <button class="btn btn-secondary btn-sm" @click="showTimeCalc = !showTimeCalc" title="Working day calculator">⏱</button>
+            <div v-if="showTimeCalc" class="pd-timecalc-popup">
+              <TimeCalcWidget :closeable="true" @close="showTimeCalc = false" />
+            </div>
+          </div>
           <button v-if="localProject.id" class="btn btn-secondary btn-sm" @click="showArchiveConfirm = true">
             🗂️ Archive
           </button>
@@ -75,7 +105,7 @@
       <PhaseChecklist
         v-if="localProject.id"
         :phaseData="localProject.phaseData || {}"
-        :phaseConfig="phasesStore.phaseConfig"
+        :phaseConfig="dynamicPhaseConfig"
         :teamMembers="teamStore.teamMembers"
         :siteStatus="localProject.siteStatus"
         :readonly="readonly"
@@ -129,7 +159,7 @@
               <!-- Cards View -->
               <div v-if="phaseView === 'cards'" style="margin-top:16px;display:flex;flex-direction:column;gap:12px">
                 <PhaseCard
-                  v-for="ph in phasesStore.phaseConfig"
+                  v-for="ph in dynamicPhaseConfig"
                   :key="ph.id"
                   :phase="getPhaseData(ph.id)"
                   :phaseId="ph.id"
@@ -147,7 +177,7 @@
               <div v-else-if="phaseView === 'list'" style="margin-top:16px">
                 <PhaseListView
                   :phaseData="localProject.phaseData || {}"
-                  :phaseConfig="phasesStore.phaseConfig"
+                  :phaseConfig="dynamicPhaseConfig"
                   :teamMembers="teamStore.teamMembers"
                   :projectId="localProject.id"
                   :siteStatus="localProject.siteStatus"
@@ -161,7 +191,7 @@
               <div v-else-if="phaseView === 'kanban'" style="margin-top:16px">
                 <PhaseKanbanView
                   :phaseData="localProject.phaseData || {}"
-                  :phaseConfig="phasesStore.phaseConfig"
+                  :phaseConfig="dynamicPhaseConfig"
                   :teamMembers="teamStore.teamMembers"
                   :projectId="localProject.id"
                   :siteStatus="localProject.siteStatus"
@@ -508,7 +538,12 @@
 
                     <!-- Read mode -->
                     <div v-else>
-                      <div style="font-size:14px;white-space:pre-wrap;word-break:break-word">{{ c.text }}</div>
+                      <div style="font-size:14px;white-space:pre-wrap;word-break:break-word">
+                        <template v-for="(seg, si) in parseCommentSegments(c.text)" :key="si">
+                          <span v-if="seg.type === 'mention'" class="cm-mention">{{ seg.content }}</span>
+                          <span v-else>{{ seg.content }}</span>
+                        </template>
+                      </div>
                       <div v-if="canEditComment(c)"
                         style="display:flex;gap:12px;margin-top:6px">
                         <button
@@ -524,9 +559,22 @@
 
                 <!-- Post form -->
                 <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-                  <textarea class="form-textarea" v-model="newCommentText"
-                    placeholder="Add a comment…" rows="3"
-                    style="margin-bottom:10px;resize:vertical"></textarea>
+                  <div style="position:relative;margin-bottom:10px">
+                    <textarea class="form-textarea" ref="commentTextareaRef" v-model="newCommentText"
+                      placeholder="Add a comment… (@ to mention someone)" rows="3"
+                      style="width:100%;resize:vertical;margin-bottom:0"
+                      @input="onCommentInput" @keydown="onCommentKeydown"></textarea>
+                    <div v-if="mentionDropdown.show" class="cm-mention-dd">
+                      <div v-for="m in mentionDropdown.filtered" :key="m.id"
+                        class="cm-mention-item"
+                        @mousedown.prevent="insertMention(m)">
+                        <span class="pc-av"
+                          style="width:22px;height:22px;font-size:9px;flex-shrink:0"
+                          :style="{ background: m.avatarColor || '#6366f1' }">{{ m.initials }}</span>
+                        {{ m.name }}
+                      </div>
+                    </div>
+                  </div>
                   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                     <select class="filter-select" v-model="newCommentTag" style="font-size:13px">
                       <option value="general">General</option>
@@ -717,14 +765,14 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, reactive, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProjectsStore } from '@/stores/projects'
 import { usePhasesStore } from '@/stores/phases'
 import { useTeamStore } from '@/stores/team'
 import { useAuthStore } from '@/stores/auth'
 import { usePhaseLogic } from '@/composables/usePhaseLogic'
-import { subscribeToProject, getProjectComments, addProjectComment, updateProjectComment, deleteProjectComment, getProjectActivityLog, addProjectActivityEntry, createNotification } from '@/firebase-service'
+import { subscribeToProject, getProjectComments, addProjectComment, updateProjectComment, deleteProjectComment, getProjectActivityLog, addProjectActivityEntry, logActivity, createNotification } from '@/firebase-service'
 import OnHoldBanner from '@/components/shared/OnHoldBanner.vue'
 import ConfirmModal from '@/components/shared/ConfirmModal.vue'
 import PhaseChecklist from '@/components/phases/PhaseChecklist.vue'
@@ -734,6 +782,8 @@ import PhaseKanbanView from '@/components/phases/PhaseKanbanView.vue'
 import TeamMemberPicker from '@/components/shared/TeamMemberPicker.vue'
 import MultilanguageLiveModal from '@/components/projects/MultilanguageLiveModal.vue'
 import SiteStatusBadge from '@/components/shared/SiteStatusBadge.vue'
+import TimeCalcWidget from '@/components/shared/TimeCalcWidget.vue'
+import { downloadCSV, copyTSV } from '@/utils/exportUtils'
 
 const route        = useRoute()
 const router       = useRouter()
@@ -753,7 +803,7 @@ const phaseView     = ref('list')
 const infoEditMode  = ref(false)
 const infoSaving    = ref(false)
 const infoMemberIds = ref([])
-const showProjectDetails = ref(false)
+const showProjectDetails = ref(true)
 
 // ── Comments + Activity ───────────────────────────────────────────────────────
 const projectComments    = ref([])
@@ -763,6 +813,8 @@ const newCommentText     = ref('')
 const newCommentTag      = ref('general')
 const editingComment     = reactive({ id: null, text: '' })
 const lastReadTs         = ref('')
+const commentTextareaRef = ref(null)
+const mentionDropdown    = reactive({ show: false, query: '', filtered: [] })
 
 // ── Google Sheets ─────────────────────────────────────────────────────────────
 const showAddSheet = ref(false)
@@ -778,6 +830,45 @@ function showToast(msg) {
 }
 function onNextPhaseStarted(name) {
   showToast(`▶ ${name} has started`)
+}
+
+// ── Share / Export / TimeCalc ────────────────────────────────────────────────
+const shareCopied  = ref(false)
+const tsvCopied    = ref(false)
+const showTimeCalc = ref(false)
+let _shareTimer = null
+let _tsvTimer   = null
+
+function shareProject() {
+  const url = `https://aliza-utd.github.io/production-project-tracker/projects/${localProject.value.id}`
+  const fallback = () => {
+    const ta = document.createElement('textarea')
+    ta.value = url; ta.style.position = 'absolute'; ta.style.left = '-9999px'
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy')
+    document.body.removeChild(ta)
+    shareCopied.value = true
+    clearTimeout(_shareTimer)
+    _shareTimer = setTimeout(() => { shareCopied.value = false }, 2000)
+  }
+  navigator.clipboard?.writeText(url).then(() => {
+    shareCopied.value = true
+    clearTimeout(_shareTimer)
+    _shareTimer = setTimeout(() => { shareCopied.value = false }, 2000)
+  }).catch(fallback) ?? fallback()
+}
+
+function exportCurrentCSV() {
+  if (!localProject.value) return
+  downloadCSV([localProject.value], phasesStore.phaseConfig)
+}
+
+function copyCurrentTSV() {
+  if (!localProject.value) return
+  copyTSV([localProject.value], phasesStore.phaseConfig).then(() => {
+    tsvCopied.value = true
+    clearTimeout(_tsvTimer)
+    _tsvTimer = setTimeout(() => { tsvCopied.value = false }, 2000)
+  }).catch(() => {})
 }
 
 // ── Dialogs ───────────────────────────────────────────────────────────────────
@@ -815,7 +906,14 @@ function projectTypeLabel(type) {
 }
 
 function activityIcon(action) {
-  const icons = { created: '✨', updated: '✏️', phase_changed: '🔄', archived: '🗂️', comment_added: '💬', status_changed: '🔁', restored: '♻️' }
+  const icons = {
+    created: '✨', updated: '✏️', phase_changed: '🔄', phase_status_changed: '🔄',
+    phase_assigned: '👤', archived: '🗂️', comment_added: '💬', comment_edited: '✏️',
+    comment_deleted: '🗑️', status_changed: '🔁', restored: '♻️', on_hold: '⏸️',
+    reactivated: '▶️', sheet_added: '📊', sheet_removed: '📊', lang_status: '🌐',
+    checklist_added: '☑️', checklist_removed: '☑️', checklist_toggled: '✅',
+    timelog_added: '⏱️', timelog_deleted: '⏱️',
+  }
   return icons[action] || '📌'
 }
 
@@ -831,10 +929,26 @@ function langStatusLabel(status) {
   return '○ Not Started'
 }
 
+function langStatusText(status) {
+  if (status === 'live')          return 'Live'
+  if (status === 'in-production') return 'In Production'
+  return 'Not Started'
+}
+
 function fmtDateTime(s) {
-  if (!s) return ''
-  const d = new Date(s)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+  if (!s) return '—'
+  let date
+  if (typeof s?.toDate === 'function') {
+    date = s.toDate()
+  } else if (s instanceof Date) {
+    date = s
+  } else if (s?.seconds) {
+    date = new Date(s.seconds * 1000)
+  } else {
+    date = new Date(s)
+  }
+  if (isNaN(date.getTime())) return '—'
+  return date.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 const TAG_STYLES = {
@@ -852,6 +966,70 @@ function tagBadgeStyle(tag) {
 
 function tagLabel(tag) {
   return (TAG_STYLES[tag] || TAG_STYLES.general).label
+}
+
+// ── @Mention ──────────────────────────────────────────────────────────────────
+function onCommentInput() {
+  checkMention()
+}
+function onCommentKeydown(e) {
+  if (mentionDropdown.show && e.key === 'Escape') {
+    mentionDropdown.show = false
+    e.preventDefault()
+  }
+}
+function checkMention() {
+  const el = commentTextareaRef.value
+  if (!el) return
+  const text   = el.value
+  const pos    = el.selectionStart
+  const before = text.slice(0, pos)
+  const atIdx  = before.lastIndexOf('@')
+  if (atIdx === -1) { mentionDropdown.show = false; return }
+  if (atIdx > 0 && /\w/.test(before[atIdx - 1])) { mentionDropdown.show = false; return }
+  const query = before.slice(atIdx + 1)
+  if (query.includes('@') || query.includes(' ')) { mentionDropdown.show = false; return }
+  mentionDropdown.query    = query
+  mentionDropdown.filtered = teamStore.teamMembers
+    .filter(m => m.active && m.name.toLowerCase().includes(query.toLowerCase()))
+    .slice(0, 6)
+  mentionDropdown.show = mentionDropdown.filtered.length > 0
+}
+function insertMention(member) {
+  const el = commentTextareaRef.value
+  if (!el) return
+  const pos    = el.selectionStart
+  const text   = el.value
+  const before = text.slice(0, pos)
+  const atIdx  = before.lastIndexOf('@')
+  if (atIdx === -1) return
+  const newText = text.slice(0, atIdx) + '@' + member.name + ' ' + text.slice(pos)
+  newCommentText.value = newText
+  mentionDropdown.show = false
+  nextTick(() => {
+    const newPos = atIdx + 1 + member.name.length + 1
+    el.focus()
+    el.setSelectionRange(newPos, newPos)
+  })
+}
+function parseCommentSegments(text) {
+  if (!text) return [{ type: 'text', content: '' }]
+  const members = teamStore.teamMembers.filter(m => m.active)
+  if (!members.length) return [{ type: 'text', content: text }]
+  const escaped = [...members]
+    .map(m => m.name)
+    .sort((a, b) => b.length - a.length)
+    .map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  const pattern = new RegExp('@(' + escaped.join('|') + ')(?=\\s|$|[^\\w ])', 'gi')
+  const segments = []
+  let lastIdx = 0, match
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIdx) segments.push({ type: 'text', content: text.slice(lastIdx, match.index) })
+    segments.push({ type: 'mention', content: match[0] })
+    lastIdx = match.index + match[0].length
+  }
+  if (lastIdx < text.length) segments.push({ type: 'text', content: text.slice(lastIdx) })
+  return segments.length ? segments : [{ type: 'text', content: text }]
 }
 
 function isUnread(c) {
@@ -895,6 +1073,7 @@ async function saveEditComment(commentId) {
   try {
     await updateProjectComment(localProject.value.id, commentId, { text, editedAt })
     projectComments.value[idx] = { ...projectComments.value[idx], text, editedAt }
+    logActivity(localProject.value.id, 'comment_edited', `Comment edited by ${authStore.currentUser?.name || 'user'}`, authStore.currentUser).catch(() => {})
     cancelEditComment()
   } catch (err) {
     console.error('Edit comment error:', err)
@@ -907,6 +1086,7 @@ async function deleteComment(commentId) {
   try {
     await deleteProjectComment(localProject.value.id, commentId)
     projectComments.value = projectComments.value.filter(c => c.id !== commentId)
+    logActivity(localProject.value.id, 'comment_deleted', `Comment deleted by ${authStore.currentUser?.name || 'user'}`, authStore.currentUser).catch(() => {})
   } catch (err) {
     console.error('Delete comment error:', err)
   }
@@ -936,6 +1116,39 @@ const hasQuickLinks = computed(() => !!(
   localProject.value?.googleKeepUrl ||
   localProject.value?.logoSetUrl
 ))
+
+const langStatusGroups = computed(() => {
+  if (!localProject.value) return []
+  const langs = langPills(localProject.value.language)
+  if (langs.length <= 1) return []
+  const ls = localProject.value.langStatus || {}
+  const groups = {}
+  for (const lang of langs) {
+    const st = ls[lang] || 'not-started'
+    if (!groups[st]) groups[st] = []
+    groups[st].push(lang)
+  }
+  return ['live', 'in-production', 'not-started']
+    .filter(st => groups[st])
+    .map(st => ({ status: st, langs: groups[st] }))
+})
+
+const dynamicPhaseConfig = computed(() => {
+  if (!localProject.value) return phasesStore.phaseConfig
+  const langs = langPills(localProject.value.language)
+  if (langs.length <= 1) return phasesStore.phaseConfig
+  return phasesStore.phaseConfig.map(ph => {
+    if (!ph.languageDynamic) return ph
+    const subPhases = []
+    for (const lang of langs) {
+      const key = lang.toLowerCase().replace(/[^a-z0-9]/g, '_')
+      subPhases.push({ id: `${key}_initial`,      name: `${lang} — Initial` })
+      subPhases.push({ id: `${key}_golive`,        name: `${lang} — Go-Live` })
+      subPhases.push({ id: `${key}_live_checking`, name: `${lang} — Live Checking` })
+    }
+    return { ...ph, subPhases }
+  })
+})
 
 const phaseOptions = computed(() => {
   const opts = []
@@ -1106,12 +1319,11 @@ async function infoSave() {
     await projectsStore.updateProject(localProject.value.id, fields)
     localProject.value.assignedMembers = assignedMembers
     localProject.value.developer = fields.developer
-    addProjectActivityEntry(localProject.value.id, {
-      action: 'updated', detail: `Project "${localProject.value.name}" updated`,
-      userName: authStore.currentUser?.name || '',
-      userUid: authStore.currentUser?.uid || '',
-      timestamp: now,
-    }).catch(() => {})
+    const FIELD_LABELS = { name: 'Name', url: 'Site URL', originalSite: 'Original Site', platform: 'Platform', projectType: 'Type', language: 'Language', kickstartDate: 'Kickstart Date', liveDate: 'Live Date', sitemapUrl: 'Sitemap', builderLink: 'Builder Link', briefingUrl: 'Briefing', googleKeepUrl: 'Google Keep', logoSetUrl: 'Google Drive' }
+    const snap = latestSnapshot.value || {}
+    const changed = Object.keys(FIELD_LABELS).filter(f => (localProject.value[f] || '') !== (snap[f] || ''))
+    const detail = changed.length ? `Updated: ${changed.map(f => FIELD_LABELS[f]).join(', ')}` : `Project info saved`
+    logActivity(localProject.value.id, 'updated', detail, authStore.currentUser).catch(() => {})
     infoEditMode.value = false
   } catch (err) {
     console.error('Info save error:', err)
@@ -1129,6 +1341,11 @@ async function saveLangStatus(lang, status) {
     langStatus: { ...localProject.value.langStatus },
     updatedAt: new Date().toISOString(),
   }).catch(err => console.error('Lang status save error:', err))
+  logActivity(localProject.value.id, 'lang_status', `${lang} language status → ${status}`, authStore.currentUser).catch(() => {})
+  // Auto-set site to live when any language goes live
+  if (status === 'live' && localProject.value.siteStatus !== 'live') {
+    await changeSiteStatus('live')
+  }
 }
 
 // ── Google Sheets ─────────────────────────────────────────────────────────────
@@ -1137,23 +1354,27 @@ async function addSheet() {
   const entry = { id: uid(), label: newSheet.label, url: newSheet.url }
   if (!localProject.value.googleSheets) localProject.value.googleSheets = []
   localProject.value.googleSheets.push(entry)
+  const label = newSheet.label || newSheet.url
   newSheet.label = ''; newSheet.url = ''; showAddSheet.value = false
   if (localProject.value.id) {
     projectsStore.updateProject(localProject.value.id, {
       googleSheets: localProject.value.googleSheets,
       updatedAt: new Date().toISOString(),
     }).catch(() => {})
+    logActivity(localProject.value.id, 'sheet_added', `Google Sheet added: ${label}`, authStore.currentUser).catch(() => {})
   }
 }
 
 async function removeSheet(sheetId) {
   if (!localProject.value) return
+  const sheet = (localProject.value.googleSheets || []).find(s => s.id === sheetId)
   localProject.value.googleSheets = (localProject.value.googleSheets || []).filter(s => s.id !== sheetId)
   if (localProject.value.id) {
     projectsStore.updateProject(localProject.value.id, {
       googleSheets: localProject.value.googleSheets,
       updatedAt: new Date().toISOString(),
     }).catch(() => {})
+    if (sheet) logActivity(localProject.value.id, 'sheet_removed', `Google Sheet removed: ${sheet.label || sheet.url}`, authStore.currentUser).catch(() => {})
   }
 }
 
@@ -1185,26 +1406,43 @@ async function addComment() {
     projectComments.value.push(saved)
     newCommentText.value = ''
     newCommentTag.value  = 'general'
+    mentionDropdown.show = false
     const pid  = localProject.value.id
     const name = localProject.value.name
-    addProjectActivityEntry(pid, {
-      action: 'comment_added', detail: `Comment added by ${comment.authorName}`,
-      userName: comment.authorName, userUid: comment.authorUid, timestamp: now,
-    }).catch(() => {})
+    logActivity(pid, 'comment_added', `Comment added by ${comment.authorName}`, authStore.currentUser).catch(() => {})
     const notifBase = {
       type: 'comment',
       message: `New comment on "${name}" by ${comment.authorName}`,
       projectId: pid, projectName: name,
       read: false, createdAt: now, createdDate: now.slice(0, 10),
     }
+    const notifiedUids = new Set([comment.authorUid])
     const assignedDev = teamStore.teamMembers.find(m =>
       m.active && m.name === localProject.value.developer &&
       m.uid && m.uid !== comment.authorUid
     )
-    if (assignedDev) createNotification({ ...notifBase, userId: assignedDev.uid }).catch(() => {})
+    if (assignedDev) { notifiedUids.add(assignedDev.uid); createNotification({ ...notifBase, userId: assignedDev.uid }).catch(() => {}) }
     teamStore.teamMembers
       .filter(m => m.active && m.department === 'Manager' && m.uid && m.uid !== comment.authorUid)
       .forEach(m => createNotification({ ...notifBase, userId: m.uid }).catch(() => {}))
+    // @mention notifications
+    const activeNames = teamStore.teamMembers.filter(m => m.active && m.uid).map(m => m.name)
+    if (activeNames.length) {
+      const escaped = activeNames.sort((a, b) => b.length - a.length).map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      const mentionPat = new RegExp('@(' + escaped.join('|') + ')(?=\\s|$|[^\\w ])', 'gi')
+      let mm
+      while ((mm = mentionPat.exec(text)) !== null) {
+        const mentioned = teamStore.teamMembers.find(m => m.name.toLowerCase() === mm[1].toLowerCase() && m.uid)
+        if (mentioned && !notifiedUids.has(mentioned.uid)) {
+          notifiedUids.add(mentioned.uid)
+          createNotification({
+            userId: mentioned.uid, type: 'mention',
+            message: `${comment.authorName} mentioned you in "${name}"`,
+            projectId: pid, projectName: name, read: false, createdAt: now,
+          }).catch(() => {})
+        }
+      }
+    }
   } catch (err) {
     console.error('Add comment error:', err)
   }
