@@ -20,11 +20,8 @@
         <!-- Row 1: Site URL | Original Site URL -->
         <div class="np-row">
           <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">Site URL *</label>
-            <input class="form-input" :class="{ 'np-field-err': errors.url }"
-              v-model="form.url" placeholder="https://…"
-              @input="form.url.trim() && delete errors.url">
-            <div v-if="errors.url" class="np-error">{{ errors.url }}</div>
+            <label class="form-label">Site URL</label>
+            <input class="form-input" v-model="form.url" placeholder="https://…">
           </div>
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Original Site URL</label>
@@ -77,11 +74,11 @@
           </div>
         </div>
 
-        <!-- Current Phase toggle -->
+        <!-- Starting Phase toggle -->
         <div class="form-group">
           <label class="form-label" style="display:flex;align-items:center;gap:7px;cursor:pointer">
             <input type="checkbox" v-model="phaseOn" style="margin:0">
-            Start at a specific phase
+            Starting Phase
           </label>
           <select v-if="phaseOn" class="form-select" v-model="phaseId" style="margin-top:8px">
             <option v-for="ph in phasesStore.phaseConfig" :key="ph.id" :value="ph.id">
@@ -140,6 +137,7 @@
         <div class="np-actions">
           <button class="btn btn-ghost btn-sm" @click="$emit('cancel')" :disabled="saving">Cancel</button>
           <button class="btn btn-primary btn-sm" @click="create" :disabled="saving">
+            <span v-if="saving" style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0"></span>
             {{ saving ? 'Creating…' : 'Create Project' }}
           </button>
         </div>
@@ -172,7 +170,7 @@ const { emptyPhaseEntry, autoCompletePreviousPhases } = usePhaseLogic()
 const form = reactive({
   name: '', url: '', originalSite: '',
   platform: 'WordPress', projectType: 'new_site',
-  kickstartDate: '', liveDate: '',
+  kickstartDate: new Date().toISOString().slice(0, 10), liveDate: '',
   sitemapUrl: '', builderLink: '', briefingUrl: '',
   googleKeepUrl: '', logoSetUrl: '', notes: '',
 })
@@ -180,7 +178,7 @@ const langTags         = ref(['NL'])
 const phaseOn          = ref(false)
 const phaseId          = ref('kickstart')
 const assignedMemberIds = ref([])
-const detailsOpen      = ref(false)
+const detailsOpen      = ref(true)
 const errors           = reactive({})
 const saving           = ref(false)
 
@@ -201,7 +199,6 @@ function buildDefaultPhaseData() {
 function validate() {
   Object.keys(errors).forEach(k => delete errors[k])
   if (!form.name.trim())       errors.name         = 'Project name is required.'
-  if (!form.url.trim())        errors.url          = 'Site URL is required.'
   if (!langTags.value.length)  errors.language     = 'At least one language is required.'
   if (!form.platform)          errors.platform     = 'Platform is required.'
   if (!form.projectType)       errors.projectType  = 'Type is required.'
@@ -210,8 +207,8 @@ function validate() {
 }
 
 async function create() {
-  if (!validate()) return
   saving.value = true
+  if (!validate()) { saving.value = false; return }
   try {
     const now         = new Date().toISOString()
     const targetPhase = phaseOn.value ? phaseId.value : 'kickstart'
@@ -275,7 +272,6 @@ async function create() {
     router.push('/projects/' + created.id)
   } catch (err) {
     console.error('Create project error:', err)
-  } finally {
     saving.value = false
   }
 }
