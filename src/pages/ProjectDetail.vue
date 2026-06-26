@@ -972,42 +972,68 @@ function activityIcon(action) {
 
 function describeActivity(entry) {
   const d = entry.details || {}
-  const STATUS_LABEL = { 'not-started': 'Not Started', 'active': 'Active', 'blocked': 'Blocked', 'done': 'Done', 'live': 'Live', 'development': 'Development', 'on-hold': 'On Hold', 'cancelled': 'Cancelled', 'in-production': 'In Production' }
+  const STATUS_LABEL = {
+    'not-started': 'Not Started', 'active': 'Active', 'blocked': 'Blocked', 'done': 'Done',
+    'live': 'Live', 'development': 'Development', 'on-hold': 'On Hold',
+    'cancelled': 'Cancelled', 'in-production': 'In Production',
+  }
+  const sl = v => STATUS_LABEL[v] || v || 'unknown'
   switch (entry.action) {
     case 'project_created':
       return 'Project created'
     case 'field_updated':
-      return `${d.field} changed${d.oldValue ? ` from "${d.oldValue}"` : ''} to "${d.newValue}"`
+      return `${d.field || 'Field'} updated${d.oldValue ? ` from "${d.oldValue}"` : ''}${d.newValue !== undefined ? ` to "${d.newValue}"` : ''}`
     case 'phase_status_changed':
-      return `${d.phase} marked as ${STATUS_LABEL[d.to] || d.to}`
+      return `${d.phase || 'Phase'} marked as ${sl(d.to)}`
     case 'phase_assigned':
-      return `${d.phase} assigned to ${d.assignedTo}`
+      return `${d.phase || 'Phase'} assigned to ${d.assignedTo || 'someone'}`
     case 'checklist_updated':
-      return `Checklist item ${d.action}: "${d.item}"`
+      return `Checklist ${d.action || 'updated'}${d.item ? `: "${d.item}"` : ''}`
     case 'time_logged':
       return d.action === 'deleted'
-        ? `${d.hours}h removed from ${d.phase}`
-        : `${d.hours}h logged on ${d.phase}`
+        ? `${d.hours || '?'}h removed from ${d.phase || 'phase'}`
+        : `${d.hours || '?'}h logged on ${d.phase || 'phase'}`
     case 'comment_added':
+    case 'comment_posted':
       return 'Comment posted'
     case 'comment_edited':
       return 'Comment edited'
     case 'comment_deleted':
       return 'Comment deleted'
     case 'link_updated':
-      return `Link ${d.action}: ${d.label}`
+      return `Link ${d.action || 'updated'}${d.label ? `: ${d.label}` : ''}`
     case 'site_status_changed':
-      return `Site status changed to ${STATUS_LABEL[d.to] || d.to}`
+      return `Site status changed to ${sl(d.to || d.status)}`
     case 'project_on_hold':
       return d.reason ? `Project put on hold: ${d.reason}` : 'Project put on hold'
     case 'project_reactivated':
       return 'Project reactivated'
     case 'project_archived':
       return 'Project archived'
+    case 'project_restored':
+      return 'Project restored'
     case 'language_status_changed':
-      return `${d.language} marked as ${STATUS_LABEL[d.status] || d.status}`
+      return `${d.language || 'Language'} marked as ${sl(d.status)}`
+    case 'project_info_saved':
+      return 'Project info saved'
+    // legacy action names written by old firebase-service logActivity
+    case 'created':      return d.name ? `Project "${d.name}" created` : 'Project created'
+    case 'updated':      return entry.detail || 'Project updated'
+    case 'phase_changed':
+    case 'status_changed': return entry.detail || 'Status changed'
+    case 'archived':     return 'Project archived'
+    case 'on_hold':      return entry.detail || 'Project put on hold'
+    case 'reactivated':  return 'Project reactivated'
+    case 'sheet_added':  return entry.detail || 'Link added'
+    case 'sheet_removed': return entry.detail || 'Link removed'
+    case 'lang_status':  return entry.detail || 'Language status updated'
+    case 'checklist_added':   return entry.detail || 'Checklist item added'
+    case 'checklist_removed': return entry.detail || 'Checklist item removed'
+    case 'checklist_toggled': return entry.detail || 'Checklist item toggled'
+    case 'timelog_added':   return entry.detail || 'Time logged'
+    case 'timelog_deleted': return entry.detail || 'Time log removed'
     default:
-      return entry.detail || entry.action || '—'
+      return entry.detail || entry.action || 'Unknown action'
   }
 }
 
@@ -1015,8 +1041,9 @@ function activityDetail(entry) {
   const d = entry.details || {}
   switch (entry.action) {
     case 'time_logged':
-      return d.description ? `${d.description}` : null
+      return d.description || null
     case 'comment_added':
+    case 'comment_posted':
     case 'comment_edited':
     case 'comment_deleted':
       return d.preview ? `"${d.preview}${d.preview.length >= 50 ? '…' : ''}"` : null
