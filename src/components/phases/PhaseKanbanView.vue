@@ -48,7 +48,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { usePhaseLogic } from '@/composables/usePhaseLogic'
 import { useProjectsStore } from '@/stores/projects'
 
@@ -67,14 +67,16 @@ const props = defineProps({
   siteStatus:  { type: String, default: '' },
   readonly:    { type: Boolean, default: false },
 })
-const emit = defineEmits(['update-phase', 'activation-complete'])
+const emit = defineEmits(['update-phase', 'activation-complete', 'next-phase-started'])
 
-const { fmtHours, deepCopy, applyStatus, computeActivePhases } = usePhaseLogic()
+const { fmtHours, deepCopy, applyStatus, emptyPhaseEntry, computeActivePhases } = usePhaseLogic()
 const projectsStore = useProjectsStore()
 
-// Local mutable copy of phaseData
+// Local mutable copy of phaseData — kept in sync with prop for real-time updates
 const local   = ref(deepCopy(props.phaseData))
 const dragKey = ref(null)
+
+watch(() => props.phaseData, (v) => { local.value = deepCopy(v) }, { deep: true })
 
 function phStatus(phId)        { return local.value[phId]?.status || 'not-started' }
 function spStatus(phId, spId)  { return local.value[phId]?.subPhases?.[spId]?.status || 'not-started' }
@@ -103,7 +105,9 @@ function spAssignee(phId, spId) {
 function cardsForStatus(status) {
   const cards = []
   for (const ph of props.phaseConfig) {
-    if (phStatus(ph.id) === status) {
+    // Hide parent card when it has sub-phases — show only the sub-phases
+    const hasSubPhases = ph.subPhases && ph.subPhases.length > 0
+    if (!hasSubPhases && phStatus(ph.id) === status) {
       cards.push({
         key:        ph.id,
         name:       ph.name,
@@ -166,14 +170,31 @@ async function onDrop(newStatus) {
     }
   }
 
-  await saveAll(phaseId)
+  await saveAll(phaseId, !subId && newStatus === 'done')
 }
 
-async function saveAll(phaseId) {
+async function saveAll(phaseId, autoStartNext = false) {
   if (!props.projectId) return
   try {
     const project = projectsStore.projects.find(p => p.id === props.projectId)
     if (!project) return
+
+    // Auto-start the next not-started phase when this phase becomes done
+    let nextPhaseName = null
+    if (autoStartNext) {
+      const order = props.phaseConfig.map(p => p.id)
+      const idx   = order.indexOf(phaseId)
+      if (idx >= 0 && idx < order.length - 1) {
+        const nextId = order[idx + 1]
+        if (!local.value[nextId]) local.value[nextId] = emptyPhaseEntry()
+        const nxt = local.value[nextId]
+        if (!nxt.status || nxt.status === 'not-started') {
+          applyStatus(nxt, 'active')
+          nextPhaseName = props.phaseConfig.find(p => p.id === nextId)?.name
+        }
+      }
+    }
+
     const { activePhases, currentPhase, currentSubPhase } =
       computeActivePhases(local.value, props.phaseConfig)
     await projectsStore.updateProject(props.projectId, {
@@ -184,6 +205,7 @@ async function saveAll(phaseId) {
       updatedAt:       new Date().toISOString(),
     })
     emit('update-phase', { phaseId, data: deepCopy(local.value[phaseId]) })
+    if (nextPhaseName) emit('next-phase-started', nextPhaseName)
   } catch (err) {
     console.error('Kanban phase save failed:', err)
   }

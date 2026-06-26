@@ -413,6 +413,13 @@ a.ext:hover{text-decoration:underline}
 .ph-cards-col{display:flex;flex-direction:column;gap:12px}
 .ph-card-blocked{border-left-color:#d97706!important;background:#fffbeb}
 .ph-card-done{opacity:.75}
+/* ✓ done toggle button in phase card header */
+.ph-done-toggle{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;padding:0;line-height:1}
+.ph-done-toggle:hover{border-color:var(--primary);color:var(--primary)}
+.ph-done-toggle.active{background:#22c55e;border-color:#22c55e;color:#fff}
+/* Phase detail page toast notification */
+.pd-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:500;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.25);white-space:nowrap;animation:pdToastIn .2s ease}
+@keyframes pdToastIn{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 .ph-view-toggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .ph-view-btn{padding:5px 14px;font-size:12px;font-weight:600;border:none;background:var(--surface);color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s}
 .ph-view-btn.active{background:var(--primary);color:#fff}

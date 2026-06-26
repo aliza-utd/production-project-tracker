@@ -137,10 +137,6 @@
                   </template>
                 </div>
 
-                <div v-if="!readonly"
-                  style="display:flex;justify-content:flex-end;margin-top:12px">
-                  <button class="btn btn-primary btn-sm" @click="autosave(ph.id)">Save</button>
-                </div>
               </div>
             </td>
           </tr>
@@ -280,7 +276,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { usePhaseLogic } from '@/composables/usePhaseLogic'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
@@ -294,14 +290,16 @@ const props = defineProps({
   siteStatus:  { type: String, default: '' },
   readonly:    { type: Boolean, default: false },
 })
-const emit = defineEmits(['update-phase'])
+const emit = defineEmits(['update-phase', 'next-phase-started'])
 
 const { uid, isoToDateInput, fmtHours, deepCopy, applyStatus, emptyPhaseEntry, computeActivePhases } = usePhaseLogic()
 const projectsStore = useProjectsStore()
 const authStore     = useAuthStore()
 
-// Local deep copy of full phaseData
+// Local deep copy of full phaseData — kept in sync with prop for real-time updates
 const local = ref(deepCopy(props.phaseData))
+
+watch(() => props.phaseData, (v) => { local.value = deepCopy(v) }, { deep: true })
 
 const rowOpen          = reactive({})
 const tlOpen           = reactive({})
@@ -353,7 +351,7 @@ function getTarget(phId, spId) {
 function setStatus(phId, spId, status) {
   const target = getTarget(phId, spId)
   applyStatus(target, status)
-  autosave(phId)
+  autosave(phId, !spId && status === 'done')
 }
 
 function setAssignee(phId, spId, memberId) {
@@ -402,11 +400,28 @@ function deleteTimeLog(phId, spId, logId) {
 }
 
 // ── Autosave ─────────────────────────────────────────────────────────────
-async function autosave(phId) {
+async function autosave(phId, autoStartNext = false) {
   if (!props.projectId) return
   try {
     const project = projectsStore.projects.find(p => p.id === props.projectId)
     if (!project) return
+
+    // Auto-start the next not-started phase when this phase becomes done
+    let nextPhaseName = null
+    if (autoStartNext) {
+      const order = props.phaseConfig.map(p => p.id)
+      const idx   = order.indexOf(phId)
+      if (idx >= 0 && idx < order.length - 1) {
+        const nextId = order[idx + 1]
+        if (!local.value[nextId]) local.value[nextId] = emptyPhaseEntry()
+        const nxt = local.value[nextId]
+        if (!nxt.status || nxt.status === 'not-started') {
+          applyStatus(nxt, 'active')
+          nextPhaseName = props.phaseConfig.find(p => p.id === nextId)?.name
+        }
+      }
+    }
+
     const { activePhases, currentPhase, currentSubPhase } =
       computeActivePhases(local.value, props.phaseConfig)
     await projectsStore.updateProject(props.projectId, {
@@ -417,6 +432,7 @@ async function autosave(phId) {
       updatedAt:       new Date().toISOString(),
     })
     emit('update-phase', { phaseId: phId, data: deepCopy(local.value[phId]) })
+    if (nextPhaseName) emit('next-phase-started', nextPhaseName)
   } catch (err) {
     console.error('List view phase save failed:', err)
   }

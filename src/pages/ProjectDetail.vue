@@ -71,6 +71,18 @@
         @reactivate="changeSiteStatus('development')"
       />
 
+      <!-- ── Phase Progress Checklist (always visible) ── -->
+      <PhaseChecklist
+        v-if="localProject.id"
+        :phaseData="localProject.phaseData || {}"
+        :phaseConfig="phasesStore.phaseConfig"
+        :teamMembers="teamStore.teamMembers"
+        :siteStatus="localProject.siteStatus"
+        :readonly="readonly"
+        @scroll-to-phase="scrollToPhase"
+        style="margin-top:12px"
+      />
+
       <!-- ── Body: Main + Right Panel ── -->
       <div class="pd-body">
 
@@ -102,16 +114,6 @@
             <!-- ══ PHASES TAB ══ -->
             <div v-if="projTab === 'phases'">
 
-              <!-- Phase Checklist -->
-              <PhaseChecklist
-                :phaseData="localProject.phaseData || {}"
-                :phaseConfig="phasesStore.phaseConfig"
-                :teamMembers="teamStore.teamMembers"
-                :siteStatus="localProject.siteStatus"
-                :readonly="readonly"
-                @scroll-to-phase="scrollToPhase"
-              />
-
               <!-- View toggle -->
               <div style="display:flex;justify-content:flex-end;margin-top:16px;margin-bottom:12px">
                 <div class="ph-view-toggle">
@@ -137,6 +139,7 @@
                   :readonly="readonly"
                   @update-phase="onUpdatePhase"
                   @activation-complete="onActivationComplete"
+                  @next-phase-started="onNextPhaseStarted"
                 />
               </div>
 
@@ -150,6 +153,7 @@
                   :siteStatus="localProject.siteStatus"
                   :readonly="readonly"
                   @update-phase="onUpdatePhase"
+                  @next-phase-started="onNextPhaseStarted"
                 />
               </div>
 
@@ -164,6 +168,7 @@
                   :readonly="readonly"
                   @update-phase="onUpdatePhase"
                   @activation-complete="onActivationComplete"
+                  @next-phase-started="onNextPhaseStarted"
                 />
               </div>
             </div>
@@ -630,6 +635,10 @@
 
         </div><!-- end pd-panel -->
       </div><!-- end pd-body -->
+
+      <!-- Toast notification -->
+      <div v-if="toastMsg" class="pd-toast">{{ toastMsg }}</div>
+
     </div><!-- end pd-wrap -->
 
     <!-- ── Modals ── -->
@@ -740,7 +749,7 @@ const latestSnapshot = ref(null)
 const pageLoading    = ref(true)
 let   unsubProject   = null
 const projTab       = ref('info')
-const phaseView     = ref('cards')
+const phaseView     = ref('list')
 const infoEditMode  = ref(false)
 const infoSaving    = ref(false)
 const infoMemberIds = ref([])
@@ -758,6 +767,18 @@ const lastReadTs         = ref('')
 // ── Google Sheets ─────────────────────────────────────────────────────────────
 const showAddSheet = ref(false)
 const newSheet     = reactive({ label: '', url: '' })
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+const toastMsg = ref('')
+let _toastTimer = null
+function showToast(msg) {
+  toastMsg.value = msg
+  clearTimeout(_toastTimer)
+  _toastTimer = setTimeout(() => { toastMsg.value = '' }, 4000)
+}
+function onNextPhaseStarted(name) {
+  showToast(`▶ ${name} has started`)
+}
 
 // ── Dialogs ───────────────────────────────────────────────────────────────────
 const showArchiveConfirm  = ref(false)
@@ -971,7 +992,7 @@ async function loadProjectExtras(id) {
 function initLocalProject(p) {
   localProject.value   = JSON.parse(JSON.stringify(p))
   projTab.value        = 'info'
-  phaseView.value      = 'cards'
+  phaseView.value      = 'list'
   infoEditMode.value   = false
   showAddSheet.value   = false
   newCommentText.value = ''
@@ -1029,6 +1050,7 @@ function onUpdatePhase({ phaseId, data }) {
 }
 
 function scrollToPhase(phaseId) {
+  projTab.value   = 'phases'
   phaseView.value = 'cards'
   setTimeout(() => {
     const el = document.getElementById('ph-card-' + phaseId)

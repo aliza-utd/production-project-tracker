@@ -10,6 +10,11 @@
   >
     <!-- ── Card header ── -->
     <div class="ph-card-hdr" @click="isCollapsed = !isCollapsed">
+      <!-- ✓ Done toggle -->
+      <button v-if="!readonly" class="ph-done-toggle"
+        :class="{ active: localPhase.status === 'done' }"
+        @click.stop="toggleDone"
+        :title="localPhase.status === 'done' ? 'Set Active' : 'Mark Done'">✓</button>
       <div class="ph-card-dot" :style="{ background: phaseDef.color }"></div>
       <div class="ph-card-name">{{ phaseDef.name }}</div>
 
@@ -46,6 +51,19 @@
 
     <!-- ── Card body ── -->
     <div v-if="!isCollapsed" class="ph-card-body">
+
+      <!-- Time Log (first) -->
+      <div class="form-group" style="margin-bottom:14px">
+        <div class="ph-section-lbl">Time Log</div>
+        <TimeLogSection
+          :timeLogs="localPhase.timeLogs || []"
+          :subPhaseTotals="subPhaseTotals"
+          :phaseName="phaseDef.name"
+          :readonly="readonly"
+          @add-log="addTimeLog"
+          @delete-log="deleteTimeLog"
+        />
+      </div>
 
       <!-- Assignee picker -->
       <div class="form-group" style="position:relative;margin-bottom:14px">
@@ -121,19 +139,6 @@
         </div>
       </div>
 
-      <!-- Time Log -->
-      <div class="form-group" style="margin-bottom:0">
-        <div class="ph-section-lbl">Time Log</div>
-        <TimeLogSection
-          :timeLogs="localPhase.timeLogs || []"
-          :subPhaseTotals="subPhaseTotals"
-          :phaseName="phaseDef.name"
-          :readonly="readonly"
-          @add-log="addTimeLog"
-          @delete-log="deleteTimeLog"
-        />
-      </div>
-
       <!-- Sub-phase cards -->
       <div v-if="phaseDef.subPhases && phaseDef.subPhases.length" class="ph-sub-cards">
         <SubPhaseCard
@@ -151,11 +156,6 @@
         />
       </div>
 
-      <!-- Phase Save button -->
-      <div v-if="!readonly"
-        style="display:flex;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);margin-top:14px">
-        <button class="btn btn-primary btn-sm" @click="autosave">Save</button>
-      </div>
     </div>
   </div>
 </template>
@@ -178,7 +178,7 @@ const props = defineProps({
   teamMembers: { type: Array,  default: () => [] },
   readonly:    { type: Boolean, default: false },
 })
-const emit = defineEmits(['update-phase', 'activation-complete'])
+const emit = defineEmits(['update-phase', 'activation-complete', 'next-phase-started'])
 
 const { uid, isoToDateInput, fmtHours, deepCopy, applyStatus, emptyPhaseEntry, computeActivePhases } = usePhaseLogic()
 const projectsStore = useProjectsStore()
@@ -216,7 +216,7 @@ const totalHours = computed(() => {
 })
 
 // ── Autosave ──────────────────────────────────────────────────────────────
-async function autosave() {
+async function autosave(autoStartNext = false) {
   if (!props.projectId) return
   saveState.value = 'saving'
   try {
@@ -225,6 +225,22 @@ async function autosave() {
 
     const newPhaseData = deepCopy(project.phaseData || {})
     newPhaseData[props.phaseId] = deepCopy(localPhase.value)
+
+    // Auto-start the next not-started phase when this phase becomes done
+    let nextPhaseName = null
+    if (autoStartNext) {
+      const order = phasesStore.phaseConfig.map(p => p.id)
+      const idx   = order.indexOf(props.phaseId)
+      if (idx >= 0 && idx < order.length - 1) {
+        const nextId = order[idx + 1]
+        if (!newPhaseData[nextId]) newPhaseData[nextId] = emptyPhaseEntry()
+        const nxt = newPhaseData[nextId]
+        if (!nxt.status || nxt.status === 'not-started') {
+          applyStatus(nxt, 'active')
+          nextPhaseName = phasesStore.phaseConfig.find(p => p.id === nextId)?.name
+        }
+      }
+    }
 
     const { activePhases, currentPhase, currentSubPhase } =
       computeActivePhases(newPhaseData, phasesStore.phaseConfig)
@@ -239,6 +255,7 @@ async function autosave() {
 
     saveState.value = 'saved'
     emit('update-phase', { phaseId: props.phaseId, data: deepCopy(localPhase.value) })
+    if (nextPhaseName) emit('next-phase-started', nextPhaseName)
   } catch (err) {
     console.error('Phase save failed:', err)
     saveState.value = 'error'
@@ -254,12 +271,15 @@ function debounceSave() {
 // ── Status ────────────────────────────────────────────────────────────────
 function onStatusChange(status) {
   applyStatus(localPhase.value, status)
-  // Expand when moving to active/blocked
   if (status === 'active' || status === 'blocked') isCollapsed.value = false
-  autosave()
+  autosave(status === 'done')
   if (props.phaseId === 'activation' && status === 'done') {
     emit('activation-complete')
   }
+}
+
+function toggleDone() {
+  onStatusChange(localPhase.value.status === 'done' ? 'active' : 'done')
 }
 
 // ── Dates ─────────────────────────────────────────────────────────────────
@@ -313,6 +333,11 @@ function deleteTimeLog(logId) {
 function onUpdateSub({ subId, data }) {
   if (!localPhase.value.subPhases) localPhase.value.subPhases = {}
   localPhase.value.subPhases[subId] = data
+  // Auto-activate parent when a sub-phase becomes active
+  if (data.status === 'active' && localPhase.value.status === 'not-started') {
+    applyStatus(localPhase.value, 'active')
+    isCollapsed.value = false
+  }
   autosave()
 }
 </script>
