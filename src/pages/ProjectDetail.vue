@@ -1578,15 +1578,24 @@ function saveSheetImmediate() {
 async function addComment() {
   const text = newCommentText.value.trim()
   if (!text || !localProject.value?.id) return
+
+  console.log('[Comment] Posting comment...')
+
   const now  = new Date().toISOString()
   const user = authStore.currentUser
+
+  if (!user?.uid) {
+    console.error('[Comment] Not authenticated — cannot post comment')
+    return
+  }
+
   const comment = {
     text,
     tag:            newCommentTag.value || 'general',
-    authorName:     user?.name    || '',
-    authorUid:      user?.uid     || '',
-    authorInitials: (user?.name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase(),
-    authorColor:    user?.avatarColor || '#6366f1',
+    authorName:     user.name    || '',
+    authorUid:      user.uid,
+    authorInitials: (user.name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase(),
+    authorColor:    user.avatarColor || '#6366f1',
     createdAt:      now,
   }
   try {
@@ -1598,54 +1607,71 @@ async function addComment() {
     const pid            = localProject.value.id
     const name           = localProject.value.name
     const commentPreview = text.substring(0, 80)
-    logActivity(pid, 'comment_added', { preview: text.substring(0, 50) }).catch(() => {})
+    logActivity(pid, 'comment_added', { preview: text.substring(0, 50) })
+      .catch(err => console.error('[Comment] Activity log failed:', err))
 
-    // Track who has already been notified (start with the commenter — never self-notify)
-    const notifiedUids = new Set([comment.authorUid])
+    // Track who has already been notified (never self-notify)
+    const notifiedUids = new Set([user.uid])
 
-    // ── Step 1: new_comment notification for every assigned team member ──────
+    // ── Step 1: new_comment for every assigned team member ────────────────────
     for (const assigned of (localProject.value.assignedMembers || [])) {
-      // assignedMembers stores {id, name} but not uid — look up uid from teamStore
       const member = teamStore.teamMembers.find(m => m.id === assigned.id)
-      if (!member?.uid || notifiedUids.has(member.uid)) continue
+      if (!member?.uid) {
+        console.warn('[Notifications] No uid for assigned member:', assigned.name, '— skipping new_comment')
+        continue
+      }
+      if (notifiedUids.has(member.uid)) continue
       notifiedUids.add(member.uid)
+      console.log('[Notifications] Sending new_comment to:', member.name)
       createNotification({
         userId: member.uid,
         type: 'new_comment',
-        message: `${comment.authorName} commented on "${name}"`,
+        message: `${user.name} commented on "${name}"`,
         projectId: pid,
         projectName: name,
         commentPreview,
         read: false,
-      }).catch(() => {})
+      }).catch(err => console.error('[Notifications] new_comment write failed:', err))
     }
 
-    // ── Step 2: mention notifications for @mentioned users ───────────────────
-    const activeMembers = teamStore.teamMembers.filter(m => m.active && m.uid)
-    if (activeMembers.length) {
-      const escaped = activeMembers
+    // ── Step 2: mention notifications for @mentioned users ────────────────────
+    console.log('[Comment] Checking for mentions in:', text)
+    const allMembers = teamStore.teamMembers.filter(m => m.active)
+    console.log('[Comment] Active members:', allMembers.map(m => `${m.name}(uid:${m.uid || 'NONE'})`).join(', '))
+
+    if (allMembers.length) {
+      const escaped = allMembers
         .map(m => m.name)
         .sort((a, b) => b.length - a.length)
         .map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
       const mentionPat = new RegExp('@(' + escaped.join('|') + ')(?=\\s|$|[^\\w ])', 'gi')
       let mm
+      const foundMentions = []
       while ((mm = mentionPat.exec(text)) !== null) {
-        const mentioned = activeMembers.find(m => m.name.toLowerCase() === mm[1].toLowerCase())
-        if (!mentioned || notifiedUids.has(mentioned.uid)) continue
+        const mentioned = allMembers.find(m => m.name.toLowerCase() === mm[1].toLowerCase())
+        if (!mentioned) continue
+        foundMentions.push(mentioned.name)
+        if (!mentioned.uid) {
+          console.warn('[Notifications] @' + mentioned.name + ' has no uid — cannot send mention notification')
+          continue
+        }
+        if (notifiedUids.has(mentioned.uid)) continue
         notifiedUids.add(mentioned.uid)
+        console.log('[Comment] Creating mention notification for:', mentioned.name)
         createNotification({
           userId: mentioned.uid,
           type: 'mention',
-          message: `${comment.authorName} mentioned you in "${name}"`,
+          message: `${user.name} mentioned you in "${name}"`,
           projectId: pid,
           projectName: name,
           commentPreview,
           read: false,
-        }).catch(() => {})
+        }).catch(err => console.error('[Notifications] mention write failed for', mentioned.name, ':', err))
       }
+      console.log('[Comment] Mentions found:', foundMentions.length ? foundMentions : 'none')
     }
   } catch (err) {
-    console.error('Add comment error:', err)
+    console.error('[Comment] Add comment error:', err)
   }
 }
 
