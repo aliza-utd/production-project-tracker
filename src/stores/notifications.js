@@ -23,7 +23,11 @@ export const useNotificationsStore = defineStore('notifications', () => {
       (snap) => {
         notifications.value = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .sort((a, b) => {
+            const ta = a.createdAt?.toDate?.() ?? new Date(a.createdAt || 0)
+            const tb = b.createdAt?.toDate?.() ?? new Date(b.createdAt || 0)
+            return tb - ta
+          })
         loading.value = false
       },
       (err) => {

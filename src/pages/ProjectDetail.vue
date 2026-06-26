@@ -1327,6 +1327,8 @@ function startProjectListener(id) {
 onMounted(() => {
   const id = route.params.id
   if (id) startProjectListener(id)
+  // Open a specific tab when navigated with ?tab=… (e.g. from notification click)
+  if (route.query.tab) projTab.value = route.query.tab
 })
 
 onUnmounted(() => {
@@ -1504,40 +1506,53 @@ async function addComment() {
     newCommentText.value = ''
     newCommentTag.value  = 'general'
     mentionDropdown.show = false
-    const pid  = localProject.value.id
-    const name = localProject.value.name
+    const pid            = localProject.value.id
+    const name           = localProject.value.name
+    const commentPreview = text.substring(0, 80)
     logActivity(pid, 'comment_added', { preview: text.substring(0, 50) }).catch(() => {})
-    const notifBase = {
-      type: 'comment',
-      message: `New comment on "${name}" by ${comment.authorName}`,
-      projectId: pid, projectName: name,
-      read: false, createdAt: now, createdDate: now.slice(0, 10),
-    }
+
+    // Track who has already been notified (start with the commenter — never self-notify)
     const notifiedUids = new Set([comment.authorUid])
-    const assignedDev = teamStore.teamMembers.find(m =>
-      m.active && m.name === localProject.value.developer &&
-      m.uid && m.uid !== comment.authorUid
-    )
-    if (assignedDev) { notifiedUids.add(assignedDev.uid); createNotification({ ...notifBase, userId: assignedDev.uid }).catch(() => {}) }
-    teamStore.teamMembers
-      .filter(m => m.active && m.department === 'Manager' && m.uid && m.uid !== comment.authorUid)
-      .forEach(m => createNotification({ ...notifBase, userId: m.uid }).catch(() => {}))
-    // @mention notifications
-    const activeNames = teamStore.teamMembers.filter(m => m.active && m.uid).map(m => m.name)
-    if (activeNames.length) {
-      const escaped = activeNames.sort((a, b) => b.length - a.length).map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+
+    // ── Step 1: new_comment notification for every assigned team member ──────
+    for (const assigned of (localProject.value.assignedMembers || [])) {
+      // assignedMembers stores {id, name} but not uid — look up uid from teamStore
+      const member = teamStore.teamMembers.find(m => m.id === assigned.id)
+      if (!member?.uid || notifiedUids.has(member.uid)) continue
+      notifiedUids.add(member.uid)
+      createNotification({
+        userId: member.uid,
+        type: 'new_comment',
+        message: `${comment.authorName} commented on "${name}"`,
+        projectId: pid,
+        projectName: name,
+        commentPreview,
+        read: false,
+      }).catch(() => {})
+    }
+
+    // ── Step 2: mention notifications for @mentioned users ───────────────────
+    const activeMembers = teamStore.teamMembers.filter(m => m.active && m.uid)
+    if (activeMembers.length) {
+      const escaped = activeMembers
+        .map(m => m.name)
+        .sort((a, b) => b.length - a.length)
+        .map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
       const mentionPat = new RegExp('@(' + escaped.join('|') + ')(?=\\s|$|[^\\w ])', 'gi')
       let mm
       while ((mm = mentionPat.exec(text)) !== null) {
-        const mentioned = teamStore.teamMembers.find(m => m.name.toLowerCase() === mm[1].toLowerCase() && m.uid)
-        if (mentioned && !notifiedUids.has(mentioned.uid)) {
-          notifiedUids.add(mentioned.uid)
-          createNotification({
-            userId: mentioned.uid, type: 'mention',
-            message: `${comment.authorName} mentioned you in "${name}"`,
-            projectId: pid, projectName: name, read: false, createdAt: now,
-          }).catch(() => {})
-        }
+        const mentioned = activeMembers.find(m => m.name.toLowerCase() === mm[1].toLowerCase())
+        if (!mentioned || notifiedUids.has(mentioned.uid)) continue
+        notifiedUids.add(mentioned.uid)
+        createNotification({
+          userId: mentioned.uid,
+          type: 'mention',
+          message: `${comment.authorName} mentioned you in "${name}"`,
+          projectId: pid,
+          projectName: name,
+          commentPreview,
+          read: false,
+        }).catch(() => {})
       }
     }
   } catch (err) {

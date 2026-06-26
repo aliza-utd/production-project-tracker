@@ -1,5 +1,4 @@
 <template>
-  <!-- Bell button (positioned in topbar via App.vue slot or fixed top-right) -->
   <div class="notif-wrap" @click.stop>
     <button class="notif-btn" @click="showPanel = !showPanel" title="Notifications">
       🔔
@@ -9,7 +8,6 @@
     </button>
   </div>
 
-  <!-- Panel — Teleported so z-index isn't clipped by any stacking context -->
   <Teleport to="body">
     <template v-if="showPanel">
       <!-- Backdrop -->
@@ -40,7 +38,7 @@
         </div>
 
         <div v-else-if="notifications.length === 0" class="notif-empty">
-          You're all caught up! No notifications.
+          You're all caught up! No new notifications.
         </div>
 
         <div v-else class="notif-list">
@@ -51,18 +49,22 @@
             :class="{ unread: !n.read }"
             @click="handleNotifClick(n)"
           >
-            <span class="notif-icon">
-              {{
-                n.type === 'deadline_overdue' ? '🚨'
-                : n.type === 'deadline_warning' ? '⏰'
-                : n.type === 'comment' ? '💬'
-                : '🔔'
-              }}
-            </span>
+            <!-- Icon -->
+            <span class="notif-icon">{{ notifIcon(n.type) }}</span>
+
+            <!-- Body -->
             <div class="notif-body">
               <div class="notif-msg">{{ n.message }}</div>
-              <div class="notif-time">{{ fmtDateTime(n.createdAt) }}</div>
+              <!-- Comment preview -->
+              <div v-if="n.commentPreview" class="notif-preview">
+                "{{ n.commentPreview }}{{ n.commentPreview.length >= 80 ? '…' : '' }}"
+              </div>
+              <div class="notif-time-row">
+                <span class="notif-time">{{ fmtTs(n.createdAt) }}</span>
+                <span v-if="n.projectId" class="notif-goto">→ View project</span>
+              </div>
             </div>
+
             <div v-if="!n.read" class="notif-dot"></div>
           </div>
         </div>
@@ -84,16 +86,30 @@ const notifications = computed(() => notifStore.notifications)
 const unreadCount   = computed(() => notifStore.unreadCount)
 const loading       = computed(() => notifStore.loading)
 
-function fmtDateTime(iso) {
-  if (!iso) return ''
-  try {
-    return new Date(iso).toLocaleString('en-US', {
-      month: 'short', day: 'numeric',
-      hour: 'numeric', minute: '2-digit', hour12: true,
-    })
-  } catch {
-    return iso
+function notifIcon(type) {
+  if (type === 'mention')     return '👤'
+  if (type === 'new_comment') return '💬'
+  if (type === 'comment')     return '💬'
+  if (type === 'deadline_overdue')  return '🚨'
+  if (type === 'deadline_warning')  return '⏰'
+  return '🔔'
+}
+
+function fmtTs(value) {
+  if (!value) return ''
+  let date
+  if (value && typeof value.toDate === 'function') {
+    date = value.toDate()
+  } else if (value?.seconds) {
+    date = new Date(value.seconds * 1000)
+  } else {
+    date = new Date(value)
   }
+  if (isNaN(date.getTime())) return ''
+  return date.toLocaleString('en-GB', {
+    day: '2-digit', month: 'short',
+    hour: '2-digit', minute: '2-digit',
+  })
 }
 
 async function handleMarkAllRead() {
@@ -103,12 +119,15 @@ async function handleMarkAllRead() {
 async function handleNotifClick(n) {
   showPanel.value = false
   if (!n.read) await notifStore.markAsRead(n.id)
-  if (n.projectId) router.push(`/projects/${n.projectId}`)
+  if (n.projectId) {
+    const isCommentType = n.type === 'mention' || n.type === 'new_comment' || n.type === 'comment'
+    const path = `/projects/${n.projectId}${isCommentType ? '?tab=comments' : ''}`
+    router.push(path)
+  }
 }
 </script>
 
 <style scoped>
-/* Fixed position in top-right corner of the app shell */
 .notif-wrap {
   position: fixed;
   top: 12px;

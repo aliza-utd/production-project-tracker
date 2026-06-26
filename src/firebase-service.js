@@ -4,7 +4,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup,
          setPersistence, browserLocalPersistence }            from 'firebase/auth'
 import { getFirestore,
          collection, getDocs, query, where, addDoc, updateDoc, deleteDoc, doc,
-         getDoc, setDoc, onSnapshot, orderBy }               from 'firebase/firestore'
+         getDoc, setDoc, onSnapshot, orderBy, serverTimestamp }  from 'firebase/firestore'
 import { firebaseConfig }                                    from './firebase-config.js'
 
 const app      = initializeApp(firebaseConfig)
@@ -216,12 +216,19 @@ export async function logActivity(projectId, action, detail, user) {
 // ── Notifications (Firestore) ────────────────────────────────────────────────
 
 export function subscribeToNotifications(userId, onNext, onError) {
-  const q = query(collection(db, 'notifications'), where('userId', '==', userId))
+  const q = query(
+    collection(db, 'notifications'),
+    where('userId', '==', userId),
+    where('read', '==', false),
+  )
   return onSnapshot(q, onNext, onError || (err => console.error('Notifications snapshot error:', err)))
 }
 
 export async function createNotification(data) {
-  return addDoc(collection(db, 'notifications'), data)
+  return addDoc(collection(db, 'notifications'), {
+    ...data,
+    createdAt: serverTimestamp(),
+  })
 }
 
 export async function setNotificationIfNotExists(docId, data) {
