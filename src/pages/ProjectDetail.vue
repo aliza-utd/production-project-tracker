@@ -92,16 +92,6 @@
           </template>
         </div>
 
-        <!-- Divider before timeline -->
-        <div class="pd-header-div"></div>
-
-        <!-- Phase Timeline -->
-        <PhaseTimeline
-          v-if="localProject.id && phasesStore.phaseConfig.length"
-          :phaseData="localProject.phaseData || {}"
-          :phaseConfig="phasesStore.phaseConfig"
-          @scroll-to-phase="scrollToPhase"
-        />
 
       </div>
 
@@ -695,6 +685,39 @@
             </select>
           </div>
 
+          <!-- Phase Progress -->
+          <div class="pd-panel-card">
+            <div class="pd-panel-title">Phase Progress</div>
+            <div v-if="!dynamicPhaseConfig.length" style="font-size:12px;color:var(--muted)">No phases configured</div>
+            <div v-else class="pd-pp-list">
+              <div v-for="ph in dynamicPhaseConfig" :key="ph.id" class="pd-pp-group">
+                <div class="pd-pp-row" @click="scrollToPhase(ph.id)">
+                  <span class="pd-pp-icon" :data-st="getPhaseStatus(localProject.phaseData || {}, ph.id)">
+                    {{ phProgressIcon(getPhaseStatus(localProject.phaseData || {}, ph.id)) }}
+                  </span>
+                  <span class="pd-pp-name">{{ ph.name }}</span>
+                  <span class="pd-pp-badge" :data-st="getPhaseStatus(localProject.phaseData || {}, ph.id)">
+                    {{ phProgressLabel(getPhaseStatus(localProject.phaseData || {}, ph.id)) }}
+                  </span>
+                </div>
+                <div
+                  v-for="sp in (ph.subPhases || [])"
+                  :key="sp.id"
+                  class="pd-pp-row pd-pp-sub"
+                  @click="scrollToPhase(ph.id)"
+                >
+                  <span class="pd-pp-icon" :data-st="getSubPhaseStatus(localProject.phaseData || {}, ph.id, sp.id)">
+                    {{ phProgressIcon(getSubPhaseStatus(localProject.phaseData || {}, ph.id, sp.id)) }}
+                  </span>
+                  <span class="pd-pp-name">{{ sp.name }}</span>
+                  <span class="pd-pp-badge" :data-st="getSubPhaseStatus(localProject.phaseData || {}, ph.id, sp.id)">
+                    {{ phProgressLabel(getSubPhaseStatus(localProject.phaseData || {}, ph.id, sp.id)) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div><!-- end pd-panel -->
       </div><!-- end pd-body -->
 
@@ -797,7 +820,6 @@ import TeamMemberPicker from '@/components/shared/TeamMemberPicker.vue'
 import MultilanguageLiveModal from '@/components/projects/MultilanguageLiveModal.vue'
 import SiteStatusBadge from '@/components/shared/SiteStatusBadge.vue'
 import TimeCalcWidget from '@/components/shared/TimeCalcWidget.vue'
-import PhaseTimeline from '@/components/phases/PhaseTimeline.vue'
 import { downloadCSV, copyTSV } from '@/utils/exportUtils'
 
 const route        = useRoute()
@@ -807,7 +829,7 @@ const phasesStore  = usePhasesStore()
 const teamStore    = useTeamStore()
 const authStore       = useAuthStore()
 const { logActivity } = useActivityLog()
-const { emptyPhaseEntry, autoCompletePreviousPhases, generateDynamicPhaseConfig } = usePhaseLogic()
+const { emptyPhaseEntry, autoCompletePreviousPhases, generateDynamicPhaseConfig, getPhaseStatus, getSubPhaseStatus } = usePhaseLogic()
 
 // ── Core project state ────────────────────────────────────────────────────────
 const localProject   = ref(null)
@@ -1038,6 +1060,20 @@ function langStatusText(status) {
   if (status === 'live')          return 'Live'
   if (status === 'in-production') return 'In Production'
   return 'Not Started'
+}
+
+function phProgressIcon(status) {
+  if (status === 'done')    return '✓'
+  if (status === 'active')  return '◉'
+  if (status === 'blocked') return '⊘'
+  return '○'
+}
+
+function phProgressLabel(status) {
+  if (status === 'done')    return 'Done'
+  if (status === 'active')  return 'Active'
+  if (status === 'blocked') return 'Blocked'
+  return '—'
 }
 
 function fmtDateTime(s) { return formatDate(s) }

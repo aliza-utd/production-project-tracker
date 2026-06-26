@@ -234,12 +234,23 @@ async function autosave(autoStartNext = false) {
       const order = phasesStore.phaseConfig.map(p => p.id)
       const idx   = order.indexOf(props.phaseId)
       if (idx >= 0 && idx < order.length - 1) {
-        const nextId = order[idx + 1]
+        const nextId  = order[idx + 1]
+        const nextDef = phasesStore.phaseConfig.find(p => p.id === nextId)
         if (!newPhaseData[nextId]) newPhaseData[nextId] = emptyPhaseEntry()
         const nxt = newPhaseData[nextId]
         if (!nxt.status || nxt.status === 'not-started') {
           applyStatus(nxt, 'active')
-          nextPhaseName = phasesStore.phaseConfig.find(p => p.id === nextId)?.name
+          // Also activate all sub-phases of the next phase
+          if (nextDef?.subPhases?.length) {
+            if (!nxt.subPhases) nxt.subPhases = {}
+            for (const sp of nextDef.subPhases) {
+              if (!nxt.subPhases[sp.id]) nxt.subPhases[sp.id] = emptyPhaseEntry()
+              if (!nxt.subPhases[sp.id].status || nxt.subPhases[sp.id].status === 'not-started') {
+                applyStatus(nxt.subPhases[sp.id], 'active')
+              }
+            }
+          }
+          nextPhaseName = nextDef?.name
         }
       }
     }
@@ -369,11 +380,12 @@ function onUpdateSub({ subId, data }) {
     )
     if (allDone && localPhase.value.status !== 'done') {
       applyStatus(localPhase.value, 'done')
+      autosave(true)  // all sub-phases done → parent done → auto-start next phase
+      return
     } else if (!allDone && anyActive && localPhase.value.status === 'not-started') {
       applyStatus(localPhase.value, 'active')
       isCollapsed.value = false
     } else if (!allDone && localPhase.value.status === 'done') {
-      // A sub-phase was moved back from done — revert parent to active
       applyStatus(localPhase.value, 'active')
     }
   }

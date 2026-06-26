@@ -175,6 +175,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .proj-tab-content{background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r);padding:24px}
 @media(max-width:900px){.pd-body{flex-direction:column}.pd-panel{width:100%}}
 
+/* Phase Progress sidebar panel */
+.pd-pp-list{display:flex;flex-direction:column;gap:0}
+.pd-pp-group{margin-bottom:2px}
+.pd-pp-row{display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:5px;cursor:pointer;transition:background .1s}
+.pd-pp-row:hover{background:var(--bg)}
+.pd-pp-sub{padding-left:16px}
+.pd-pp-icon{font-size:11px;flex-shrink:0;width:13px;text-align:center;line-height:1}
+.pd-pp-icon[data-st="done"]{color:#16a34a}
+.pd-pp-icon[data-st="active"]{color:var(--primary)}
+.pd-pp-icon[data-st="blocked"]{color:#d97706}
+.pd-pp-icon[data-st="not-started"]{color:var(--muted)}
+.pd-pp-name{flex:1;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.pd-pp-badge{font-size:10px;font-weight:600;padding:1px 5px;border-radius:999px;white-space:nowrap;flex-shrink:0}
+.pd-pp-badge[data-st="done"]{background:#dcfce7;color:#16a34a}
+.pd-pp-badge[data-st="active"]{background:#eef2ff;color:var(--primary)}
+.pd-pp-badge[data-st="blocked"]{background:#fff7ed;color:#d97706}
+.pd-pp-badge[data-st="not-started"]{background:#f1f5f9;color:var(--muted)}
+
 /* Info & Links tab */
 .il-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 22px;margin-bottom:14px;box-shadow:var(--sh)}
 .il-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
