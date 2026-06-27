@@ -61,7 +61,16 @@ export const usePhasesStore = defineStore('phases', () => {
       (snap) => {
         if (snap.exists()) {
           const data = snap.data()
-          if (data?.phases?.length) phaseConfig.value = data.phases
+          if (data?.phases?.length) {
+            let phases = data.phases
+            // If Languages phase is absent from the saved config (saved before this feature
+            // was added), inject the default definition so it is always available.
+            if (!phases.find(p => p.id === 'languages')) {
+              const langDefault = DEFAULT_PHASE_CONFIG.find(p => p.id === 'languages')
+              if (langDefault) phases = [...phases, langDefault]
+            }
+            phaseConfig.value = phases
+          }
         }
       },
       (err) => console.error('Phase config listener error:', err)

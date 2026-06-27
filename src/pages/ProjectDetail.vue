@@ -1484,6 +1484,22 @@ function migrateLanguageFields(data) {
   return { ...data, mainLanguage: langs[0] || 'NL', additionalLanguages: langs.slice(1) }
 }
 
+// Ensures phaseData.languages exists for projects that have additionalLanguages but
+// were created before the Languages phase was introduced.
+async function ensureLanguagesPhase(data) {
+  const addLangs = data.additionalLanguages || []
+  if (!addLangs.length) return
+  if (data.phaseData?.languages) return
+  const langDef = phasesStore.phaseConfig.find(p => p.id === 'languages')
+  const template = langDef?.subPhaseTemplate || []
+  const langPhaseData = generateLanguagePhaseData(addLangs, template)
+  const newPhaseData  = { ...(data.phaseData || {}), languages: langPhaseData }
+  await projectsStore.updateProject(data.id, {
+    phaseData: newPhaseData,
+    updatedAt: new Date().toISOString(),
+  })
+}
+
 function startProjectListener(id) {
   if (unsubProject) unsubProject()
   pageLoading.value = true
@@ -1502,6 +1518,8 @@ function startProjectListener(id) {
         updatedAt:           new Date().toISOString(),
       }).catch(e => console.warn('[Migration] Language field migration failed:', e))
     }
+    // Ensure phaseData.languages exists for projects with additional languages
+    ensureLanguagesPhase(data).catch(e => console.warn('[Migration] ensureLanguagesPhase failed:', e))
     latestSnapshot.value = data
     if (!localProject.value) {
       initLocalProject(data)
