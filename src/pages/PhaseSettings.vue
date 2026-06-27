@@ -55,36 +55,24 @@
           <!-- Phase name -->
           <input class="form-input ps-name-input" v-model="ph.name" placeholder="Phase name">
 
-          <!-- Per-language toggle (parent level) -->
-          <label class="ps-lang-toggle"
-            :title="ph.languageDynamic ? 'All sub-phases duplicated per language' : 'Enable per-language mode'"
-          >
-            <input type="checkbox" v-model="ph.languageDynamic" style="margin:0">
-            <span :style="ph.languageDynamic ? 'color:var(--primary);font-weight:600' : ''">Per-lang</span>
-          </label>
-
-          <!-- Sub-phases expand button -->
-          <button class="btn btn-ghost btn-sm" style="white-space:nowrap" @click="toggleExpanded(idx)">
+          <!-- Sub-phases expand button (hidden for dynamic phases) -->
+          <button v-if="!ph.dynamic" class="btn btn-ghost btn-sm" style="white-space:nowrap" @click="toggleExpanded(idx)">
             <template v-if="ph.subPhases?.length">
               {{ ph.subPhases.length }} sub-phase{{ ph.subPhases.length !== 1 ? 's' : '' }}
             </template>
             <template v-else>+ Sub-phases</template>
             {{ expandedIdx === idx ? '▾' : '▸' }}
           </button>
+          <span v-else class="ps-dynamic-chip">Dynamic</span>
 
           <!-- Delete phase -->
           <button class="btn-icon" style="color:var(--danger)" @click="removePhase(idx)" title="Delete phase">✕</button>
         </div>
 
-        <!-- Sub-phases panel -->
-        <div v-show="expandedIdx === idx" class="ps-sub-panel">
+        <!-- Sub-phases panel (regular phases only — dynamic phases show inline note) -->
+        <div v-show="!ph.dynamic && expandedIdx === idx" class="ps-sub-panel">
 
-          <!-- Info banner when parent is languageDynamic -->
-          <div v-if="ph.languageDynamic" class="ps-lang-note">
-            🌐 All sub-phases below are templates — each will be duplicated per language in multi-language projects.
-          </div>
-
-          <!-- Sub-phase mode (only meaningful when sub-phases exist) -->
+          <!-- Sub-phase mode -->
           <div v-if="(ph.subPhases || []).length" class="ps-submode-wrap">
             <div class="ps-sub-title" style="margin-bottom:6px">Sub-phase mode:</div>
             <label class="ps-radio-opt">
@@ -101,47 +89,78 @@
 
           <div v-for="(sp, spIdx) in (ph.subPhases || [])" :key="sp.id" class="ps-sub-row">
             <input class="form-input" style="flex:1" v-model="sp.name" placeholder="Sub-phase name">
-            <select class="form-select" style="width:110px" v-model="sp.type">
-              <option value="">Type</option>
-              <option value="content">Content</option>
-              <option value="design">Design</option>
-              <option value="dev">Dev</option>
-              <option value="qa">QA</option>
-            </select>
-            <!-- Per-sub-phase language toggle (only meaningful when parent is NOT languageDynamic) -->
-            <label v-if="!ph.languageDynamic"
-              class="ps-lang-toggle"
-              style="font-size:11px"
-              :title="sp.languageDynamic ? 'Duplicated per language' : 'Duplicate this sub-phase per language'"
-            >
-              <input type="checkbox" v-model="sp.languageDynamic" style="margin:0">
-              <span :style="sp.languageDynamic ? 'color:var(--primary);font-weight:600' : ''">Per-lang</span>
-            </label>
             <button class="btn-icon" style="color:var(--danger)" @click="removeSubPhase(idx, spIdx)">✕</button>
           </div>
 
           <button class="btn btn-ghost btn-sm" style="margin-top:8px" @click="addSubPhase(idx)">+ Add Sub-phase</button>
 
-          <!-- Preview (only shown if there are sub-phases and any are dynamic) -->
-          <div
-            v-if="(ph.subPhases || []).length && (ph.languageDynamic || ph.subPhases.some(sp => sp.languageDynamic))"
-            class="ps-preview"
-          >
-            <div class="ps-preview-title">Preview (with NL, EN):</div>
-            <div class="ps-preview-phase">{{ ph.name }}</div>
-            <div
-              v-for="item in previewSubPhases(ph)"
-              :key="item.id"
-              class="ps-preview-sp"
-            >
-              <span class="ps-preview-corner">└</span>
-              <span v-if="item._lang" class="ps-preview-lang-pill"
-                :style="{ background: ph.color + '22', color: ph.color }">{{ item._lang }}</span>
-              {{ item.name }}
-            </div>
+        </div><!-- end sub-phases panel -->
+
+        <!-- Dynamic phase settings panel (Languages phase) -->
+        <div v-if="ph.dynamic" class="ps-sub-panel ps-dynamic-panel">
+
+          <!-- Sub-phase mode -->
+          <div class="ps-submode-wrap" style="margin-bottom:14px">
+            <div class="ps-sub-title" style="margin-bottom:6px">Sub-phase mode:</div>
+            <label class="ps-radio-opt">
+              <input type="radio" :name="'spm-' + ph.id" value="sequential" v-model="ph.subPhaseMode">
+              <span><strong>Sequential</strong> — one at a time, in order</span>
+            </label>
+            <label class="ps-radio-opt">
+              <input type="radio" :name="'spm-' + ph.id" value="simultaneous" v-model="ph.subPhaseMode">
+              <span><strong>Simultaneous</strong> — all activate at once</span>
+            </label>
           </div>
 
-        </div><!-- end sub-phases panel -->
+          <!-- Template editor -->
+          <div class="ps-sub-title">Sub-phase Template</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">
+            These sub-phases repeat for each additional language.
+            Example: <em>FR — Development, FR — QA Initial, EN — Development…</em>
+          </div>
+
+          <div
+            v-for="(tpl, tplIdx) in (ph.subPhaseTemplate || [])"
+            :key="tpl.id"
+            class="ps-sub-row"
+            :class="{ 'ps-drag-over': tplDragOverIdx === tplIdx && tplDragPhaseIdx === idx }"
+            draggable="true"
+            @dragstart="onTplDragStart(idx, tplIdx, $event)"
+            @dragover.prevent="onTplDragOver(idx, tplIdx)"
+            @dragleave="onTplDragLeave"
+            @drop.prevent="onTplDrop(idx, tplIdx)"
+            style="margin-bottom:5px"
+          >
+            <div class="ps-handle" style="font-size:14px;cursor:grab">⠿</div>
+            <input class="form-input" style="flex:1" v-model="tpl.name" placeholder="Sub-phase name">
+            <button class="btn-icon" style="color:var(--danger)" title="Delete"
+              @click="removeTplItem(idx, tplIdx)">✕</button>
+          </div>
+
+          <button class="btn btn-ghost btn-sm" style="margin-top:6px;margin-bottom:16px"
+            @click="addTplItem(idx)">+ Add Sub-phase Template</button>
+
+          <!-- Live preview -->
+          <div class="ps-lang-note">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;color:#1d4ed8">
+              Live Preview (FR, EN)
+            </div>
+            <div style="font-weight:600;color:var(--text);margin-bottom:4px">{{ ph.name }}</div>
+            <div v-for="sp in previewSubPhases(ph)" :key="sp"
+              style="font-size:12px;color:var(--muted);padding:1px 0">
+              └ {{ sp }}
+            </div>
+            <div v-if="!(ph.subPhaseTemplate || []).length"
+              style="font-size:12px;color:var(--muted);font-style:italic">No template items yet.</div>
+          </div>
+
+          <!-- Apply to existing projects -->
+          <button class="btn btn-secondary btn-sm" style="margin-top:12px"
+            @click="applyTemplateToProjects(ph)">
+            Apply template to existing projects
+          </button>
+
+        </div>
 
       </div><!-- end phase item -->
     </div><!-- end ps-list -->
@@ -156,13 +175,13 @@
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { usePhasesStore }  from '@/stores/phases'
 import { useAuthStore }    from '@/stores/auth'
+import { useProjectsStore } from '@/stores/projects'
 import { usePhaseLogic }   from '@/composables/usePhaseLogic'
 
-const phasesStore = usePhasesStore()
-const authStore   = useAuthStore()
-const { generateDynamicPhaseConfig } = usePhaseLogic()
-
-const PREVIEW_LANGS = ['NL', 'EN']
+const phasesStore   = usePhasesStore()
+const authStore     = useAuthStore()
+const projectsStore = useProjectsStore()
+const { generateLanguagePhaseData } = usePhaseLogic()
 
 const COLOR_SWATCHES = [
   '#6366f1','#8b5cf6','#a855f7','#ec4899','#ef4444',
@@ -170,18 +189,41 @@ const COLOR_SWATCHES = [
   '#0ea5e9','#3b82f6','#6b7280','#374151',
 ]
 
-const phases       = reactive([])
-const saving       = ref(false)
-const savedMsg     = ref(false)
+const DEFAULT_LANG_TEMPLATE = [
+  { id: 'development',      name: 'Development' },
+  { id: 'qa_initial',       name: 'QA Initial' },
+  { id: 'qa_golive',        name: 'QA Go-Live' },
+  { id: 'qa_live_checking', name: 'QA Live Checking' },
+]
+
+const phases         = reactive([])
+const saving         = ref(false)
+const savedMsg       = ref(false)
 const colorPickerIdx = ref(null)
-const expandedIdx  = ref(null)
-const dragSrcIdx   = ref(null)
-const dragOverIdx  = ref(null)
+const expandedIdx    = ref(null)
+const dragSrcIdx     = ref(null)
+const dragOverIdx    = ref(null)
+
+// Template item drag state (for dynamic phase sub-phase template)
+const tplDragSrcIdx   = ref(null)
+const tplDragPhaseIdx = ref(null)
+const tplDragOverIdx  = ref(null)
+
+function nameToId(name) {
+  return name.toLowerCase()
+    .replace(/[^a-z0-9]/g, '_')
+    .replace(/__+/g, '_')
+    .replace(/^_|_$/g, '')
+}
 
 function loadFromStore() {
   phases.length = 0
   phasesStore.phaseConfig.forEach(ph => {
-    phases.push(JSON.parse(JSON.stringify(ph)))
+    const copy = JSON.parse(JSON.stringify(ph))
+    if (copy.dynamic && !copy.subPhaseTemplate?.length) {
+      copy.subPhaseTemplate = JSON.parse(JSON.stringify(DEFAULT_LANG_TEMPLATE))
+    }
+    phases.push(copy)
   })
 }
 
@@ -212,13 +254,12 @@ function toggleExpanded(idx) {
 
 function addPhase() {
   phases.push({
-    id:              Math.random().toString(36).slice(2),
-    name:            'New Phase',
-    color:           '#6366f1',
-    subPhases:       [],
-    languageDynamic: false,
-    subPhaseMode:    'simultaneous',
-    order:           phases.length,
+    id:          Math.random().toString(36).slice(2),
+    name:        'New Phase',
+    color:       '#6366f1',
+    subPhases:   [],
+    subPhaseMode:'simultaneous',
+    order:       phases.length,
   })
 }
 
@@ -231,21 +272,86 @@ function removePhase(idx) {
 function addSubPhase(phaseIdx) {
   if (!phases[phaseIdx].subPhases) phases[phaseIdx].subPhases = []
   phases[phaseIdx].subPhases.push({
-    id:              Math.random().toString(36).slice(2),
-    name:            '',
-    type:            '',
-    languageDynamic: false,
+    id:   Math.random().toString(36).slice(2),
+    name: '',
   })
+}
+
+// ── Template item functions (dynamic phases) ──────────────────────────────
+function addTplItem(phaseIdx) {
+  if (!phases[phaseIdx].subPhaseTemplate) phases[phaseIdx].subPhaseTemplate = []
+  phases[phaseIdx].subPhaseTemplate.push({ id: 'new_' + Math.random().toString(36).slice(2), name: '' })
+}
+
+function removeTplItem(phaseIdx, tplIdx) {
+  const name = phases[phaseIdx].subPhaseTemplate[tplIdx].name
+  if (name && !confirm(`Remove template item "${name}"?`)) return
+  phases[phaseIdx].subPhaseTemplate.splice(tplIdx, 1)
+}
+
+function onTplDragStart(phaseIdx, tplIdx, e) {
+  tplDragPhaseIdx.value = phaseIdx
+  tplDragSrcIdx.value   = tplIdx
+  e.dataTransfer.effectAllowed = 'move'
+}
+
+function onTplDragOver(phaseIdx, tplIdx) {
+  if (tplDragPhaseIdx.value === phaseIdx) tplDragOverIdx.value = tplIdx
+}
+
+function onTplDragLeave() { tplDragOverIdx.value = null }
+
+function onTplDrop(phaseIdx, targetIdx) {
+  const src = tplDragSrcIdx.value
+  if (src === null || src === targetIdx || tplDragPhaseIdx.value !== phaseIdx) {
+    tplDragOverIdx.value = null; return
+  }
+  const tpl  = phases[phaseIdx].subPhaseTemplate
+  const item = tpl.splice(src, 1)[0]
+  tpl.splice(targetIdx, 0, item)
+  tplDragSrcIdx.value = tplDragPhaseIdx.value = tplDragOverIdx.value = null
+}
+
+function previewSubPhases(ph) {
+  return ['FR', 'EN'].flatMap(lang =>
+    (ph.subPhaseTemplate || []).map(t => `${lang} — ${t.name}`)
+  )
+}
+
+async function applyTemplateToProjects(ph) {
+  const template = (ph.subPhaseTemplate || []).filter(t => t.name.trim())
+  if (!template.length) { alert('Add at least one template item first.'); return }
+  const projects = projectsStore.projects.filter(p => (p.additionalLanguages || []).length > 0)
+  if (!projects.length) { alert('No projects with additional languages found.'); return }
+  if (!confirm(
+    `Apply this template to ${projects.length} project(s) with additional languages?\n\n` +
+    `Existing language sub-task PROGRESS will be preserved. New items will be added; ` +
+    `removed items will be kept if they have any progress data.`
+  )) return
+  let updated = 0
+  for (const project of projects) {
+    const newLangsData = generateLanguagePhaseData(project.additionalLanguages, template)
+    const existing     = project.phaseData?.languages?.subPhases || {}
+    // Merge: preserve existing progress, add new items
+    const merged = { ...newLangsData.subPhases }
+    for (const [id, data] of Object.entries(existing)) {
+      if (data.status && data.status !== 'not-started') merged[id] = data
+    }
+    const phaseData = JSON.parse(JSON.stringify(project.phaseData || {}))
+    if (!phaseData.languages) phaseData.languages = newLangsData
+    phaseData.languages.subPhases = merged
+    try {
+      await projectsStore.updateProject(project.id, { phaseData })
+      updated++
+    } catch (e) {
+      console.error('Failed to update project', project.id, e)
+    }
+  }
+  alert(`Template applied to ${updated} project(s).`)
 }
 
 function removeSubPhase(phaseIdx, spIdx) {
   phases[phaseIdx].subPhases.splice(spIdx, 1)
-}
-
-/** Generate a preview of sub-phases using PREVIEW_LANGS. */
-function previewSubPhases(ph) {
-  const expanded = generateDynamicPhaseConfig([ph], PREVIEW_LANGS)
-  return expanded[0]?.subPhases || []
 }
 
 // ── Drag & drop ───────────────────────────────────────────────────────────────
@@ -280,22 +386,28 @@ function onDrop(targetIdx) {
 async function save() {
   saving.value = true
   try {
-    const clean = phases.map((ph, i) => ({
-      id:              ph.id,
-      name:            ph.name,
-      color:           ph.color,
-      order:           i,
-      languageDynamic: !!ph.languageDynamic,
-      subPhaseMode:    ph.subPhaseMode || 'simultaneous',
-      subPhases:       (ph.subPhases || [])
-        .filter(sp => sp.name.trim())
-        .map(sp => ({
-          id:              sp.id,
-          name:            sp.name,
-          type:            sp.type || '',
-          languageDynamic: !!sp.languageDynamic,
-        })),
-    }))
+    const clean = phases.map((ph, i) => {
+      const base = {
+        id:           ph.id,
+        name:         ph.name,
+        color:        ph.color,
+        order:        i,
+        subPhaseMode: ph.subPhaseMode || (ph.dynamic ? 'sequential' : 'simultaneous'),
+        subPhases:    (ph.subPhases || [])
+          .filter(sp => sp.name.trim())
+          .map(sp => ({ id: sp.id, name: sp.name })),
+      }
+      if (ph.dynamic) {
+        base.dynamic = true
+        base.subPhaseTemplate = (ph.subPhaseTemplate || [])
+          .filter(t => t.name.trim())
+          .map(t => ({
+            id:   t.id.startsWith('new_') ? nameToId(t.name) : t.id,
+            name: t.name.trim(),
+          }))
+      }
+      return base
+    })
     await phasesStore.saveConfig(clean, authStore.currentUser?.uid)
     savedMsg.value = true
     setTimeout(() => { savedMsg.value = false }, 3000)
@@ -375,6 +487,19 @@ function reset() {
   border-radius: 0 0 var(--r) var(--r);
   padding: 14px 16px;
   margin-bottom: 6px;
+}
+.ps-dynamic-panel {
+  display: block !important;
+}
+.ps-dynamic-chip {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ede9fe;
+  color: #7c3aed;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .ps-lang-note {

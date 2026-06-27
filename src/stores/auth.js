@@ -3,7 +3,8 @@ import { ref, computed } from 'vue'
 import {
   initAuthPersistence, onAuthChange,
   signInWithGoogle, signOutUser,
-  getTeamMembersFromFirestore, createTeamMember, updateMemberUID,
+  getTeamMembersFromFirestore, createTeamMember, createTeamMemberWithUID,
+  migrateTeamMemberToUID, updateMemberUID,
 } from '@/firebase-service'
 
 // authState values:
@@ -72,9 +73,17 @@ export const useAuthStore = defineStore('auth', () => {
             return
           }
 
-          // Link Firebase UID to member doc on first login
-          if (!member.uid) {
-            try { await updateMemberUID(member.id, fbUser.uid) } catch (_) {}
+          // Migrate doc to use Auth UID as document ID (required for Firestore rules).
+          // This fixes docs that were created with addDoc (random ID) instead of setDoc.
+          if (member.id !== fbUser.uid) {
+            try {
+              const migrated = await migrateTeamMemberToUID(member.id, fbUser.uid, member)
+              // Patch member in place so the rest of the login flow uses the new ID
+              Object.assign(member, migrated)
+            } catch (migErr) {
+              console.error('[Auth] Migration failed, falling back to uid field update:', migErr)
+              try { await updateMemberUID(member.id, fbUser.uid) } catch (_) {}
+            }
           }
 
           currentUser.value = {
@@ -129,7 +138,7 @@ export const useAuthStore = defineStore('auth', () => {
       createdAt:   new Date().toISOString(),
     }
 
-    const newMember = await createTeamMember(memberData)
+    const newMember = await createTeamMemberWithUID(fbUser.uid, memberData)
 
     currentUser.value = {
       uid:        fbUser.uid,

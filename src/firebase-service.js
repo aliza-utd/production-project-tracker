@@ -13,6 +13,48 @@ export const db   = getFirestore(app)
 
 const googleProvider = new GoogleAuthProvider()
 
+// ── Firestore write helpers (diagnostic wrappers) ─────────────────────────────
+
+export function sanitizeForFirestore(obj) {
+  if (obj === null || obj === undefined) return null
+  if (typeof obj !== 'object') return obj
+  if (Array.isArray(obj)) return obj.map(sanitizeForFirestore)
+  const clean = {}
+  for (const key of Object.keys(obj)) {
+    const val = obj[key]
+    if (val === undefined)       continue  // Firestore rejects undefined
+    if (typeof val === 'function') continue
+    clean[key] = sanitizeForFirestore(val)
+  }
+  return clean
+}
+
+export async function safeUpdate(docRef, data) {
+  const user = auth.currentUser
+  console.log('=== FIRESTORE WRITE ATTEMPT ===')
+  console.log('Document path:', docRef.path)
+  console.log('User UID:', user?.uid  || null)
+  console.log('User email:', user?.email || null)
+  console.log('Data keys:', Object.keys(data))
+  if (data.phaseData) {
+    for (const [phId, ph] of Object.entries(data.phaseData)) {
+      const subs = ph?.subPhases ? Object.keys(ph.subPhases) : []
+      if (subs.length) console.log(`  phaseData.${phId}.subPhases:`, subs)
+    }
+  }
+  try {
+    await updateDoc(docRef, data)
+    console.log('=== WRITE SUCCESS ===', docRef.path)
+  } catch (error) {
+    console.error('=== WRITE FAILED ===')
+    console.error('Error code:', error.code)
+    console.error('Error message:', error.message)
+    console.error('Document path:', docRef.path)
+    console.error('User UID:', user?.uid || null)
+    throw error
+  }
+}
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 export async function initAuthPersistence() {
@@ -65,12 +107,38 @@ export async function createTeamMember(data) {
   return { id: ref.id, ...firestoreData, initials: firestoreData.avatarInitials }
 }
 
+// Creates a team member doc using the Firebase Auth UID as the document ID.
+// This is required for Firestore rules that look up team_members/{auth.uid}.
+export async function createTeamMemberWithUID(uid, data) {
+  const firestoreData = {
+    ...data,
+    uid,
+    avatarInitials: data.initials || data.avatarInitials || '',
+  }
+  await setDoc(doc(db, 'team_members', uid), firestoreData)
+  return { id: uid, ...firestoreData, initials: firestoreData.avatarInitials }
+}
+
+// Migrates an existing team_members doc to use the Auth UID as its document ID.
+// Called on login when member.id !== fbUser.uid (doc was created with addDoc).
+export async function migrateTeamMemberToUID(existingDocId, uid, existingData) {
+  console.log('[Auth] Migrating team_members doc:', existingDocId, '→', uid)
+  await setDoc(doc(db, 'team_members', uid), {
+    ...existingData,
+    uid,
+    migratedAt: new Date().toISOString(),
+  })
+  await deleteDoc(doc(db, 'team_members', existingDocId))
+  console.log('[Auth] Migration complete')
+  return { id: uid, ...existingData, uid }
+}
+
 export async function updateTeamMember(id, data) {
-  return updateDoc(doc(db, 'team_members', id), data)
+  return safeUpdate(doc(db, 'team_members', id), data)
 }
 
 export async function updateMemberUID(id, uid) {
-  return updateDoc(doc(db, 'team_members', id), { uid })
+  return safeUpdate(doc(db, 'team_members', id), { uid })
 }
 
 export async function findMemberByEmail(email) {
@@ -147,7 +215,9 @@ export async function createProjectInFirestore(data) {
 }
 
 export async function updateProjectInFirestore(id, data) {
-  return updateDoc(doc(db, 'projects', id), data)
+  const cleanData = { ...data }
+  if (cleanData.phaseData) cleanData.phaseData = sanitizeForFirestore(cleanData.phaseData)
+  return safeUpdate(doc(db, 'projects', id), cleanData)
 }
 
 export async function getArchivedProjects() {
@@ -157,7 +227,7 @@ export async function getArchivedProjects() {
 }
 
 export async function archiveProjectInFirestore(id, archivedBy, archivedAt) {
-  return updateDoc(doc(db, 'projects', id), {
+  return safeUpdate(doc(db, 'projects', id), {
     archived:   true,
     archivedAt: archivedAt || new Date().toISOString(),
     archivedBy: archivedBy || '',
@@ -183,7 +253,7 @@ export async function addProjectComment(projectId, commentData) {
 }
 
 export async function updateProjectComment(projectId, commentId, data) {
-  return updateDoc(doc(db, 'projects', projectId, 'comments', commentId), data)
+  return safeUpdate(doc(db, 'projects', projectId, 'comments', commentId), data)
 }
 
 export async function deleteProjectComment(projectId, commentId) {
@@ -225,10 +295,24 @@ export function subscribeToNotifications(userId, onNext, onError) {
 }
 
 export async function createNotification(data) {
-  return addDoc(collection(db, 'notifications'), {
-    ...data,
-    createdAt: serverTimestamp(),
-  })
+  const user = auth.currentUser
+  const payload = { ...data, createdAt: serverTimestamp() }
+  console.log('=== FIRESTORE WRITE ATTEMPT ===')
+  console.log('Document path: notifications/<new>')
+  console.log('User UID:', user?.uid || null)
+  console.log('Data keys:', Object.keys(payload))
+  console.log('Notification data:', JSON.stringify({ ...payload, createdAt: '<serverTimestamp>' }))
+  try {
+    const ref = await addDoc(collection(db, 'notifications'), payload)
+    console.log('=== WRITE SUCCESS === notifications/' + ref.id)
+    return ref
+  } catch (error) {
+    console.error('=== WRITE FAILED === notifications')
+    console.error('Error code:', error.code)
+    console.error('Error message:', error.message)
+    console.error('User UID:', user?.uid || null)
+    throw error
+  }
 }
 
 export async function setNotificationIfNotExists(docId, data) {
@@ -242,12 +326,12 @@ export async function setNotificationIfNotExists(docId, data) {
 }
 
 export async function markNotificationRead(id) {
-  return updateDoc(doc(db, 'notifications', id), { read: true, readAt: new Date().toISOString() })
+  return safeUpdate(doc(db, 'notifications', id), { read: true, readAt: new Date().toISOString() })
 }
 
 export async function markAllNotificationsRead(ids) {
   for (const id of ids) {
-    await updateDoc(doc(db, 'notifications', id), { read: true, readAt: new Date().toISOString() })
+    await safeUpdate(doc(db, 'notifications', id), { read: true, readAt: new Date().toISOString() })
   }
 }
 

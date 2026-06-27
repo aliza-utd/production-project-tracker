@@ -36,6 +36,18 @@ export const DEFAULT_PHASE_CONFIG = [
     id: 'activation', name: 'Activation', color: '#3b82f6', bg: '#eff6ff',
     subPhases: [],
   },
+  {
+    id: 'languages', name: 'Languages', color: '#8b5cf6', bg: '#f5f3ff',
+    dynamic: true,
+    subPhaseMode: 'sequential',
+    subPhaseTemplate: [
+      { id: 'development',      name: 'Development' },
+      { id: 'qa_initial',       name: 'QA Initial' },
+      { id: 'qa_golive',        name: 'QA Go-Live' },
+      { id: 'qa_live_checking', name: 'QA Live Checking' },
+    ],
+    subPhases: [],   // populated per-project from additionalLanguages via generateDynamicPhaseConfig
+  },
 ]
 
 export const usePhasesStore = defineStore('phases', () => {

@@ -52,7 +52,6 @@ export function usePhaseLogic() {
     return phaseData?.[phaseId]?.subPhases?.[subId]?.status || 'not-started'
   }
 
-  // Apply status to a phase entry, auto-setting dates
   function applyStatus(entry, status) {
     const now = new Date().toISOString()
     entry.status = status
@@ -69,7 +68,6 @@ export function usePhaseLogic() {
     }
   }
 
-  // Returns own timeLogs hours + all sub-phase timeLogs hours
   function calculatePhaseHours(phaseId, phaseConfig, phaseData) {
     const direct = (phaseData?.[phaseId]?.timeLogs || [])
       .reduce((s, l) => s + (parseFloat(l.hours) || 0), 0)
@@ -82,8 +80,6 @@ export function usePhaseLogic() {
     return direct + subTotal
   }
 
-  // Silently marks all phases before targetPhaseId as done;
-  // sets targetPhaseId to 'active' if it was 'not-started'
   function autoCompletePreviousPhases(targetPhaseId, phaseData, phaseConfig) {
     const order = phaseConfig.map(p => p.id)
     const tidx  = order.indexOf(targetPhaseId)
@@ -106,7 +102,6 @@ export function usePhaseLogic() {
     })
   }
 
-  // Human-readable date range for checklist (e.g. "Jun 1 – Jun 15")
   function ptDateRange(entry) {
     if (!entry || entry.status === 'not-started') return ''
     const start = entry.dateStarted   ? fmtDateShort(entry.dateStarted)   : ''
@@ -116,7 +111,6 @@ export function usePhaseLogic() {
     return ''
   }
 
-  // Compute activePhases / currentPhase from a full phaseData map
   function computeActivePhases(phaseData, phaseConfig) {
     const active = []
     phaseConfig.forEach(ph => {
@@ -132,46 +126,75 @@ export function usePhaseLogic() {
     }
   }
 
+  // Normalise a string to a safe Firestore key: lowercase letters, digits, underscore only.
+  function sanitizeId(str) {
+    return str
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '_')
+      .replace(/__+/g, '_')
+      .replace(/^_|_$/g, '')
+  }
+
+  // Language sub-task template (applied per additional language).
+  const LANG_SUBTASKS = [
+    { suffix: 'development',      label: 'Development' },
+    { suffix: 'qa_initial',       label: 'QA Initial' },
+    { suffix: 'qa_golive',        label: 'QA Go-Live' },
+    { suffix: 'qa_live_checking', label: 'QA Live Checking' },
+  ]
+
   /**
-   * Expand phaseConfig sub-phases for a multi-language project.
-   *
-   * Rules:
-   *  - phase.languageDynamic = true  → ALL its sub-phases are duplicated per language
-   *  - sp.languageDynamic = true     → only that sub-phase is duplicated; others kept
-   *  - Generated sub-phase IDs:  `${sp.id}_${langKey}`  e.g. qa_golive_nl
-   *  - Generated sub-phase names: `${lang} — ${sp.name}` e.g. "NL — Go-Live"
+   * Builds sub-phase definitions for the Languages phase card.
+   * Uses template (from ph.subPhaseTemplate) when provided, else falls back to LANG_SUBTASKS.
    */
-  function generateDynamicPhaseConfig(phaseConfig, languages) {
-    if (!languages || languages.length <= 1) return phaseConfig
-
-    return phaseConfig.map(ph => {
-      const subPhases      = ph.subPhases || []
-      const isParentDynamic = !!ph.languageDynamic
-      const hasDynamicSp   = subPhases.some(sp => sp.languageDynamic)
-
-      if (!isParentDynamic && !hasDynamicSp) return ph
-
-      const generated = []
-
-      for (const sp of subPhases) {
-        const spDynamic = isParentDynamic || sp.languageDynamic
-        if (spDynamic) {
-          for (const lang of languages) {
-            const langKey = lang.toLowerCase().replace(/[^a-z0-9]/g, '_')
-            generated.push({
-              id:   `${sp.id}_${langKey}`,
-              name: `${lang} — ${sp.name}`,
-              _lang:   lang,
-              _baseSp: sp.id,
-            })
-          }
-        } else {
-          generated.push(sp)
-        }
+  function generateLanguageSubDefs(additionalLanguages, template) {
+    const taskDefs = (template && template.length)
+      ? template.map(t => ({ suffix: t.id, label: t.name }))
+      : LANG_SUBTASKS
+    const defs = []
+    for (const lang of (additionalLanguages || [])) {
+      const key = sanitizeId(lang)
+      for (const { suffix, label } of taskDefs) {
+        defs.push({ id: `${key}_${suffix}`, name: `${lang} — ${label}` })
       }
+    }
+    return defs
+  }
 
-      return { ...ph, subPhases: generated }
-    })
+  /**
+   * Builds the initial phaseData entry for the Languages phase.
+   * Accepts an optional template array to determine sub-task IDs.
+   */
+  function generateLanguagePhaseData(additionalLanguages, template) {
+    const taskDefs = (template && template.length)
+      ? template.map(t => ({ suffix: t.id }))
+      : LANG_SUBTASKS
+    const subPhases = {}
+    for (const lang of (additionalLanguages || [])) {
+      const key = sanitizeId(lang)
+      for (const { suffix } of taskDefs) {
+        subPhases[`${key}_${suffix}`] = emptyPhaseEntry()
+      }
+    }
+    const entry = emptyPhaseEntry()
+    entry.subPhases = subPhases
+    return entry
+  }
+
+  /**
+   * Returns the per-project phase config:
+   *  - Languages phase excluded when additionalLanguages is empty.
+   *  - Languages phase gets subPhases injected using subPhaseTemplate from the def.
+   *  - All other phases returned as-is.
+   */
+  function generateDynamicPhaseConfig(phaseConfig, additionalLanguages) {
+    const langs = additionalLanguages || []
+    return phaseConfig
+      .filter(ph => ph.id !== 'languages' || langs.length > 0)
+      .map(ph => {
+        if (ph.id !== 'languages') return ph
+        return { ...ph, subPhases: generateLanguageSubDefs(langs, ph.subPhaseTemplate) }
+      })
   }
 
   return {
@@ -189,6 +212,9 @@ export function usePhaseLogic() {
     autoCompletePreviousPhases,
     ptDateRange,
     computeActivePhases,
+    sanitizeId,
+    generateLanguageSubDefs,
+    generateLanguagePhaseData,
     generateDynamicPhaseConfig,
   }
 }

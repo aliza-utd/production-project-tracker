@@ -29,12 +29,18 @@
           </div>
         </div>
 
-        <!-- Row 2: Language | Platform | Type -->
+        <!-- Row 2: Main Language | Platform | Type -->
         <div class="np-row np-row-3">
           <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">Language *</label>
-            <TagInput v-model="langTags" placeholder="Add language…" />
-            <div v-if="errors.language" class="np-error">{{ errors.language }}</div>
+            <label class="form-label">Main Language *</label>
+            <select class="form-select" v-model="mainLanguage">
+              <option v-for="lang in LANGUAGE_OPTIONS" :key="lang" :value="lang">{{ lang }}</option>
+              <option value="Other">Other…</option>
+            </select>
+            <input v-if="mainLanguage === 'Other'"
+              class="form-input" v-model="mainLanguageOther"
+              placeholder="Language code (e.g. DE)"
+              style="margin-top:5px">
           </div>
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Platform *</label>
@@ -60,6 +66,17 @@
           </div>
         </div>
 
+        <!-- Additional Languages -->
+        <div class="np-row">
+          <div class="form-group" style="margin-bottom:0;flex:1">
+            <label class="form-label">Additional Languages</label>
+            <TagInput v-model="additionalLanguages" placeholder="Add languages…" />
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">
+              These will generate a Languages phase after Activation
+            </div>
+          </div>
+        </div>
+
         <!-- Row 3: Kickstart Date | Live Date -->
         <div class="np-row">
           <div class="form-group" style="margin-bottom:0">
@@ -81,7 +98,7 @@
             Starting Phase
           </label>
           <select v-if="phaseOn" class="form-select" v-model="phaseId" style="margin-top:8px">
-            <option v-for="ph in phasesStore.phaseConfig" :key="ph.id" :value="ph.id">
+            <option v-for="ph in phasesStore.phaseConfig.filter(p => p.id !== 'languages')" :key="ph.id" :value="ph.id">
               {{ ph.name }}
             </option>
           </select>
@@ -165,8 +182,10 @@ const projectsStore = useProjectsStore()
 const phasesStore   = usePhasesStore()
 const authStore     = useAuthStore()
 const teamStore     = useTeamStore()
-const { emptyPhaseEntry, autoCompletePreviousPhases } = usePhaseLogic()
+const { emptyPhaseEntry, autoCompletePreviousPhases, generateLanguagePhaseData } = usePhaseLogic()
 const { logActivity } = useActivityLog()
+
+const LANGUAGE_OPTIONS = ['NL', 'EN', 'FR', 'DE', 'ES', 'IT', 'PT', 'PL', 'CS', 'HU', 'RO', 'TR', 'AR', 'ZH', 'JA', 'KO', 'RU']
 
 const form = reactive({
   name: '', url: '', originalSite: '',
@@ -175,17 +194,26 @@ const form = reactive({
   sitemapUrl: '', builderLink: '', briefingUrl: '',
   googleKeepUrl: '', logoSetUrl: '', notes: '',
 })
-const langTags         = ref(['NL'])
-const phaseOn          = ref(false)
-const phaseId          = ref('kickstart')
-const assignedMemberIds = ref([])
-const detailsOpen      = ref(true)
-const errors           = reactive({})
-const saving           = ref(false)
+const mainLanguage        = ref('NL')
+const mainLanguageOther   = ref('')
+const additionalLanguages = ref([])
+const phaseOn             = ref(false)
+const phaseId             = ref('kickstart')
+const assignedMemberIds   = ref([])
+const detailsOpen         = ref(true)
+const errors              = reactive({})
+const saving              = ref(false)
+
+function effectiveMainLanguage() {
+  return mainLanguage.value === 'Other'
+    ? (mainLanguageOther.value.trim() || 'Other')
+    : mainLanguage.value
+}
 
 function buildDefaultPhaseData() {
   const pd = {}
   for (const ph of phasesStore.phaseConfig) {
+    if (ph.id === 'languages') continue
     pd[ph.id] = emptyPhaseEntry()
     if (ph.subPhases?.length) {
       pd[ph.id].subPhases = {}
@@ -194,16 +222,18 @@ function buildDefaultPhaseData() {
       }
     }
   }
+  if (additionalLanguages.value.length > 0) {
+    pd.languages = generateLanguagePhaseData(additionalLanguages.value)
+  }
   return pd
 }
 
 function validate() {
   Object.keys(errors).forEach(k => delete errors[k])
-  if (!form.name.trim())       errors.name         = 'Project name is required.'
-  if (!langTags.value.length)  errors.language     = 'At least one language is required.'
-  if (!form.platform)          errors.platform     = 'Platform is required.'
-  if (!form.projectType)       errors.projectType  = 'Type is required.'
-  if (!form.kickstartDate)     errors.kickstartDate = 'Kickstart date is required.'
+  if (!form.name.trim())   errors.name         = 'Project name is required.'
+  if (!form.platform)      errors.platform     = 'Platform is required.'
+  if (!form.projectType)   errors.projectType  = 'Type is required.'
+  if (!form.kickstartDate) errors.kickstartDate = 'Kickstart date is required.'
   return !Object.keys(errors).length
 }
 
@@ -214,7 +244,8 @@ async function create() {
     const now         = new Date().toISOString()
     const targetPhase = phaseOn.value ? phaseId.value : 'kickstart'
     const phaseData   = buildDefaultPhaseData()
-    autoCompletePreviousPhases(targetPhase, phaseData, phasesStore.phaseConfig)
+    // Exclude Languages phase from auto-complete (it activates separately after Activation)
+    autoCompletePreviousPhases(targetPhase, phaseData, phasesStore.phaseConfig.filter(p => p.id !== 'languages'))
 
     const assignedMembers = assignedMemberIds.value
       .map(id => teamStore.teamMembers.find(m => m.id === id))
@@ -226,38 +257,39 @@ async function create() {
       }))
 
     const docData = {
-      name:            form.name.trim(),
-      url:             form.url.trim(),
-      originalSite:    form.originalSite.trim(),
-      language:        langTags.value.join(', '),
-      platform:        form.platform,
-      projectType:     form.projectType,
-      kickstartDate:   form.kickstartDate,
-      liveDate:        form.liveDate,
-      siteStatus:      'development',
-      currentPhase:    targetPhase,
-      currentSubPhase: null,
-      activePhases:    [{ phase: targetPhase, subPhase: null }],
+      name:                form.name.trim(),
+      url:                 form.url.trim(),
+      originalSite:        form.originalSite.trim(),
+      mainLanguage:        effectiveMainLanguage(),
+      additionalLanguages: additionalLanguages.value,
+      platform:            form.platform,
+      projectType:         form.projectType,
+      kickstartDate:       form.kickstartDate,
+      liveDate:            form.liveDate,
+      siteStatus:          'development',
+      currentPhase:        targetPhase,
+      currentSubPhase:     null,
+      activePhases:        [{ phase: targetPhase, subPhase: null }],
       phaseData,
       assignedMembers,
-      developer:       assignedMembers[0]?.name || '',
-      sitemapUrl:      form.sitemapUrl.trim(),
-      builderLink:     form.builderLink.trim(),
-      briefingUrl:     form.briefingUrl.trim(),
-      googleKeepUrl:   form.googleKeepUrl.trim(),
-      logoSetUrl:      form.logoSetUrl.trim(),
-      notes:           form.notes.trim(),
-      googleSheets:    [],
-      langStatus:      {},
-      phaseHistory:    [],
-      onHoldSince:     null,
-      onHoldReason:    '',
-      cancelledAt:     null,
-      cancelledReason: '',
-      archived:        false,
-      createdBy:       authStore.currentUser?.name || '',
-      createdAt:       now,
-      updatedAt:       now,
+      developer:           assignedMembers[0]?.name || '',
+      sitemapUrl:          form.sitemapUrl.trim(),
+      builderLink:         form.builderLink.trim(),
+      briefingUrl:         form.briefingUrl.trim(),
+      googleKeepUrl:       form.googleKeepUrl.trim(),
+      logoSetUrl:          form.logoSetUrl.trim(),
+      notes:               form.notes.trim(),
+      googleSheets:        [],
+      langStatus:          {},
+      phaseHistory:        [],
+      onHoldSince:         null,
+      onHoldReason:        '',
+      cancelledAt:         null,
+      cancelledReason:     '',
+      archived:            false,
+      createdBy:           authStore.currentUser?.name || '',
+      createdAt:           now,
+      updatedAt:           now,
     }
 
     const created = await projectsStore.createProject(docData)

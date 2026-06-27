@@ -71,7 +71,7 @@
           <span v-if="localProject.projectType" class="pd-type-badge">
             {{ projectTypeLabel(localProject.projectType) }}
           </span>
-          <span v-for="lang in langPills(localProject.language)" :key="lang" class="pd-lang-pill">
+          <span v-for="lang in langPills(localProject)" :key="lang" class="pd-lang-pill">
             {{ lang }}
           </span>
           <SiteStatusBadge :status="localProject.siteStatus || 'development'" />
@@ -147,6 +147,19 @@
                 </div>
               </div>
 
+              <!-- Live-with-pending-languages banner -->
+              <div v-if="isLiveWithPendingLanguages" class="pd-live-lang-banner">
+                🌐 Site is Live. Completing remaining language versions:
+                <span
+                  v-for="pill in pendingLanguagePills" :key="pill.lang"
+                  class="pd-lang-lock-pill"
+                  :class="'pill-lang-' + pill.status"
+                >
+                  {{ pill.lang }}{{ pill.status === 'done' ? ' ✓' : pill.status === 'active' ? ' ●' : '' }}
+                </span>
+                — Other phases are locked.
+              </div>
+
               <!-- Cards View -->
               <div v-if="phaseView === 'cards'" style="margin-top:16px;display:flex;flex-direction:column;gap:16px">
                 <PhaseCard
@@ -158,6 +171,8 @@
                   :projectId="localProject.id"
                   :teamMembers="teamStore.teamMembers"
                   :readonly="readonly"
+                  :locked="isLiveWithPendingLanguages && ph.id !== 'languages'"
+                  :expandedPhaseConfig="dynamicPhaseConfig"
                   @update-phase="onUpdatePhase"
                   @activation-complete="onActivationComplete"
                   @next-phase-started="onNextPhaseStarted"
@@ -227,11 +242,8 @@
                   </div>
                   <div class="il-row il-row-3" style="margin-bottom:12px">
                     <div class="il-field">
-                      <div class="il-label">Language</div>
-                      <div v-if="langPills(localProject.language).length" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px">
-                        <span v-for="l in langPills(localProject.language)" :key="l" class="pd-lang-pill">{{ l }}</span>
-                      </div>
-                      <div v-else class="il-empty">—</div>
+                      <div class="il-label">Main Language</div>
+                      <div class="il-value">{{ localProject.mainLanguage || langPills(localProject)[0] || '—' }}</div>
                     </div>
                     <div class="il-field">
                       <div class="il-label">Platform</div>
@@ -240,6 +252,14 @@
                     <div class="il-field">
                       <div class="il-label">Type</div>
                       <div class="il-value">{{ projectTypeLabel(localProject.projectType) || '—' }}</div>
+                    </div>
+                  </div>
+                  <div v-if="(localProject.additionalLanguages || []).length" class="il-row" style="margin-bottom:12px">
+                    <div class="il-field">
+                      <div class="il-label">Additional Languages</div>
+                      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px">
+                        <span v-for="l in localProject.additionalLanguages" :key="l" class="pd-lang-pill">{{ l }}</span>
+                      </div>
                     </div>
                   </div>
                   <div class="il-row" style="margin-bottom:12px">
@@ -336,8 +356,15 @@
                   </div>
                   <div class="il-row il-row-3" style="margin-bottom:12px">
                     <div class="form-group" style="margin-bottom:0">
-                      <label class="form-label">Language</label>
-                      <input class="form-input" v-model="localProject.language" placeholder="e.g. NL, EN">
+                      <label class="form-label">Main Language *</label>
+                      <select class="form-select" v-model="editMainLanguage">
+                        <option v-for="lang in LANGUAGE_OPTIONS" :key="lang" :value="lang">{{ lang }}</option>
+                        <option value="Other">Other…</option>
+                      </select>
+                      <input v-if="editMainLanguage === 'Other'"
+                        class="form-input" v-model="editMainLanguageOther"
+                        placeholder="Language code (e.g. DE)"
+                        style="margin-top:5px">
                     </div>
                     <div class="form-group" style="margin-bottom:0">
                       <label class="form-label">Platform</label>
@@ -356,6 +383,16 @@
                         <option value="website">Website</option>
                         <option value="blog">Blog</option>
                       </select>
+                    </div>
+                  </div>
+                  <!-- Additional Languages -->
+                  <div class="il-row" style="margin-bottom:12px">
+                    <div class="form-group" style="margin-bottom:0;flex:1">
+                      <label class="form-label">Additional Languages</label>
+                      <TagInput v-model="localProject.additionalLanguages" placeholder="Add languages…" />
+                      <div style="font-size:11px;color:var(--muted);margin-top:4px">
+                        These will generate a Languages phase after Activation
+                      </div>
                     </div>
                   </div>
                   <div class="il-row" style="margin-bottom:12px">
@@ -422,11 +459,11 @@
               </div><!-- end Project Info section -->
 
               <!-- Language Status Section -->
-              <div v-if="langPills(localProject.language).length > 1" class="il-section">
+              <div v-if="(localProject.additionalLanguages || []).length > 0" class="il-section">
                 <div class="il-section-hdr" style="margin-bottom:4px">
                   <span class="il-section-title">Language Status</span>
                 </div>
-                <div v-for="lang in langPills(localProject.language)" :key="lang" class="il-lang-row">
+                <div v-for="lang in (localProject.additionalLanguages || [])" :key="lang" class="il-lang-row">
                   <span class="il-lang-name">{{ lang }}</span>
                   <select v-if="authStore.isManager"
                     class="form-select" style="font-size:13px;width:auto;min-width:150px"
@@ -698,6 +735,8 @@
                     {{ phProgressIcon(getPhaseStatus(localProject.phaseData || {}, ph.id)) }}
                   </span>
                   <span class="pd-pp-name">{{ ph.name }}</span>
+                  <span v-if="isLiveWithPendingLanguages && ph.id !== 'languages'"
+                    style="font-size:10px;opacity:.55;flex-shrink:0" title="Locked while Languages phase completes">🔒</span>
                   <!-- Done + has sub-phases → show count with expand toggle -->
                   <template v-if="getPhaseStatus(localProject.phaseData || {}, ph.id) === 'done' && (ph.subPhases || []).length">
                     <span class="pd-pp-badge" data-st="done" style="cursor:pointer;gap:3px">
@@ -753,22 +792,14 @@
       @cancel="showArchiveConfirm = false"
     />
 
-    <!-- Mark Live Confirm (single language) -->
+    <!-- Mark Live Confirm -->
     <ConfirmModal
       v-if="showLiveConfirm"
       title="🎉 Activation Complete"
-      message="Mark this site as Live?"
+      :message="liveConfirmMessage"
       confirmText="Mark Live"
       @confirm="confirmMarkLive"
       @cancel="showLiveConfirm = false"
-    />
-
-    <!-- Multilanguage Activation Modal -->
-    <MultilanguageLiveModal
-      v-if="showActivationModal"
-      :languages="activationLangs"
-      @confirm="confirmActivation"
-      @cancel="showActivationModal = false"
     />
 
     <!-- On-Hold Dialog -->
@@ -831,10 +862,12 @@ import PhaseCard from '@/components/phases/PhaseCard.vue'
 import PhaseListView from '@/components/phases/PhaseListView.vue'
 import PhaseKanbanView from '@/components/phases/PhaseKanbanView.vue'
 import TeamMemberPicker from '@/components/shared/TeamMemberPicker.vue'
-import MultilanguageLiveModal from '@/components/projects/MultilanguageLiveModal.vue'
 import SiteStatusBadge from '@/components/shared/SiteStatusBadge.vue'
 import TimeCalcWidget from '@/components/shared/TimeCalcWidget.vue'
+import TagInput from '@/components/shared/TagInput.vue'
 import { downloadCSV, copyTSV } from '@/utils/exportUtils'
+
+const LANGUAGE_OPTIONS = ['NL', 'EN', 'FR', 'DE', 'ES', 'IT', 'PT', 'PL', 'CS', 'HU', 'RO', 'TR', 'AR', 'ZH', 'JA', 'KO', 'RU']
 
 const route        = useRoute()
 const router       = useRouter()
@@ -843,7 +876,11 @@ const phasesStore  = usePhasesStore()
 const teamStore    = useTeamStore()
 const authStore       = useAuthStore()
 const { logActivity } = useActivityLog()
-const { emptyPhaseEntry, autoCompletePreviousPhases, generateDynamicPhaseConfig, getPhaseStatus, getSubPhaseStatus } = usePhaseLogic()
+const {
+  emptyPhaseEntry, autoCompletePreviousPhases, generateDynamicPhaseConfig,
+  generateLanguagePhaseData, sanitizeId,
+  getPhaseStatus, getSubPhaseStatus,
+} = usePhaseLogic()
 
 // ── Core project state ────────────────────────────────────────────────────────
 const localProject   = ref(null)
@@ -926,10 +963,13 @@ function copyCurrentTSV() {
 // ── Dialogs ───────────────────────────────────────────────────────────────────
 const showArchiveConfirm  = ref(false)
 const showLiveConfirm     = ref(false)
-const showActivationModal = ref(false)
-const activationLangs     = ref([])
+const liveConfirmMessage  = ref('Mark this site as Live?')
 const holdDlg   = reactive({ show: false, reason: '' })
 const cancelDlg = reactive({ show: false, reason: '' })
+
+// Per-project edit-mode language state (mirrors localProject fields while editing)
+const editMainLanguage      = ref('NL')
+const editMainLanguageOther = ref('')
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function uid() { return Math.random().toString(36).substr(2, 9) + Date.now().toString(36) }
@@ -946,10 +986,15 @@ function isUrgent(d) {
   return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000
 }
 
-function langPills(lang) {
-  if (!lang) return []
-  if (Array.isArray(lang)) return lang.filter(Boolean)
-  return lang.split(',').map(s => s.trim()).filter(Boolean)
+function langPills(projectOrString) {
+  if (!projectOrString) return []
+  // New format: project object with mainLanguage field
+  if (typeof projectOrString === 'object' && !Array.isArray(projectOrString) && projectOrString.mainLanguage) {
+    return [projectOrString.mainLanguage, ...(projectOrString.additionalLanguages || [])].filter(Boolean)
+  }
+  // Old format: string or array (legacy data)
+  if (Array.isArray(projectOrString)) return projectOrString.filter(Boolean)
+  return projectOrString.split(',').map(s => s.trim()).filter(Boolean)
 }
 
 function projectTypeLabel(type) {
@@ -1288,10 +1333,42 @@ async function deleteComment(commentId) {
 }
 
 // ── Computed ──────────────────────────────────────────────────────────────────
-const readonly = computed(() =>
-  localProject.value?.siteStatus === 'live' ||
-  localProject.value?.siteStatus === 'on-hold'
-)
+
+// True when the site is live but the Languages phase still has pending sub-tasks.
+// In this state the Languages PhaseCard stays fully editable; others get locked.
+const isLiveWithPendingLanguages = computed(() => {
+  const p = localProject.value
+  if (!p) return false
+  if (p.siteStatus !== 'live') return false
+  if (!(p.additionalLanguages || []).length) return false
+  return p.phaseData?.languages?.status !== 'done'
+})
+
+const readonly = computed(() => {
+  const s = localProject.value?.siteStatus
+  if (s === 'on-hold') return true
+  if (s === 'live') return !isLiveWithPendingLanguages.value
+  return false
+})
+
+// Per-language status pills for the banner
+const pendingLanguagePills = computed(() => {
+  const p = localProject.value
+  if (!p) return []
+  const langs       = p.additionalLanguages || []
+  const langSubPhs  = p.phaseData?.languages?.subPhases || {}
+  const langPhaseDef = dynamicPhaseConfig.value.find(ph => ph.id === 'languages')
+  return langs.map(lang => {
+    const key     = sanitizeId(lang)
+    const subIds  = (langPhaseDef?.subPhases || [])
+      .filter(sp => sp.id.startsWith(key + '_'))
+      .map(sp => sp.id)
+    const allDone = subIds.length > 0 && subIds.every(id => langSubPhs[id]?.status === 'done')
+    const anyActive = subIds.some(id => langSubPhs[id]?.status === 'active')
+    const status  = allDone ? 'done' : anyActive ? 'active' : 'not-started'
+    return { lang, status }
+  })
+})
 
 const primaryPhaseName = computed(() => {
   if (!localProject.value) return ''
@@ -1314,8 +1391,8 @@ const hasQuickLinks = computed(() => !!(
 
 const langStatusGroups = computed(() => {
   if (!localProject.value) return []
-  const langs = langPills(localProject.value.language)
-  if (langs.length <= 1) return []
+  const langs = localProject.value.additionalLanguages || []
+  if (!langs.length) return []
   const ls = localProject.value.langStatus || {}
   const groups = {}
   for (const lang of langs) {
@@ -1329,8 +1406,9 @@ const langStatusGroups = computed(() => {
 })
 
 const dynamicPhaseConfig = computed(() => {
-  if (!localProject.value) return phasesStore.phaseConfig
-  return generateDynamicPhaseConfig(phasesStore.phaseConfig, langPills(localProject.value.language))
+  if (!localProject.value) return phasesStore.phaseConfig.filter(ph => ph.id !== 'languages')
+  const addLangs = localProject.value.additionalLanguages || []
+  return generateDynamicPhaseConfig(phasesStore.phaseConfig, addLangs)
 })
 
 const phaseOptions = computed(() => {
@@ -1394,6 +1472,18 @@ function initLocalProject(p) {
   newCommentText.value = ''
 }
 
+function migrateLanguageFields(data) {
+  if (data.mainLanguage !== undefined) return data
+  // Migrate old `language` string/array → mainLanguage + additionalLanguages
+  const langs = (() => {
+    const l = data.language
+    if (!l) return []
+    if (Array.isArray(l)) return l.filter(Boolean)
+    return l.split(',').map(s => s.trim()).filter(Boolean)
+  })()
+  return { ...data, mainLanguage: langs[0] || 'NL', additionalLanguages: langs.slice(1) }
+}
+
 function startProjectListener(id) {
   if (unsubProject) unsubProject()
   pageLoading.value = true
@@ -1402,7 +1492,16 @@ function startProjectListener(id) {
       pageLoading.value = false
       return
     }
-    const data = { id: snap.id, ...snap.data() }
+    let data = { id: snap.id, ...snap.data() }
+    // Migrate old language format on first encounter
+    if (data.mainLanguage === undefined) {
+      data = migrateLanguageFields(data)
+      projectsStore.updateProject(data.id, {
+        mainLanguage:        data.mainLanguage,
+        additionalLanguages: data.additionalLanguages,
+        updatedAt:           new Date().toISOString(),
+      }).catch(e => console.warn('[Migration] Language field migration failed:', e))
+    }
     latestSnapshot.value = data
     if (!localProject.value) {
       initLocalProject(data)
@@ -1447,6 +1546,7 @@ function onUpdatePhase({ phaseId, data }) {
   localProject.value.phaseData[phaseId] = data
 }
 
+
 function scrollToPhase(phaseId) {
   projTab.value   = 'phases'
   phaseView.value = 'cards'
@@ -1459,6 +1559,18 @@ function scrollToPhase(phaseId) {
 // ── Info tab ──────────────────────────────────────────────────────────────────
 function enterEditMode() {
   infoMemberIds.value = (localProject.value?.assignedMembers || []).map(m => m.id)
+  // Populate edit-mode language selectors from project
+  const ml = localProject.value?.mainLanguage || langPills(localProject.value)[0] || 'NL'
+  if (LANGUAGE_OPTIONS.includes(ml)) {
+    editMainLanguage.value      = ml
+    editMainLanguageOther.value = ''
+  } else {
+    editMainLanguage.value      = 'Other'
+    editMainLanguageOther.value = ml
+  }
+  if (!localProject.value.additionalLanguages) {
+    localProject.value.additionalLanguages = []
+  }
   infoEditMode.value = true
 }
 
@@ -1472,40 +1584,65 @@ function cancelEdit() {
 async function infoSave() {
   if (!localProject.value?.name.trim() || !localProject.value?.id) return
 
-  // Detect removed languages — warn if they have existing sub-phase data
-  const oldLangs = langPills(latestSnapshot.value?.language || '')
-  const newLangs = langPills(localProject.value.language || '')
-  const removedLangs = oldLangs.filter(l => !newLangs.includes(l))
+  // Resolve effective main language (handle "Other" text input)
+  const newMain = editMainLanguage.value === 'Other'
+    ? (editMainLanguageOther.value.trim() || 'Other')
+    : editMainLanguage.value
+  localProject.value.mainLanguage = newMain
+
+  const oldAdditional = latestSnapshot.value?.additionalLanguages || []
+  const newAdditional = localProject.value.additionalLanguages || []
+
+  // Warn on removed languages that have progress in Languages phase
+  const removedLangs = oldAdditional.filter(l => !newAdditional.includes(l))
   if (removedLangs.length) {
-    const affectedPhases = phasesStore.phaseConfig.filter(ph =>
-      ph.languageDynamic || (ph.subPhases || []).some(sp => sp.languageDynamic)
-    )
-    const hasData = affectedPhases.some(ph =>
-      removedLangs.some(lang => {
-        const langKey = lang.toLowerCase().replace(/[^a-z0-9]/g, '_')
-        return (ph.subPhases || []).some(sp => {
-          const subId = `${sp.id}_${langKey}`
-          const entry = localProject.value.phaseData?.[ph.id]?.subPhases?.[subId]
-          return entry && entry.status !== 'not-started'
-        })
+    const LANG_SUFFIXES = ['development', 'qa_initial', 'qa_golive', 'qa_live_checking']
+    const hasProgress = removedLangs.some(lang => {
+      const key = sanitizeId(lang)
+      return LANG_SUFFIXES.some(suf => {
+        const entry = localProject.value.phaseData?.languages?.subPhases?.[`${key}_${suf}`]
+        return entry && entry.status !== 'not-started'
       })
-    )
-    const msg = hasData
-      ? `Removing ${removedLangs.join(', ')} will delete language-specific sub-phase data for those languages. This cannot be undone. Continue?`
+    })
+    const msg = hasProgress
+      ? `${removedLangs.join(', ')} has progress recorded. Remove anyway?`
       : `Remove language(s): ${removedLangs.join(', ')}?`
     if (!window.confirm(msg)) return
 
-    // Strip removed-language sub-phase keys from phaseData
+    // Strip sub-phase data for removed languages
     const phaseData = JSON.parse(JSON.stringify(localProject.value.phaseData || {}))
-    for (const ph of affectedPhases) {
-      if (!phaseData[ph.id]?.subPhases) continue
-      for (const lang of removedLangs) {
-        const langKey = lang.toLowerCase().replace(/[^a-z0-9]/g, '_')
-        for (const sp of (ph.subPhases || [])) {
-          delete phaseData[ph.id].subPhases[`${sp.id}_${langKey}`]
+    for (const lang of removedLangs) {
+      const key = sanitizeId(lang)
+      for (const suf of LANG_SUFFIXES) {
+        if (phaseData.languages?.subPhases) {
+          delete phaseData.languages.subPhases[`${key}_${suf}`]
         }
       }
     }
+    localProject.value.phaseData = phaseData
+  }
+
+  // Add sub-phases for newly added languages
+  const addedLangs = newAdditional.filter(l => !oldAdditional.includes(l))
+  if (addedLangs.length) {
+    const phaseData = JSON.parse(JSON.stringify(localProject.value.phaseData || {}))
+    if (!phaseData.languages) phaseData.languages = emptyPhaseEntry()
+    if (!phaseData.languages.subPhases) phaseData.languages.subPhases = {}
+    const LANG_SUFFIXES = ['development', 'qa_initial', 'qa_golive', 'qa_live_checking']
+    for (const lang of addedLangs) {
+      const key = sanitizeId(lang)
+      for (const suf of LANG_SUFFIXES) {
+        const k = `${key}_${suf}`
+        if (!phaseData.languages.subPhases[k]) phaseData.languages.subPhases[k] = emptyPhaseEntry()
+      }
+    }
+    localProject.value.phaseData = phaseData
+  }
+
+  // If all additional languages removed, drop the languages phase entry
+  if (newAdditional.length === 0 && oldAdditional.length > 0) {
+    const phaseData = JSON.parse(JSON.stringify(localProject.value.phaseData || {}))
+    delete phaseData.languages
     localProject.value.phaseData = phaseData
   }
 
@@ -1518,31 +1655,32 @@ async function infoSave() {
       .map(m => ({ id: m.id, name: m.name, initials: m.initials || m.avatarInitials || '', avatarColor: m.avatarColor || '#6366f1' }))
 
     const fields = {
-      name:            localProject.value.name || '',
-      url:             localProject.value.url || '',
-      originalSite:    localProject.value.originalSite || '',
-      platform:        localProject.value.platform || '',
-      projectType:     localProject.value.projectType || '',
-      language:        localProject.value.language || '',
-      kickstartDate:   localProject.value.kickstartDate || '',
-      liveDate:        localProject.value.liveDate || '',
-      currentPhase:    localProject.value.currentPhase || 'kickstart',
-      currentSubPhase: localProject.value.currentSubPhase || null,
-      activePhases:    localProject.value.activePhases || [],
-      phaseData:       localProject.value.phaseData || {},
+      name:                localProject.value.name || '',
+      url:                 localProject.value.url || '',
+      originalSite:        localProject.value.originalSite || '',
+      platform:            localProject.value.platform || '',
+      projectType:         localProject.value.projectType || '',
+      mainLanguage:        newMain,
+      additionalLanguages: newAdditional,
+      kickstartDate:       localProject.value.kickstartDate || '',
+      liveDate:            localProject.value.liveDate || '',
+      currentPhase:        localProject.value.currentPhase || 'kickstart',
+      currentSubPhase:     localProject.value.currentSubPhase || null,
+      activePhases:        localProject.value.activePhases || [],
+      phaseData:           localProject.value.phaseData || {},
       assignedMembers,
-      developer:       assignedMembers[0]?.name || localProject.value.developer || '',
-      sitemapUrl:      localProject.value.sitemapUrl || '',
-      builderLink:     localProject.value.builderLink || '',
-      briefingUrl:     localProject.value.briefingUrl || '',
-      googleKeepUrl:   localProject.value.googleKeepUrl || '',
-      logoSetUrl:      localProject.value.logoSetUrl || '',
-      updatedAt:       now,
+      developer:           assignedMembers[0]?.name || localProject.value.developer || '',
+      sitemapUrl:          localProject.value.sitemapUrl || '',
+      builderLink:         localProject.value.builderLink || '',
+      briefingUrl:         localProject.value.briefingUrl || '',
+      googleKeepUrl:       localProject.value.googleKeepUrl || '',
+      logoSetUrl:          localProject.value.logoSetUrl || '',
+      updatedAt:           now,
     }
     await projectsStore.updateProject(localProject.value.id, fields)
     localProject.value.assignedMembers = assignedMembers
     localProject.value.developer = fields.developer
-    const FIELD_LABELS = { name: 'Name', url: 'Site URL', originalSite: 'Original Site', platform: 'Platform', projectType: 'Type', language: 'Language', kickstartDate: 'Kickstart Date', liveDate: 'Live Date', sitemapUrl: 'Sitemap', builderLink: 'Builder Link', briefingUrl: 'Briefing', googleKeepUrl: 'Google Keep', logoSetUrl: 'Google Drive' }
+    const FIELD_LABELS = { name: 'Name', url: 'Site URL', originalSite: 'Original Site', platform: 'Platform', projectType: 'Type', mainLanguage: 'Main Language', kickstartDate: 'Kickstart Date', liveDate: 'Live Date', sitemapUrl: 'Sitemap', builderLink: 'Builder Link', briefingUrl: 'Briefing', googleKeepUrl: 'Google Keep', logoSetUrl: 'Google Drive' }
     const snap = latestSnapshot.value || {}
     const changedFields = Object.keys(FIELD_LABELS).filter(f => (localProject.value[f] || '') !== (snap[f] || ''))
     for (const f of changedFields) {
@@ -1803,35 +1941,20 @@ async function archiveProject() {
   }
 }
 
-// ── Activation ────────────────────────────────────────────────────────────────
+// ── Last-phase complete → live prompt ────────────────────────────────────────
+// Fires when PhaseCard's autosave finds no next phase in expandedPhaseConfig,
+// meaning the phase just marked done was the last one in this project's order.
 function onActivationComplete() {
-  const langs = langPills(localProject.value?.language)
-  if (langs.length <= 1) {
-    showLiveConfirm.value = true
-  } else {
-    activationLangs.value = langs
-    showActivationModal.value = true
-  }
+  const langsDone = localProject.value?.phaseData?.languages?.status === 'done'
+  const hasAdditional = (localProject.value?.additionalLanguages || []).length > 0
+  liveConfirmMessage.value = (hasAdditional && langsDone)
+    ? 'All languages complete. Mark this site as Live?'
+    : 'Mark this site as Live?'
+  showLiveConfirm.value = true
 }
 
 async function confirmMarkLive() {
   showLiveConfirm.value = false
   await changeSiteStatus('live')
-}
-
-async function confirmActivation(checkedLangs) {
-  showActivationModal.value = false
-  await changeSiteStatus('live')
-  if (!localProject.value) return
-  if (!localProject.value.langStatus) localProject.value.langStatus = {}
-  activationLangs.value.forEach(lang => {
-    localProject.value.langStatus[lang] = checkedLangs[lang] ? 'live' : 'in-production'
-  })
-  if (localProject.value.id) {
-    projectsStore.updateProject(localProject.value.id, {
-      langStatus: { ...localProject.value.langStatus },
-      updatedAt: new Date().toISOString(),
-    }).catch(() => {})
-  }
 }
 </script>
