@@ -14,7 +14,9 @@
       <h1 class="auth-title">Project Tracker</h1>
       <p class="auth-sub">Web Dev Team</p>
       <p v-if="loginError" class="auth-error">{{ loginError }}</p>
-      <button class="btn-google" @click="handleSignIn" :disabled="signingIn">
+
+      <!-- Google sign-in -->
+      <button class="btn-google" @click="handleSignIn" :disabled="signingIn || signingInEmail">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">
           <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
           <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
@@ -23,6 +25,37 @@
         </svg>
         <span>{{ signingIn ? 'Signing in…' : 'Sign in with Google' }}</span>
       </button>
+
+      <!-- Divider -->
+      <div class="auth-divider"><span>or</span></div>
+
+      <!-- Email / password toggle -->
+      <button v-if="!showEmailForm" class="btn btn-secondary btn--full"
+        @click="showEmailForm = true" :disabled="signingIn">
+        Sign in with Email
+      </button>
+
+      <div v-else>
+        <div style="margin-bottom:10px">
+          <label class="form-label">Email</label>
+          <input class="form-input" type="email" v-model="emailInput"
+            placeholder="your@email.com" @keyup.enter="handleEmailSignIn">
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="form-label">Password</label>
+          <input class="form-input" type="password" v-model="passwordInput"
+            placeholder="Your password" @keyup.enter="handleEmailSignIn">
+        </div>
+        <button class="btn btn-primary btn--full" @click="handleEmailSignIn"
+          :disabled="signingInEmail || !emailInput.trim() || !passwordInput">
+          {{ signingInEmail ? 'Signing in…' : 'Sign in' }}
+        </button>
+        <button class="btn btn-ghost btn-sm btn--full" style="margin-top:6px"
+          @click="showEmailForm = false">
+          Cancel
+        </button>
+      </div>
+
       <p class="auth-note">
         Access is restricted to team members.<br>
         Contact your manager if you cannot log in.
@@ -93,31 +126,51 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { signInWithEmailPassword } from '@/firebase-service'
 
 const authStore = useAuthStore()
 
-const authState    = computed(() => authStore.authState)
-const deniedEmail  = computed(() => authStore.deniedEmail)
+const authState     = computed(() => authStore.authState)
+const deniedEmail   = computed(() => authStore.deniedEmail)
 const setupDefaults = computed(() => authStore.setupDefaults)
 
-const signingIn   = ref(false)
-const loginError  = ref('')
-const setupName   = ref('')
-const setupLoading = ref(false)
-const setupError  = ref('')
+const signingIn      = ref(false)
+const signingInEmail = ref(false)
+const loginError     = ref('')
+const showEmailForm  = ref(false)
+const emailInput     = ref('')
+const passwordInput  = ref('')
+const setupName      = ref('')
+const setupLoading   = ref(false)
+const setupError     = ref('')
 
 async function handleSignIn() {
   signingIn.value  = true
   loginError.value = ''
   try {
     await authStore.signIn()
-    // onAuthChange fires → authState updates reactively
   } catch (err) {
     if (err.code !== 'auth/popup-closed-by-user') {
       loginError.value = err.message || 'Sign-in failed. Please try again.'
     }
   } finally {
     signingIn.value = false
+  }
+}
+
+async function handleEmailSignIn() {
+  if (!emailInput.value.trim() || !passwordInput.value) return
+  signingInEmail.value = true
+  loginError.value     = ''
+  try {
+    await signInWithEmailPassword(emailInput.value.trim(), passwordInput.value)
+    // onAuthChange fires → authState updates reactively
+  } catch (err) {
+    loginError.value = err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password'
+      ? 'Incorrect email or password.'
+      : (err.message || 'Sign-in failed. Please try again.')
+  } finally {
+    signingInEmail.value = false
   }
 }
 
@@ -183,6 +236,16 @@ function reload() {
 .auth-note  { font-size: 12px; color: var(--muted); margin-top: 20px; line-height: 1.5; }
 .auth-error { font-size: 13px; color: var(--danger); margin-bottom: 12px; }
 .auth-muted { font-size: 14px; color: var(--muted); }
+
+/* ── Divider ─────────────────────────────────────────────────────── */
+.auth-divider {
+  display: flex; align-items: center; gap: 10px;
+  margin: 16px 0; color: var(--muted); font-size: 12px;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
 
 /* ── Google button ───────────────────────────────────────────────── */
 .btn-google {

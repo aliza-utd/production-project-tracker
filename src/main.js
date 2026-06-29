@@ -14,12 +14,12 @@ const app   = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
+app.use(router)
 
-// Wait for Firebase auth to settle before mounting so the router guard
-// always sees a definitive authState on the initial navigation.
-useAuthStore()
-  .initAuth()
+// Wait for both the router's initial navigation AND Firebase auth to settle
+// before mounting. This ensures router.currentRoute.value.path reflects the
+// actual URL when App.vue's auth watcher fires (immediate: true).
+Promise.all([router.isReady(), useAuthStore().initAuth()])
   .then(() => {
-    app.use(router)
     app.mount('#app')
   })

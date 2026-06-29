@@ -53,6 +53,7 @@ import { usePhaseLogic } from '@/composables/usePhaseLogic'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
 import { useActivityLog } from '@/composables/useActivityLog'
+import { useProjectNotifications } from '@/composables/useProjectNotifications'
 
 const COLUMNS = [
   { id: 'not-started', label: 'Not Started' },
@@ -75,6 +76,7 @@ const { fmtHours, deepCopy, applyStatus, emptyPhaseEntry, computeActivePhases } 
 const projectsStore   = useProjectsStore()
 const authStore       = useAuthStore()
 const { logActivity } = useActivityLog()
+const { notifyPhaseStatus, notifyPhaseStarted } = useProjectNotifications()
 
 // Local mutable copy of phaseData — kept in sync with prop for real-time updates
 const local   = ref(deepCopy(props.phaseData))
@@ -182,6 +184,15 @@ async function onDrop(newStatus) {
     const spName = subId ? phCfg?.subPhases?.find(s => s.id === subId)?.name : null
     const label  = spName ? `${phCfg?.name || phaseId} / ${spName}` : (phCfg?.name || phaseId)
     logActivity(props.projectId, 'phase_status_changed', { phase: label, from: oldStatus, to: newStatus }).catch(() => {})
+    const proj = projectsStore.projects.find(p => p.id === props.projectId)
+    notifyPhaseStatus({
+      projectId: props.projectId,
+      projectName: proj?.name || '',
+      phaseName: label,
+      fromStatus: oldStatus,
+      toStatus: newStatus,
+      assignedMembers: proj?.assignedMembers || [],
+    })
   }
 
   await saveAll(phaseId, !subId && newStatus === 'done')
@@ -219,7 +230,16 @@ async function saveAll(phaseId, autoStartNext = false) {
       updatedAt:       new Date().toISOString(),
     })
     emit('update-phase', { phaseId, data: deepCopy(local.value[phaseId]) })
-    if (nextPhaseName) emit('next-phase-started', nextPhaseName)
+    if (nextPhaseName) {
+      emit('next-phase-started', nextPhaseName)
+      const proj = projectsStore.projects.find(p => p.id === props.projectId)
+      notifyPhaseStarted({
+        projectId: props.projectId,
+        projectName: proj?.name || '',
+        phaseName: nextPhaseName,
+        assignedMembers: proj?.assignedMembers || [],
+      })
+    }
   } catch (err) {
     console.error('Kanban phase save failed:', err)
   }

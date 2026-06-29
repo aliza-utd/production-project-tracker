@@ -13,15 +13,21 @@ export const useProjectsStore = defineStore('projects', () => {
   const loading   = ref(false)
   let   unsubscribe = null
 
-  function fetchProjects() {
-    console.log('[Projects] fetchProjects called')
+  // userFilter: null → all projects; { uid, memberId } → only projects where
+  // assignedMembers contains an entry matching the user's uid or memberId.
+  function fetchProjects(userFilter = null) {
     loading.value = true
     if (unsubscribe) unsubscribe()
     unsubscribe = subscribeToProjects(
       (snapshot) => {
-        console.log('[Projects] Snapshot received, docs:', snapshot.docs.length)
-        if (snapshot.docs.length) console.log('[Projects] First doc:', snapshot.docs[0].data())
-        projects.value = snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
+        let docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
+        if (userFilter) {
+          const { uid, memberId } = userFilter
+          docs = docs.filter(p =>
+            (p.assignedMembers || []).some(m => m.id === uid || (memberId && m.id === memberId))
+          )
+        }
+        projects.value = docs
         loading.value  = false
       },
       (err) => {

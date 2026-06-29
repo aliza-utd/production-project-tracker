@@ -1,6 +1,9 @@
 <template>
+  <!-- /join/:code is publicly accessible — show it regardless of auth state -->
+  <RouterView v-if="isJoinRoute" />
+
   <!-- Auth screens (loading / login / denied / setup / error) -->
-  <LoginPage v-if="authState !== 'authenticated'" />
+  <LoginPage v-else-if="authState !== 'authenticated'" />
 
   <!-- App shell — only rendered when fully authenticated -->
   <div v-else class="app-layout">
@@ -14,41 +17,46 @@
 
 <script setup>
 import { computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore }         from '@/stores/auth'
-import { useProjectsStore }     from '@/stores/projects'
-import { usePhasesStore }       from '@/stores/phases'
-import { useTeamStore }         from '@/stores/team'
+import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore }          from '@/stores/auth'
+import { useProjectsStore }      from '@/stores/projects'
+import { usePhasesStore }        from '@/stores/phases'
+import { useTeamStore }          from '@/stores/team'
+import { useRolesStore }         from '@/stores/roles'
 import { useNotificationsStore } from '@/stores/notifications'
-import LoginPage from '@/pages/LoginPage.vue'
-import Sidebar from '@/components/layout/Sidebar.vue'
-import NotificationBell from '@/components/layout/NotificationBell.vue'
+import LoginPage         from '@/pages/LoginPage.vue'
+import Sidebar           from '@/components/layout/Sidebar.vue'
+import NotificationBell  from '@/components/layout/NotificationBell.vue'
 
 const router        = useRouter()
+const route         = useRoute()
 const authStore     = useAuthStore()
 const projectsStore = useProjectsStore()
 const phasesStore   = usePhasesStore()
 const teamStore     = useTeamStore()
+const rolesStore    = useRolesStore()
 const notifStore    = useNotificationsStore()
-const authState     = computed(() => authStore.authState)
 
-// immediate: true is required — when a logged-in user refreshes the page,
-// authState is already 'authenticated' when this watcher is registered,
-// so without immediate the callbacks would never fire.
+const authState  = computed(() => authStore.authState)
+const isJoinRoute = computed(() => route.path.startsWith('/join/'))
+
 watch(authState, (state) => {
   if (state === 'authenticated') {
     if (router.currentRoute.value.path === '/login') router.push('/')
-    console.log('[Auth] User loaded, initialising app data')
-    // Start all real-time listeners now that auth is confirmed
-    projectsStore.fetchProjects()
+    const user       = authStore.currentUser
+    const canViewAll = user?.permissions?.canViewAllProjects !== false
+    const userFilter = canViewAll ? null : { uid: user.uid, memberId: user.memberId }
+    projectsStore.fetchProjects(userFilter)
     phasesStore.fetchPhaseConfig()
     teamStore.fetchTeamMembers()
-    notifStore.fetchNotifications(authStore.currentUser?.uid)
+    rolesStore.fetchRoles()
+    notifStore.fetchNotifications(user?.uid)
   } else if (state === 'login') {
-    if (router.currentRoute.value.path !== '/login') router.push('/login')
-    // Tear down all listeners on logout
+    const cp = router.currentRoute.value.path
+    if (cp !== '/login' && !cp.startsWith('/join/')) router.push('/login')
     projectsStore.stopListener()
     phasesStore.stopListener()
+    rolesStore.stopListener()
     notifStore.stopListener()
   }
 }, { immediate: true })

@@ -1,10 +1,11 @@
 import { initializeApp }                                      from 'firebase/app'
 import { getAuth, GoogleAuthProvider, signInWithPopup,
          signOut, onAuthStateChanged,
-         setPersistence, browserLocalPersistence }            from 'firebase/auth'
+         setPersistence, browserLocalPersistence,
+         createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'
 import { getFirestore,
          collection, getDocs, query, where, addDoc, updateDoc, deleteDoc, doc,
-         getDoc, setDoc, onSnapshot, orderBy, serverTimestamp }  from 'firebase/firestore'
+         getDoc, setDoc, onSnapshot, orderBy, serverTimestamp, writeBatch }  from 'firebase/firestore'
 import { firebaseConfig }                                    from './firebase-config.js'
 
 const app      = initializeApp(firebaseConfig)
@@ -77,13 +78,6 @@ export function getCurrentUser() {
   return auth.currentUser
 }
 
-export async function isManager() {
-  const user = auth.currentUser
-  if (!user) return false
-  const token = await user.getIdTokenResult()
-  return token.claims.role === 'Manager'
-}
-
 // ── Team Members (Firestore) ──────────────────────────────────────────────────
 
 export async function getTeamMembersFromFirestore() {
@@ -123,11 +117,15 @@ export async function createTeamMemberWithUID(uid, data) {
 // Called on login when member.id !== fbUser.uid (doc was created with addDoc).
 export async function migrateTeamMemberToUID(existingDocId, uid, existingData) {
   console.log('[Auth] Migrating team_members doc:', existingDocId, '→', uid)
-  await setDoc(doc(db, 'team_members', uid), {
-    ...existingData,
-    uid,
-    migratedAt: new Date().toISOString(),
-  })
+  const targetRef  = doc(db, 'team_members', uid)
+  const targetSnap = await getDoc(targetRef)
+  if (targetSnap.exists()) {
+    // activateInvitedMember already wrote the canonical doc — just clean up the old one
+    await deleteDoc(doc(db, 'team_members', existingDocId))
+    console.log('[Auth] Target already exists; removed old invite doc')
+    return { id: uid, ...targetSnap.data() }
+  }
+  await setDoc(targetRef, { ...existingData, uid, migratedAt: new Date().toISOString() })
   await deleteDoc(doc(db, 'team_members', existingDocId))
   console.log('[Auth] Migration complete')
   return { id: uid, ...existingData, uid }
@@ -268,6 +266,11 @@ export async function getProjectActivityLog(projectId) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 
+export function subscribeToActivityLog(projectId, onNext, onError) {
+  const q = query(collection(db, 'projects', projectId, 'activity_log'), orderBy('timestamp', 'desc'))
+  return onSnapshot(q, onNext, onError || (err => console.error('Activity log snapshot error:', err)))
+}
+
 export async function addProjectActivityEntry(projectId, entry) {
   return addDoc(collection(db, 'projects', projectId, 'activity_log'), entry)
 }
@@ -279,19 +282,34 @@ export async function logActivity(projectId, action, detail, user) {
     userName:    user?.name || 'System',
     userUid:     user?.uid  || '',
     performedBy: { uid: user?.uid || '', name: user?.name || '' },
-    timestamp:   new Date().toISOString(),
+    timestamp:   serverTimestamp(),
   })
 }
 
 // ── Notifications (Firestore) ────────────────────────────────────────────────
 
 export function subscribeToNotifications(userId, onNext, onError) {
+  console.log('[Notifications] subscribeToNotifications — registering onSnapshot for userId:', userId)
   const q = query(
     collection(db, 'notifications'),
     where('userId', '==', userId),
-    where('read', '==', false),
   )
-  return onSnapshot(q, onNext, onError || (err => console.error('Notifications snapshot error:', err)))
+  return onSnapshot(q, onNext, onError || (err => console.error('[Notifications] snapshot error:', err.code, err.message)))
+}
+
+async function pruneOldNotifications(userId) {
+  if (!userId) return
+  const q    = query(collection(db, 'notifications'), where('userId', '==', userId))
+  const snap = await getDocs(q)
+  if (snap.size <= 10) return
+  const sorted = snap.docs.slice().sort((a, b) => {
+    const ta = a.data().createdAt?.toDate?.() ?? new Date(a.data().createdAt || 0)
+    const tb = b.data().createdAt?.toDate?.() ?? new Date(b.data().createdAt || 0)
+    return ta - tb
+  })
+  const batch = writeBatch(db)
+  sorted.slice(0, sorted.length - 10).forEach(d => batch.delete(d.ref))
+  await batch.commit()
 }
 
 export async function createNotification(data) {
@@ -305,6 +323,7 @@ export async function createNotification(data) {
   try {
     const ref = await addDoc(collection(db, 'notifications'), payload)
     console.log('=== WRITE SUCCESS === notifications/' + ref.id)
+    pruneOldNotifications(data.userId).catch(err => console.error('Prune notifications error:', err))
     return ref
   } catch (error) {
     console.error('=== WRITE FAILED === notifications')
@@ -329,10 +348,19 @@ export async function markNotificationRead(id) {
   return safeUpdate(doc(db, 'notifications', id), { read: true, readAt: new Date().toISOString() })
 }
 
-export async function markAllNotificationsRead(ids) {
-  for (const id of ids) {
-    await safeUpdate(doc(db, 'notifications', id), { read: true, readAt: new Date().toISOString() })
-  }
+export async function markAllNotificationsRead(userId) {
+  if (!userId) return
+  const q    = query(
+    collection(db, 'notifications'),
+    where('userId', '==', userId),
+    where('read',   '==', false),
+  )
+  const snap = await getDocs(q)
+  if (snap.empty) return
+  const batch = writeBatch(db)
+  const now   = new Date().toISOString()
+  snap.docs.forEach(d => batch.update(d.ref, { read: true, readAt: now }))
+  await batch.commit()
 }
 
 // ── Weekly Tracker (Firestore) ────────────────────────────────────────────────
@@ -429,4 +457,276 @@ export async function migrateProjectsToFirestore(projects) {
       })
     }
   }
+}
+
+// ── Roles (Firestore) ─────────────────────────────────────────────────────────
+
+// Canonical permission field names (all roles carry all fields for consistency):
+// canViewAllProjects, canEditPhases, canManageTeam, canAccessSettings,
+// canEditAllNotes, isReadOnly, isAdmin
+//
+// canEditAllNotes: true  = can edit weekly notes for any member
+//                  false = can only edit their own row (or read-only)
+const DEFAULT_ROLES = [
+  {
+    id: 'admin', name: 'Admin', order: 1,
+    permissions: {
+      canViewAllProjects: true, canEditPhases: true, canManageTeam: true,
+      canAccessSettings: true, canEditAllNotes: true, isReadOnly: false, isAdmin: true,
+    },
+  },
+  {
+    id: 'manager', name: 'Manager', order: 2,
+    permissions: {
+      canViewAllProjects: true, canEditPhases: true, canManageTeam: true,
+      canAccessSettings: true, canEditAllNotes: true, isReadOnly: false, isAdmin: false,
+    },
+  },
+  {
+    id: 'developer', name: 'Developer', order: 3,
+    permissions: {
+      canViewAllProjects: false, canEditPhases: true, canManageTeam: false,
+      canAccessSettings: false, canEditAllNotes: false, isReadOnly: false, isAdmin: false,
+    },
+  },
+  {
+    id: 'multimedia', name: 'Multimedia', order: 4,
+    permissions: {
+      canViewAllProjects: true, canEditPhases: true, canManageTeam: false,
+      canAccessSettings: false, canEditAllNotes: false, isReadOnly: false, isAdmin: false,
+    },
+  },
+  {
+    id: 'qa', name: 'QA', order: 5,
+    permissions: {
+      canViewAllProjects: true, canEditPhases: true, canManageTeam: false,
+      canAccessSettings: false, canEditAllNotes: false, isReadOnly: false, isAdmin: false,
+    },
+  },
+  {
+    id: 'external', name: 'External', order: 6,
+    permissions: {
+      canViewAllProjects: false, canEditPhases: false, canManageTeam: false,
+      canAccessSettings: false, canEditAllNotes: false, isReadOnly: true, isAdmin: false,
+    },
+  },
+]
+
+export async function getRolesFromFirestore() {
+  const snap = await getDocs(collection(db, 'roles'))
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export async function getRoleById(id) {
+  const snap = await getDoc(doc(db, 'roles', id))
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null
+}
+
+// Seeds / migrates the 6 canonical role docs.
+// Each doc is created if missing, or updated if it lacks the current field set.
+// Wrapped per-doc so a single permission error doesn't block the rest.
+// Also assigns Aliza Solomon to the Admin role (idempotent).
+export async function seedDefaultRoles() {
+  for (const role of DEFAULT_ROLES) {
+    const { id, ...data } = role
+    try {
+      const ref  = doc(db, 'roles', id)
+      const snap = await getDoc(ref)
+      if (!snap.exists()) {
+        await setDoc(ref, data)
+        console.log('[Roles] Created default role:', id)
+      } else {
+        const existing = snap.data()
+        const perms    = existing.permissions || {}
+        // Migrate if: old field names, isAdmin missing, canEditOwnRowOnly present, or order missing
+        const needsMigration =
+          !('canViewAllProjects' in perms) ||
+          !('isAdmin' in perms) ||
+          !('canEditAllNotes' in perms) ||
+          ('canEditOwnRowOnly' in perms) ||
+          !('order' in existing) ||
+          existing.order !== role.order
+        if (needsMigration) {
+          await setDoc(ref, data)
+          console.log('[Roles] Migrated role schema:', id)
+        }
+      }
+    } catch (err) {
+      console.warn('[Roles] Could not seed role', id, '—', err.code || err.message)
+    }
+    // Small gap between writes so rule propagation delay doesn't hit the
+    // last role in the batch with a stale permission check.
+    await new Promise(r => setTimeout(r, 100))
+  }
+
+  // Assign Aliza Solomon to Admin role (idempotent — skips if already admin)
+  try {
+    const q    = query(collection(db, 'team_members'), where('email', '==', 'aliza.solomon@uptodatewebdesign.com'))
+    const snap = await getDocs(q)
+    for (const memberDoc of snap.docs) {
+      if (memberDoc.data().roleId !== 'admin') {
+        await updateDoc(memberDoc.ref, { roleId: 'admin', role: 'Admin' })
+        console.log('[Roles] Assigned Admin role to Aliza Solomon')
+      }
+    }
+  } catch (err) {
+    console.warn('[Roles] Could not assign Admin to Aliza:', err.code || err.message)
+  }
+}
+
+export function subscribeToRoles(onNext, onError) {
+  return onSnapshot(
+    collection(db, 'roles'),
+    onNext,
+    onError || (err => console.error('[Roles] Snapshot error:', err))
+  )
+}
+
+export async function createRoleInFirestore(data) {
+  const ref = await addDoc(collection(db, 'roles'), data)
+  return { id: ref.id, ...data }
+}
+
+export async function updateRoleInFirestore(id, data) {
+  return updateDoc(doc(db, 'roles', id), data)
+}
+
+export async function deleteRoleInFirestore(id) {
+  return deleteDoc(doc(db, 'roles', id))
+}
+
+// ── Invite flow ───────────────────────────────────────────────────────────────
+
+function generateInviteCode() {
+  const arr = new Uint8Array(16)
+  crypto.getRandomValues(arr)
+  return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('')
+}
+
+export async function createInvitedMember(data) {
+  const inviteCode   = generateInviteCode()
+  const inviteExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+  const memberData = {
+    ...data,
+    status:         'invited',
+    active:         false,
+    inviteCode,
+    inviteExpiry,
+    createdAt:      new Date().toISOString(),
+    avatarInitials: data.initials || data.avatarInitials || '',
+  }
+  const ref = await addDoc(collection(db, 'team_members'), memberData)
+  await setDoc(doc(db, 'invite_codes', inviteCode), {
+    memberDocId: ref.id,
+    createdAt:   new Date().toISOString(),
+  })
+  return { id: ref.id, ...memberData }
+}
+
+export async function getInviteByCode(code) {
+  const lookup = await getDoc(doc(db, 'invite_codes', code))
+  if (!lookup.exists()) return null
+  const memberDoc = await getDoc(doc(db, 'team_members', lookup.data().memberDocId))
+  if (!memberDoc.exists()) return null
+  return { id: memberDoc.id, ...memberDoc.data() }
+}
+
+export async function activateInvitedMember(inviteDocId, uid, memberData) {
+  const activeFields = {
+    status:      'active',
+    active:      true,
+    uid,
+    inviteCode:  null,
+    inviteExpiry: null,
+    acceptedAt:  serverTimestamp(),
+  }
+
+  const payload = {
+    name:           memberData.name           || '',
+    email:          memberData.email          || '',
+    role:           memberData.role           || '',
+    roleId:         memberData.roleId         || null,
+    department:     memberData.department     || '',
+    avatarColor:    memberData.avatarColor    || '#6366f1',
+    avatarInitials: memberData.avatarInitials || memberData.initials || '',
+    initials:       memberData.initials       || memberData.avatarInitials || '',
+    createdAt:      memberData.createdAt      || new Date().toISOString(),
+    ...activeFields,
+  }
+
+  // Step 1: Write the canonical UID-based document. This must happen first so
+  // that migrateTeamMemberToUID (fired by onAuthStateChanged immediately after
+  // account creation) finds this doc and only cleans up the old invite doc.
+  const uidRef = doc(db, 'team_members', uid)
+  try {
+    await setDoc(uidRef, payload)
+  } catch (err) {
+    console.error('[Invite] setDoc failed for team_members/' + uid, err.code, err.message)
+    throw err
+  }
+
+  if (inviteDocId === uid) return
+
+  // Step 2: Also update the original invite doc with the active fields.
+  // This ensures it never shows as "Invited" in the Members tab even if the
+  // delete below fails (e.g. due to a transient network error).
+  try {
+    await updateDoc(doc(db, 'team_members', inviteDocId), activeFields)
+  } catch (err) {
+    // Doc may already have been deleted by migrateTeamMemberToUID — not an error.
+    if (err.code !== 'not-found') {
+      console.warn('[Invite] Could not update original invite doc:', inviteDocId, err.message)
+    }
+  }
+
+  // Step 3: Delete the original invite doc (background — failure is non-fatal
+  // because Step 2 already marked it as active).
+  deleteDoc(doc(db, 'team_members', inviteDocId))
+    .catch(err => console.warn('[Invite] Could not delete old invite doc:', inviteDocId, err.message))
+}
+
+export async function resendInvite(memberId, memberEmail) {
+  const inviteCode   = generateInviteCode()
+  const inviteExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+
+  console.log('[Invite] Resending invite for:', memberId, memberEmail)
+
+  let targetRef = doc(db, 'team_members', memberId)
+  let snap      = await getDoc(targetRef)
+
+  if (!snap.exists()) {
+    // The doc ID in the local store may be stale (e.g. migrated to UID-based ID).
+    // Fall back to querying by email to find the current document.
+    console.warn('[Invite] Doc not found at', memberId, '— falling back to email query')
+    if (!memberEmail) throw new Error('Member record not found. Try refreshing the page.')
+    const q         = query(collection(db, 'team_members'), where('email', '==', memberEmail))
+    const emailSnap = await getDocs(q)
+    if (emailSnap.empty) throw new Error('Member record not found. Try refreshing the page.')
+    targetRef = emailSnap.docs[0].ref
+    snap      = emailSnap.docs[0]
+    console.log('[Invite] Found member by email at doc:', targetRef.id)
+  }
+
+  const oldCode = snap.data().inviteCode
+  await updateDoc(targetRef, { inviteCode, inviteExpiry, status: 'invited' })
+  if (oldCode) {
+    deleteDoc(doc(db, 'invite_codes', oldCode))
+      .catch(err => console.warn('[Invite] Could not delete old invite_codes doc:', oldCode, err.message))
+  }
+  await setDoc(doc(db, 'invite_codes', inviteCode), {
+    memberDocId: targetRef.id,
+    createdAt:   new Date().toISOString(),
+  })
+  console.log('[Invite] Invite resent for:', targetRef.id)
+  return { inviteCode, inviteExpiry }
+}
+
+// ── Email / Password Auth ─────────────────────────────────────────────────────
+
+export async function createFirebaseEmailUser(email, password) {
+  return createUserWithEmailAndPassword(auth, email, password)
+}
+
+export async function signInWithEmailPassword(email, password) {
+  return signInWithEmailAndPassword(auth, email, password)
 }

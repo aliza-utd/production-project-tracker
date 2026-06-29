@@ -104,10 +104,42 @@
           </select>
         </div>
 
-        <!-- Team Members -->
-        <div class="form-group">
-          <label class="form-label">Team Members</label>
-          <TeamMemberPicker v-model="assignedMemberIds" />
+        <!-- Developer Assignments -->
+        <div class="np-row" style="margin-top:4px">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Lead Developer</label>
+            <select class="form-select" v-model="leadDeveloperId">
+              <option value="">— None —</option>
+              <option v-for="m in developerMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;flex:1">
+            <label class="form-label">Developers Involved</label>
+            <TeamMemberPicker v-model="developersInvolvedIds" :members="developersInvolvedOptions" />
+          </div>
+        </div>
+        <div class="np-row np-row-3" style="margin-top:8px">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Web Services</label>
+            <select class="form-select" v-model="webServicesAssigneeId">
+              <option value="">— None —</option>
+              <option v-for="m in allActiveMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Multimedia</label>
+            <select class="form-select" v-model="multimediaAssigneeId">
+              <option value="">— None —</option>
+              <option v-for="m in allActiveMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Quality Check</label>
+            <select class="form-select" v-model="qaAssigneeId">
+              <option value="">— None —</option>
+              <option v-for="m in allActiveMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+            </select>
+          </div>
         </div>
 
         <!-- Additional Details accordion -->
@@ -165,7 +197,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import TagInput from '@/components/shared/TagInput.vue'
 import TeamMemberPicker from '@/components/shared/TeamMemberPicker.vue'
@@ -173,6 +205,7 @@ import { useProjectsStore } from '@/stores/projects'
 import { usePhasesStore } from '@/stores/phases'
 import { useAuthStore } from '@/stores/auth'
 import { useTeamStore } from '@/stores/team'
+import { useRolesStore } from '@/stores/roles'
 import { usePhaseLogic } from '@/composables/usePhaseLogic'
 import { useActivityLog } from '@/composables/useActivityLog'
 
@@ -182,6 +215,7 @@ const projectsStore = useProjectsStore()
 const phasesStore   = usePhasesStore()
 const authStore     = useAuthStore()
 const teamStore     = useTeamStore()
+const rolesStore    = useRolesStore()
 const { emptyPhaseEntry, autoCompletePreviousPhases, generateLanguagePhaseData } = usePhaseLogic()
 const { logActivity } = useActivityLog()
 
@@ -199,10 +233,41 @@ const mainLanguageOther   = ref('')
 const additionalLanguages = ref([])
 const phaseOn             = ref(false)
 const phaseId             = ref('kickstart')
-const assignedMemberIds   = ref([])
 const detailsOpen         = ref(true)
 const errors              = reactive({})
 const saving              = ref(false)
+
+// ── Role-specific assignment fields ──────────────────────────────────────────
+const leadDeveloperId      = ref('')
+const developersInvolvedIds = ref([])
+
+// Pre-fill from phase config defaults (only for new projects)
+const _prodPhase  = phasesStore.phaseConfig.find(p => p.id === 'production')
+const _wsSp       = (_prodPhase?.subPhases || []).find(s => s.id === 'web_services')
+const _mmSp       = (_prodPhase?.subPhases || []).find(s => s.id === 'multimedia')
+const _qaPhase    = phasesStore.phaseConfig.find(p => p.id === 'qa')
+const webServicesAssigneeId = ref(_wsSp?.defaultAssigneeId || '')
+const multimediaAssigneeId  = ref(_mmSp?.defaultAssigneeId || '')
+const qaAssigneeId          = ref(_qaPhase?.defaultAssigneeId || '')
+
+const developerMembers = computed(() =>
+  teamStore.teamMembers.filter(m => {
+    if (!m.active) return false
+    const roleId = m.roleId || m.role
+    const role   = rolesStore.roles.find(r => r.id === roleId)
+    return role ? role.permissions?.canViewAllProjects === false : false
+  })
+)
+
+const developersInvolvedOptions = computed(() =>
+  leadDeveloperId.value
+    ? developerMembers.value.filter(m => m.id !== leadDeveloperId.value)
+    : developerMembers.value
+)
+
+const allActiveMembers = computed(() =>
+  teamStore.teamMembers.filter(m => m.active !== false)
+)
 
 function effectiveMainLanguage() {
   return mainLanguage.value === 'Other'
@@ -247,7 +312,15 @@ async function create() {
     // Exclude Languages phase from auto-complete (it activates separately after Activation)
     autoCompletePreviousPhases(targetPhase, phaseData, phasesStore.phaseConfig.filter(p => p.id !== 'languages'))
 
-    const assignedMembers = assignedMemberIds.value
+    const allMemberIds = [
+      leadDeveloperId.value,
+      ...developersInvolvedIds.value,
+      webServicesAssigneeId.value,
+      multimediaAssigneeId.value,
+      qaAssigneeId.value,
+    ].filter(Boolean)
+    const uniqueIds = [...new Set(allMemberIds)]
+    const assignedMembers = uniqueIds
       .map(id => teamStore.teamMembers.find(m => m.id === id))
       .filter(Boolean)
       .map(m => ({
@@ -256,23 +329,30 @@ async function create() {
         avatarColor: m.avatarColor || '#6366f1',
       }))
 
+    const leadMember = teamStore.teamMembers.find(m => m.id === leadDeveloperId.value)
+
     const docData = {
-      name:                form.name.trim(),
-      url:                 form.url.trim(),
-      originalSite:        form.originalSite.trim(),
-      mainLanguage:        effectiveMainLanguage(),
-      additionalLanguages: additionalLanguages.value,
-      platform:            form.platform,
-      projectType:         form.projectType,
-      kickstartDate:       form.kickstartDate,
-      liveDate:            form.liveDate,
-      siteStatus:          'development',
-      currentPhase:        targetPhase,
-      currentSubPhase:     null,
-      activePhases:        [{ phase: targetPhase, subPhase: null }],
+      name:                     form.name.trim(),
+      url:                      form.url.trim(),
+      originalSite:             form.originalSite.trim(),
+      mainLanguage:             effectiveMainLanguage(),
+      additionalLanguages:      additionalLanguages.value,
+      platform:                 form.platform,
+      projectType:              form.projectType,
+      kickstartDate:            form.kickstartDate,
+      liveDate:                 form.liveDate,
+      siteStatus:               'development',
+      currentPhase:             targetPhase,
+      currentSubPhase:          null,
+      activePhases:             [{ phase: targetPhase, subPhase: null }],
       phaseData,
+      leadDeveloperId:          leadDeveloperId.value || null,
+      developersInvolvedIds:    developersInvolvedIds.value,
+      webServicesAssigneeId:    webServicesAssigneeId.value || null,
+      multimediaAssigneeId:     multimediaAssigneeId.value || null,
+      qaAssigneeId:             qaAssigneeId.value || null,
       assignedMembers,
-      developer:           assignedMembers[0]?.name || '',
+      developer:                leadMember?.name || '',
       sitemapUrl:          form.sitemapUrl.trim(),
       builderLink:         form.builderLink.trim(),
       briefingUrl:         form.briefingUrl.trim(),
@@ -287,6 +367,8 @@ async function create() {
       cancelledAt:         null,
       cancelledReason:     '',
       archived:            false,
+      shareToken:          null,
+      templateId:          null,
       createdBy:           authStore.currentUser?.name || '',
       createdAt:           now,
       updatedAt:           now,

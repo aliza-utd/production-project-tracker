@@ -14,25 +14,25 @@
       <RouterLink class="nav-item" to="/projects" active-class="active">
         <span class="ico">📋</span><span>Projects</span>
       </RouterLink>
-      <RouterLink class="nav-item" to="/weekly-tracker" active-class="active">
+      <RouterLink v-if="showFullNav" class="nav-item" to="/weekly-tracker" active-class="active">
         <span class="ico">📅</span><span>Weekly Tracker</span>
       </RouterLink>
       <RouterLink class="nav-item" to="/weekly-notes" active-class="active">
         <span class="ico">📝</span><span>Weekly Notes</span>
       </RouterLink>
-      <RouterLink v-if="isManager" class="nav-item" to="/reports" active-class="active">
+      <RouterLink v-if="showReports" class="nav-item" to="/reports" active-class="active">
         <span class="ico">📊</span><span>Reports</span>
       </RouterLink>
-      <RouterLink class="nav-item" to="/archived" active-class="active">
+      <RouterLink v-if="showFullNav" class="nav-item" to="/archived" active-class="active">
         <span class="ico">🗄️</span><span>Archived</span>
       </RouterLink>
-      <RouterLink class="nav-item" to="/settings" active-class="active">
+      <RouterLink v-if="showSettings" class="nav-item" to="/settings" active-class="active">
         <span class="ico">⚙️</span><span>Settings</span>
       </RouterLink>
-      <RouterLink v-if="isManager" class="nav-item" to="/team-members" active-class="active">
+      <RouterLink v-if="showTeamMembers" class="nav-item" to="/team-members" active-class="active">
         <span class="ico">👥</span><span>Team Members</span>
       </RouterLink>
-      <RouterLink v-if="isManager" class="nav-item" to="/phase-settings" active-class="active">
+      <RouterLink v-if="showPhaseSettings" class="nav-item" to="/phase-settings" active-class="active">
         <span class="ico">🔧</span><span>Phase Settings</span>
       </RouterLink>
       <button class="nav-item" @click="handleLogout">
@@ -72,7 +72,35 @@ import { useAuthStore } from '@/stores/auth'
 
 const authStore   = useAuthStore()
 const currentUser = computed(() => authStore.currentUser)
-const isManager   = computed(() => authStore.isManager)
+const perms       = computed(() => authStore.currentUser?.permissions || {})
+
+// ── Nav visibility ──────────────────────────────────────────────────────────
+// authStore.isManager is the safe fallback: it checks roleId directly and
+// returns true for admin/manager even when the role doc can't be loaded.
+//
+// Reports       — canAccessSettings or isAdmin
+const showReports = computed(() =>
+  perms.value.canAccessSettings === true ||
+  perms.value.isAdmin === true ||
+  authStore.isManager
+)
+// Settings      — canAccessSettings
+const showSettings = computed(() =>
+  perms.value.canAccessSettings === true || authStore.isManager
+)
+// Team Members  — canManageTeam (separate from canAccessSettings so custom
+//                 roles can manage the team without full settings access)
+const showTeamMembers = computed(() =>
+  perms.value.canManageTeam === true || authStore.isManager
+)
+// Phase Settings — canAccessSettings
+const showPhaseSettings = computed(() =>
+  perms.value.canAccessSettings === true || authStore.isManager
+)
+// Weekly Tracker + Archived — hidden for roles with canViewAllProjects: false
+const showFullNav = computed(() =>
+  perms.value.canViewAllProjects === true || authStore.isManager
+)
 
 const isDark = ref(localStorage.getItem('pt_theme') === 'dark')
 

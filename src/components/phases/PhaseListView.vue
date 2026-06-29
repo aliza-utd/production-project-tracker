@@ -281,6 +281,7 @@ import { usePhaseLogic } from '@/composables/usePhaseLogic'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
 import { useActivityLog } from '@/composables/useActivityLog'
+import { useProjectNotifications } from '@/composables/useProjectNotifications'
 import TimeLogSection from '@/components/phases/TimeLogSection.vue'
 
 const props = defineProps({
@@ -293,10 +294,11 @@ const props = defineProps({
 })
 const emit = defineEmits(['update-phase', 'next-phase-started'])
 
-const { uid, isoToDateInput, fmtHours, deepCopy, applyStatus, emptyPhaseEntry, computeActivePhases } = usePhaseLogic()
+const { uid, isoToDateInput, fmtHours, deepCopy, applyStatus, emptyPhaseEntry, computeActivePhases, getNextLanguageSubPhase } = usePhaseLogic()
 const projectsStore   = useProjectsStore()
 const authStore       = useAuthStore()
 const { logActivity } = useActivityLog()
+const { notifyPhaseStatus, notifyPhaseStarted } = useProjectNotifications()
 
 // Local deep copy of full phaseData — kept in sync with prop for real-time updates
 const local = ref(deepCopy(props.phaseData))
@@ -356,9 +358,36 @@ function setStatus(phId, spId, status) {
   applyStatus(target, status)
   if (oldStatus !== status) {
     const ph = props.phaseConfig.find(p => p.id === phId)
-    const spName = spId ? props.phaseConfig.find(p => p.id === phId)?.subPhases?.find(s => s.id === spId)?.name : null
+    const spName = spId ? ph?.subPhases?.find(s => s.id === spId)?.name : null
     const label = spName ? `${ph?.name || phId} / ${spName}` : (ph?.name || phId)
     logActivity(props.projectId, 'phase_status_changed', { phase: label, from: oldStatus, to: status }).catch(() => {})
+    const proj = projectsStore.projects.find(p => p.id === props.projectId)
+    notifyPhaseStatus({
+      projectId: props.projectId,
+      projectName: proj?.name || '',
+      phaseName: label,
+      fromStatus: oldStatus,
+      toStatus: status,
+      assignedMembers: proj?.assignedMembers || [],
+    })
+
+    // Language-aware sequential auto-progression for dynamic (Languages) phases
+    if (spId && status === 'done' && ph?.dynamic && (ph.subPhaseMode || 'simultaneous') === 'sequential') {
+      const tmplLen = ph.subPhaseTemplate?.length || 0
+      const nextDef = getNextLanguageSubPhase(spId, ph.subPhases || [], tmplLen)
+      if (nextDef) {
+        const nextTarget = getTarget(phId, nextDef.id)
+        if ((nextTarget.status || 'not-started') === 'not-started') {
+          applyStatus(nextTarget, 'active')
+          const fromLabel = spName?.split(' — ').slice(1).join(' — ') || spName || spId
+          logActivity(props.projectId, 'phase_auto_advanced', {
+            phase: nextDef.name,
+            from:  fromLabel,
+            to:    'active',
+          }).catch(() => {})
+        }
+      }
+    }
   }
   autosave(phId, !spId && status === 'done')
 }
@@ -458,7 +487,16 @@ async function autosave(phId, autoStartNext = false) {
       updatedAt:       new Date().toISOString(),
     })
     emit('update-phase', { phaseId: phId, data: deepCopy(local.value[phId]) })
-    if (nextPhaseName) emit('next-phase-started', nextPhaseName)
+    if (nextPhaseName) {
+      emit('next-phase-started', nextPhaseName)
+      const proj = projectsStore.projects.find(p => p.id === props.projectId)
+      notifyPhaseStarted({
+        projectId: props.projectId,
+        projectName: proj?.name || '',
+        phaseName: nextPhaseName,
+        assignedMembers: proj?.assignedMembers || [],
+      })
+    }
   } catch (err) {
     console.error('List view phase save failed:', err)
   }

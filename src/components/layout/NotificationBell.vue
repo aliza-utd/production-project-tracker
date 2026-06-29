@@ -75,23 +75,28 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useNotificationsStore } from '@/stores/notifications'
 
-const router    = useRouter()
+const router     = useRouter()
 const notifStore = useNotificationsStore()
+const showPanel  = ref(false)
 
-const showPanel   = ref(false)
-const notifications = computed(() => notifStore.notifications)
-const unreadCount   = computed(() => notifStore.unreadCount)
-const loading       = computed(() => notifStore.loading)
+// storeToRefs extracts the store's reactive refs directly — no intermediate
+// computed wrapper — so Vue tracks notifications.value as a first-class dep.
+const { notifications, loading } = storeToRefs(notifStore)
+const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
 function notifIcon(type) {
-  if (type === 'mention')     return '👤'
-  if (type === 'new_comment') return '💬'
-  if (type === 'comment')     return '💬'
-  if (type === 'deadline_overdue')  return '🚨'
-  if (type === 'deadline_warning')  return '⏰'
+  if (type === 'mention')          return '👤'
+  if (type === 'new_comment')      return '💬'
+  if (type === 'comment')          return '💬'
+  if (type === 'phase_status')     return '🔄'
+  if (type === 'phase_started')    return '▶️'
+  if (type === 'assignment')       return '📋'
+  if (type === 'deadline_overdue') return '🚨'
+  if (type === 'deadline_warning') return '⏰'
   return '🔔'
 }
 
@@ -106,10 +111,16 @@ function fmtTs(value) {
     date = new Date(value)
   }
   if (isNaN(date.getTime())) return ''
-  return date.toLocaleString('en-GB', {
-    day: '2-digit', month: 'short',
-    hour: '2-digit', minute: '2-digit',
-  })
+  const diff  = Date.now() - date.getTime()
+  const mins  = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days  = Math.floor(diff / 86400000)
+  if (mins < 1)   return 'just now'
+  if (mins < 60)  return `${mins}m ago`
+  if (hours < 24) return `${hours}h ago`
+  if (days === 1) return 'yesterday'
+  if (days < 7)   return `${days}d ago`
+  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
 }
 
 async function handleMarkAllRead() {
@@ -121,8 +132,9 @@ async function handleNotifClick(n) {
   if (!n.read) await notifStore.markAsRead(n.id)
   if (n.projectId) {
     const isCommentType = n.type === 'mention' || n.type === 'new_comment' || n.type === 'comment'
-    const path = `/projects/${n.projectId}${isCommentType ? '?tab=comments' : ''}`
-    router.push(path)
+    const isPhaseType   = n.type === 'phase_status' || n.type === 'phase_started'
+    const tab = isCommentType ? '?tab=comments' : isPhaseType ? '?tab=phases' : ''
+    router.push(`/projects/${n.projectId}${tab}`)
   }
 }
 </script>

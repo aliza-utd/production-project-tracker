@@ -3,8 +3,9 @@ import { ref, computed } from 'vue'
 import {
   initAuthPersistence, onAuthChange,
   signInWithGoogle, signOutUser,
-  getTeamMembersFromFirestore, createTeamMember, createTeamMemberWithUID,
+  getTeamMembersFromFirestore, createTeamMemberWithUID,
   migrateTeamMemberToUID, updateMemberUID,
+  getRoleById, seedDefaultRoles,
 } from '@/firebase-service'
 
 // authState values:
@@ -22,10 +23,22 @@ export const useAuthStore = defineStore('auth', () => {
   const setupDefaults  = ref({ name: '', email: '' })
   const pendingFbUser  = ref(null)
 
-  const isManager = computed(() => currentUser.value?.role === 'Manager')
+  const isManager = computed(() => {
+    const p      = currentUser.value?.permissions
+    const roleId = currentUser.value?.roleId
+    // Primary: check loaded permissions
+    if (p?.canAccessSettings === true) return true
+    if (p?.isAdmin === true)           return true
+    // Fallback: check roleId directly so the sidebar works even when
+    // the role doc can't be fetched from Firestore (rules not yet deployed,
+    // or auth happens before the roles collection is seeded).
+    if (roleId === 'admin' || roleId === 'manager') return true
+    // Legacy: role string set before the roleId system existed (also covers
+    // 'Admin' in case seedDefaultRoles changed the role field before roleId resolved)
+    const role = currentUser.value?.role
+    return role === 'Manager' || role === 'Admin'
+  })
 
-  // Returns a Promise that resolves once the first auth state is determined.
-  // Subsequent onAuthChange calls (sign-in / sign-out) keep updating state reactively.
   function initAuth() {
     return new Promise(async (resolve) => {
       let settled = false
@@ -49,7 +62,6 @@ export const useAuthStore = defineStore('auth', () => {
         try {
           const members = await getTeamMembersFromFirestore()
 
-          // No team members at all → first-run setup
           if (members.length === 0) {
             pendingFbUser.value = fbUser
             setupDefaults.value = {
@@ -65,7 +77,6 @@ export const useAuthStore = defineStore('auth', () => {
             m => (m.email || '').toLowerCase() === (fbUser.email || '').toLowerCase()
           )
 
-          // Email not in team_members → access denied
           if (!member) {
             deniedEmail.value = fbUser.email
             authState.value   = 'denied'
@@ -73,12 +84,9 @@ export const useAuthStore = defineStore('auth', () => {
             return
           }
 
-          // Migrate doc to use Auth UID as document ID (required for Firestore rules).
-          // This fixes docs that were created with addDoc (random ID) instead of setDoc.
           if (member.id !== fbUser.uid) {
             try {
               const migrated = await migrateTeamMemberToUID(member.id, fbUser.uid, member)
-              // Patch member in place so the rest of the login flow uses the new ID
               Object.assign(member, migrated)
             } catch (migErr) {
               console.error('[Auth] Migration failed, falling back to uid field update:', migErr)
@@ -86,15 +94,26 @@ export const useAuthStore = defineStore('auth', () => {
             }
           }
 
+          // Load permissions from role document if roleId is present
+          let permissions = {}
+          if (member.roleId) {
+            try {
+              const roleDoc = await getRoleById(member.roleId)
+              if (roleDoc) permissions = roleDoc.permissions || {}
+            } catch (_) {}
+          }
+
           currentUser.value = {
-            uid:        fbUser.uid,
-            name:       member.name        || fbUser.displayName || '',
-            email:      fbUser.email,
-            role:       member.role        || '',
-            department: member.department  || '',
-            avatarColor:member.avatarColor || '#6366f1',
-            initials:   member.initials    || member.avatarInitials || '',
-            memberId:   member.id,
+            uid:         fbUser.uid,
+            name:        member.name        || fbUser.displayName || '',
+            email:       fbUser.email,
+            role:        member.role        || '',
+            roleId:      member.roleId      || null,
+            permissions,
+            department:  member.department  || '',
+            avatarColor: member.avatarColor || '#6366f1',
+            initials:    member.initials    || member.avatarInitials || '',
+            memberId:    member.id,
           }
           authState.value = 'authenticated'
           settle()
@@ -114,14 +133,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout() {
     try { await signOutUser() } catch (_) {}
-    // onAuthChange fires → sets authState = 'login' and currentUser = null
   }
 
-  // Called from the first-run setup screen when team_members is empty.
-  // Creates the first Manager account and transitions to 'authenticated'.
   async function firstRunSetup(name) {
     const fbUser = pendingFbUser.value
     if (!fbUser) throw new Error('No pending Firebase user')
+
+    // Seed default roles on first run
+    try { await seedDefaultRoles() } catch (_) {}
 
     const trimmed  = name.trim()
     const initials = trimmed.split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2)
@@ -133,7 +152,9 @@ export const useAuthStore = defineStore('auth', () => {
       avatarColor: '#6366f1',
       department:  'Manager',
       role:        'Manager',
+      roleId:      'manager',
       active:      true,
+      status:      'active',
       uid:         fbUser.uid,
       createdAt:   new Date().toISOString(),
     }
@@ -141,14 +162,19 @@ export const useAuthStore = defineStore('auth', () => {
     const newMember = await createTeamMemberWithUID(fbUser.uid, memberData)
 
     currentUser.value = {
-      uid:        fbUser.uid,
-      name:       newMember.name,
-      email:      fbUser.email,
-      role:       'Manager',
-      department: 'Manager',
-      avatarColor:'#6366f1',
-      initials:   newMember.initials,
-      memberId:   newMember.id,
+      uid:         fbUser.uid,
+      name:        newMember.name,
+      email:       fbUser.email,
+      role:        'Manager',
+      roleId:      'manager',
+      permissions: {
+        canViewAllProjects: true, canEditPhases: true, canManageTeam: true,
+        canAccessSettings: true, canEditAllNotes: true, isReadOnly: false,
+      },
+      department:  'Manager',
+      avatarColor: '#6366f1',
+      initials:    newMember.initials,
+      memberId:    newMember.id,
     }
     pendingFbUser.value = null
     authState.value     = 'authenticated'

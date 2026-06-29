@@ -55,6 +55,17 @@
           <!-- Phase name -->
           <input class="form-input ps-name-input" v-model="ph.name" placeholder="Phase name">
 
+          <!-- Default Assignee -->
+          <select
+            v-if="authStore.isManager"
+            class="form-select ps-assignee-select"
+            v-model="ph.defaultAssigneeId"
+            @click.stop
+          >
+            <option value="">No default</option>
+            <option v-for="m in activeTeamMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+          </select>
+
           <!-- Sub-phases expand button (hidden for dynamic phases) -->
           <button v-if="!ph.dynamic" class="btn btn-ghost btn-sm" style="white-space:nowrap" @click="toggleExpanded(idx)">
             <template v-if="ph.subPhases?.length">
@@ -89,6 +100,16 @@
 
           <div v-for="(sp, spIdx) in (ph.subPhases || [])" :key="sp.id" class="ps-sub-row">
             <input class="form-input" style="flex:1" v-model="sp.name" placeholder="Sub-phase name">
+            <select
+              v-if="authStore.isManager"
+              class="form-select ps-assignee-select"
+              :value="sp.defaultAssigneeId ?? ph.defaultAssigneeId ?? ''"
+              @change="sp.defaultAssigneeId = $event.target.value || null"
+              title="Default assignee (inherits phase default when not set)"
+            >
+              <option value="">No default</option>
+              <option v-for="m in activeTeamMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+            </select>
             <button class="btn-icon" style="color:var(--danger)" @click="removeSubPhase(idx, spIdx)">✕</button>
           </div>
 
@@ -168,19 +189,28 @@
     <!-- Add phase -->
     <button class="btn btn-secondary btn-sm" style="margin-top:12px" @click="addPhase">+ Add Phase</button>
 
+    <!-- Default assignee note -->
+    <div v-if="authStore.isManager" style="margin-top:14px;font-size:12px;color:var(--muted);padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r)">
+      <strong>Note:</strong> Lead Developer and Developers Involved are set per project — no phase default applies.
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { usePhasesStore }  from '@/stores/phases'
 import { useAuthStore }    from '@/stores/auth'
 import { useProjectsStore } from '@/stores/projects'
+import { useTeamStore }    from '@/stores/team'
 import { usePhaseLogic }   from '@/composables/usePhaseLogic'
 
 const phasesStore   = usePhasesStore()
 const authStore     = useAuthStore()
 const projectsStore = useProjectsStore()
+const teamStore     = useTeamStore()
+
+const activeTeamMembers = computed(() => teamStore.teamMembers.filter(m => m.active !== false))
 const { generateLanguagePhaseData } = usePhaseLogic()
 
 const COLOR_SWATCHES = [
@@ -220,6 +250,12 @@ function loadFromStore() {
   phases.length = 0
   phasesStore.phaseConfig.forEach(ph => {
     const copy = JSON.parse(JSON.stringify(ph))
+    // Ensure defaultAssigneeId exists so v-model doesn't bind to undefined
+    copy.defaultAssigneeId = copy.defaultAssigneeId ?? ''
+    if (Array.isArray(copy.subPhases)) {
+      // null = no explicit override (inherits parent); non-empty string = explicit choice
+      copy.subPhases.forEach(sp => { sp.defaultAssigneeId = sp.defaultAssigneeId || null })
+    }
     if (copy.dynamic && !copy.subPhaseTemplate?.length) {
       copy.subPhaseTemplate = JSON.parse(JSON.stringify(DEFAULT_LANG_TEMPLATE))
     }
@@ -272,8 +308,9 @@ function removePhase(idx) {
 function addSubPhase(phaseIdx) {
   if (!phases[phaseIdx].subPhases) phases[phaseIdx].subPhases = []
   phases[phaseIdx].subPhases.push({
-    id:   Math.random().toString(36).slice(2),
-    name: '',
+    id:                Math.random().toString(36).slice(2),
+    name:              '',
+    defaultAssigneeId: null,  // null = inherit from parent phase
   })
 }
 
@@ -388,14 +425,15 @@ async function save() {
   try {
     const clean = phases.map((ph, i) => {
       const base = {
-        id:           ph.id,
-        name:         ph.name,
-        color:        ph.color,
-        order:        i,
-        subPhaseMode: ph.subPhaseMode || (ph.dynamic ? 'sequential' : 'simultaneous'),
-        subPhases:    (ph.subPhases || [])
+        id:                ph.id,
+        name:              ph.name,
+        color:             ph.color,
+        order:             i,
+        subPhaseMode:      ph.subPhaseMode || (ph.dynamic ? 'sequential' : 'simultaneous'),
+        defaultAssigneeId: ph.defaultAssigneeId || null,
+        subPhases:         (ph.subPhases || [])
           .filter(sp => sp.name.trim())
-          .map(sp => ({ id: sp.id, name: sp.name })),
+          .map(sp => ({ id: sp.id, name: sp.name, defaultAssigneeId: sp.defaultAssigneeId || null })),
       }
       if (ph.dynamic) {
         base.dynamic = true
@@ -473,7 +511,8 @@ function reset() {
 }
 .ps-color-opt:hover { transform: scale(1.2); }
 
-.ps-name-input { flex: 1; min-width: 0; }
+.ps-name-input { flex: 1; min-width: 100px; }
+.ps-assignee-select { flex: 0 1 150px; min-width: 110px; font-size: 12px; }
 .ps-lang-toggle {
   display: flex; align-items: center; gap: 5px;
   font-size: 12px; color: var(--text);

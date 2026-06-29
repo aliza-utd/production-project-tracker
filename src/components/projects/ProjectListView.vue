@@ -68,7 +68,7 @@
             <th>Project Name</th>
             <th>URL</th>
             <th>Platform</th>
-            <th>Developer</th>
+            <th>Team</th>
             <th>Kickstart</th>
             <th>Live Date</th>
             <th>Phase</th>
@@ -96,13 +96,22 @@
               </span>
             </td>
             <td>
-              <div style="display:flex;align-items:center;gap:7px">
-                <div v-if="memberByName(p.developer)" class="avatar avatar-sm"
-                  :style="'background:' + memberByName(p.developer).avatarColor">
-                  {{ memberByName(p.developer).initials }}
-                </div>
-                {{ p.developer || '—' }}
+              <div v-if="projectTeams[p.id]?.length" class="team-avatars">
+                <div
+                  v-for="(m, i) in projectTeams[p.id].length > 5 ? projectTeams[p.id].slice(0, 4) : projectTeams[p.id]"
+                  :key="m.id"
+                  class="avatar avatar-sm team-avatar"
+                  :style="{ background: m.avatarColor || '#6366f1', marginLeft: i === 0 ? '0' : '-8px', zIndex: 10 - i }"
+                  :title="m.name + (m.role ? ' — ' + m.role : '')"
+                >{{ m.initials }}</div>
+                <div
+                  v-if="projectTeams[p.id].length > 5"
+                  class="avatar avatar-sm team-avatar team-avatar--overflow"
+                  :style="{ marginLeft: '-8px', zIndex: 5 }"
+                  :title="(projectTeams[p.id].length - 4) + ' more members'"
+                >+{{ projectTeams[p.id].length - 4 }}</div>
               </div>
+              <span v-else style="color:var(--muted)">—</span>
             </td>
             <td>{{ fmtDate(p.kickstartDate) || '—' }}</td>
             <td :style="liveDateStyle(p.liveDate)">{{ fmtDate(p.liveDate) || '—' }}</td>
@@ -189,6 +198,30 @@ const showArchiveConfirm = ref(false)
 
 const activeMembers = computed(() => teamStore.teamMembers.filter(m => m.active !== false))
 
+// Builds a deduplicated ordered list of assigned members per project across all 5 assignee fields.
+const projectTeams = computed(() => {
+  const result = {}
+  for (const p of props.projects) {
+    const seen = new Set()
+    const members = []
+    const ids = [
+      p.leadDeveloperId,
+      ...(Array.isArray(p.developersInvolvedIds) ? p.developersInvolvedIds : []),
+      p.webServicesAssigneeId,
+      p.multimediaAssigneeId,
+      p.qaAssigneeId,
+    ].filter(Boolean)
+    for (const id of ids) {
+      if (seen.has(id)) continue
+      seen.add(id)
+      const m = props.teamMembers.find(t => t.id === id)
+      if (m) members.push(m)
+    }
+    result[p.id] = members
+  }
+  return result
+})
+
 async function applyBulkPhase() {
   if (!bulkPhase.value || !selectedIds.value.length) return
   bulkSaving.value = true
@@ -213,7 +246,7 @@ async function applyBulkDeveloper() {
   bulkSaving.value = true
   try {
     await Promise.all(selectedIds.value.map(id =>
-      projectsStore.updateProject(id, { developer: member.name })
+      projectsStore.updateProject(id, { leadDeveloperId: member.id, developer: member.name })
     ))
   } finally {
     bulkDeveloperId.value = ''
@@ -288,9 +321,6 @@ function truncateUrl(url) {
   }
 }
 
-function memberByName(name) {
-  return props.teamMembers.find(m => m.name === name && m.active !== false)
-}
 
 function allPhaseInfos(proj) {
   const aps     = proj.activePhases
@@ -324,5 +354,22 @@ function allPhaseInfos(proj) {
   font-weight: 600;
   color: var(--accent);
   margin-right: 4px;
+}
+
+.team-avatars {
+  display: flex;
+  align-items: center;
+}
+.team-avatar {
+  position: relative;
+  border: 2px solid var(--surface, #fff);
+  flex-shrink: 0;
+  cursor: default;
+}
+.team-avatar--overflow {
+  background: var(--border, #e2e8f0);
+  color: var(--muted, #64748b);
+  font-size: 10px;
+  font-weight: 600;
 }
 </style>

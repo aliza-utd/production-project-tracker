@@ -53,6 +53,7 @@ import { useTeamStore } from '@/stores/team'
 const props = defineProps({
   modelValue: { type: Array, default: () => [] }, // array of member IDs
   maxCount:   { type: Number, default: Infinity },
+  members:    { type: Array, default: null },      // if provided, use instead of all active members
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -67,9 +68,13 @@ onMounted(async () => {
   }
 })
 
+const memberPool = computed(() =>
+  props.members ?? teamStore.teamMembers.filter(m => m.active)
+)
+
 const selectedMembers = computed(() =>
   props.modelValue
-    .map(id => teamStore.teamMembers.find(m => m.id === id))
+    .map(id => memberPool.value.find(m => m.id === id) ?? teamStore.teamMembers.find(m => m.id === id))
     .filter(Boolean)
 )
 
@@ -80,8 +85,8 @@ const atMax = computed(() =>
 const filteredMembers = computed(() => {
   const s   = search.value.toLowerCase()
   const sel = new Set(props.modelValue)
-  return teamStore.teamMembers.filter(
-    m => m.active && !sel.has(m.id) && (!s || m.name.toLowerCase().includes(s))
+  return memberPool.value.filter(
+    m => !sel.has(m.id) && (!s || m.name.toLowerCase().includes(s))
   )
 })
 

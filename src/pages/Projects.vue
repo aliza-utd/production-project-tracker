@@ -18,7 +18,7 @@
       <span class="filter-label">Developer:</span>
       <select class="filter-select" v-model="filters.developer">
         <option value="">All</option>
-        <option v-for="d in developerNames" :key="d" :value="d">{{ d }}</option>
+        <option v-for="m in developerFilterOptions" :key="m.id" :value="m.id">{{ m.name }}</option>
       </select>
       <div class="filter-sep"></div>
       <span class="filter-label">Phase:</span>
@@ -123,8 +123,8 @@ const filters = ref({
   search: '', year: '', dateField: 'kickstartDate', developer: '', phase: '', siteStatus: '', platform: '',
 })
 
-const developerNames = computed(() =>
-  teamStore.teamMembers.filter(m => m.active).map(m => m.name)
+const developerFilterOptions = computed(() =>
+  teamStore.teamMembers.filter(m => m.active !== false)
 )
 
 const availableYears = computed(() => {
@@ -162,7 +162,22 @@ const filteredProjects = computed(() =>
       const d = p[f.dateField]
       if (!d || new Date(d).getFullYear() !== parseInt(f.year)) return false
     }
-    if (f.developer   && p.developer  !== f.developer)   return false
+    if (f.developer) {
+      const allIds = [
+        p.leadDeveloperId,
+        ...(Array.isArray(p.developersInvolvedIds) ? p.developersInvolvedIds : []),
+        p.webServicesAssigneeId,
+        p.multimediaAssigneeId,
+        p.qaAssigneeId,
+      ].filter(Boolean)
+      if (allIds.length > 0) {
+        if (!allIds.includes(f.developer)) return false
+      } else {
+        // Legacy: no ID fields set, fall back to name match on lead developer
+        const filterMember = teamStore.teamMembers.find(m => m.id === f.developer)
+        if (!filterMember || p.developer !== filterMember.name) return false
+      }
+    }
     if (f.siteStatus  && p.siteStatus !== f.siteStatus)  return false
     if (f.platform    && p.platform   !== f.platform)    return false
     if (f.phase) {

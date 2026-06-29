@@ -126,6 +126,20 @@ export function usePhaseLogic() {
     }
   }
 
+  /**
+   * For language-grouped phases (Languages), finds the next sub-phase for the
+   * SAME language in sequential mode. Sub-defs are generated in blocks of
+   * templateLength per language, so the next same-language step is always at
+   * index + 1 unless the completed step is the last in that language's block.
+   */
+  function getNextLanguageSubPhase(subId, subDefs, templateLength) {
+    if (!templateLength || templateLength <= 0) return null
+    const idx = subDefs.findIndex(sp => sp.id === subId)
+    if (idx < 0) return null
+    if ((idx % templateLength) >= templateLength - 1) return null
+    return subDefs[idx + 1] || null
+  }
+
   // Normalise a string to a safe Firestore key: lowercase letters, digits, underscore only.
   function sanitizeId(str) {
     return str
@@ -213,6 +227,7 @@ export function usePhaseLogic() {
     ptDateRange,
     computeActivePhases,
     sanitizeId,
+    getNextLanguageSubPhase,
     generateLanguageSubDefs,
     generateLanguagePhaseData,
     generateDynamicPhaseConfig,

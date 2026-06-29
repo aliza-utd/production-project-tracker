@@ -10,11 +10,17 @@ import Archived      from '@/pages/Archived.vue'
 import Settings      from '@/pages/Settings.vue'
 import TeamMembers   from '@/pages/TeamMembers.vue'
 import PhaseSettings from '@/pages/PhaseSettings.vue'
+import JoinPage      from '@/pages/JoinPage.vue'
 
 const routes = [
   {
     path: '/login',
     component: { template: '<div></div>' },
+    meta: { public: true },
+  },
+  {
+    path: '/join/:code',
+    component: JoinPage,
     meta: { public: true },
   },
   {

@@ -168,6 +168,7 @@ import { useProjectsStore } from '@/stores/projects'
 import { usePhasesStore } from '@/stores/phases'
 import { useAuthStore } from '@/stores/auth'
 import { useActivityLog } from '@/composables/useActivityLog'
+import { useProjectNotifications } from '@/composables/useProjectNotifications'
 import SubPhaseCard from '@/components/phases/SubPhaseCard.vue'
 import TimeLogSection from '@/components/phases/TimeLogSection.vue'
 import SaveIndicator from '@/components/shared/SaveIndicator.vue'
@@ -184,7 +185,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['update-phase', 'activation-complete', 'next-phase-started', 'phase-toast'])
 
-const { uid, isoToDateInput, fmtHours, deepCopy, applyStatus, emptyPhaseEntry, computeActivePhases } = usePhaseLogic()
+const { uid, isoToDateInput, fmtHours, deepCopy, applyStatus, emptyPhaseEntry, computeActivePhases, getNextLanguageSubPhase } = usePhaseLogic()
 
 // locked = like readonly but time log stays enabled (used when site is live with pending languages)
 const effectiveReadonly = computed(() => props.readonly || props.locked)
@@ -192,6 +193,9 @@ const projectsStore    = useProjectsStore()
 const phasesStore      = usePhasesStore()
 const authStore        = useAuthStore()
 const { logActivity }  = useActivityLog()
+const { notifyPhaseStatus, notifyPhaseStarted } = useProjectNotifications()
+
+const phaseName = computed(() => props.phaseDef?.name || props.phaseDef?.id || props.phaseId)
 
 const localPhase = ref(deepCopy(props.phase))
 
@@ -310,6 +314,15 @@ async function autosave(autoStartNext = false) {
     saveState.value = 'saved'
     emit('update-phase', { phaseId: props.phaseId, data: deepCopy(localPhase.value) })
     if (nextPhaseName) emit('next-phase-started', nextPhaseName)
+    if (activatedNext && nextPhaseName) {
+      const proj = projectsStore.projects.find(p => p.id === props.projectId)
+      notifyPhaseStarted({
+        projectId: props.projectId,
+        projectName: proj?.name || '',
+        phaseName: nextPhaseName,
+        assignedMembers: proj?.assignedMembers || [],
+      })
+    }
     // No next phase → this was the last phase → trigger the live prompt
     if (autoStartNext && !activatedNext) emit('activation-complete')
   } catch (err) {
@@ -369,7 +382,16 @@ function onStatusChange(status) {
   }
 
   if (oldStatus !== status) {
-    logActivity(props.projectId, 'phase_status_changed', { phase: props.phaseDef.name, from: oldStatus, to: status }).catch(() => {})
+    logActivity(props.projectId, 'phase_status_changed', { phase: phaseName.value, from: oldStatus, to: status }).catch(() => {})
+    const proj = projectsStore.projects.find(p => p.id === props.projectId)
+    notifyPhaseStatus({
+      projectId: props.projectId,
+      projectName: proj?.name || '',
+      phaseName: phaseName.value,
+      fromStatus: oldStatus,
+      toStatus: status,
+      assignedMembers: proj?.assignedMembers || [],
+    })
   }
   autosave(status === 'done')
 }
@@ -388,7 +410,7 @@ function setAssignee(id) {
   const newName = id ? (props.teamMembers.find(m => m.id === id)?.name || id) : 'Unassigned'
   localPhase.value.assignedTo = id || null
   assigneeOpen.value = false
-  logActivity(props.projectId, 'phase_assigned', { phase: props.phaseDef.name, assignedTo: newName }).catch(() => {})
+  logActivity(props.projectId, 'phase_assigned', { phase: phaseName.value, assignedTo: newName }).catch(() => {})
   autosave()
 }
 function onAssigneeBlur() {
@@ -402,17 +424,17 @@ function addChecklistItem() {
   if (!localPhase.value.checklist) localPhase.value.checklist = []
   localPhase.value.checklist.push({ id: uid(), text, done: false })
   newChecklistText.value = ''
-  logActivity(props.projectId, 'checklist_updated', { phase: props.phaseDef.name, item: text, action: 'added' }).catch(() => {})
+  logActivity(props.projectId, 'checklist_updated', { phase: phaseName.value, item: text, action: 'added' }).catch(() => {})
   autosave()
 }
 function removeChecklistItem(itemId) {
   const item = (localPhase.value.checklist || []).find(i => i.id === itemId)
   localPhase.value.checklist = (localPhase.value.checklist || []).filter(i => i.id !== itemId)
-  if (item) logActivity(props.projectId, 'checklist_updated', { phase: props.phaseDef.name, item: item.text, action: 'deleted' }).catch(() => {})
+  if (item) logActivity(props.projectId, 'checklist_updated', { phase: phaseName.value, item: item.text, action: 'deleted' }).catch(() => {})
   autosave()
 }
 function onChecklistToggle(item) {
-  logActivity(props.projectId, 'checklist_updated', { phase: props.phaseDef.name, item: item.text, action: item.done ? 'checked' : 'unchecked' }).catch(() => {})
+  logActivity(props.projectId, 'checklist_updated', { phase: phaseName.value, item: item.text, action: item.done ? 'checked' : 'unchecked' }).catch(() => {})
   autosave()
 }
 
@@ -427,13 +449,13 @@ function addTimeLog(logData) {
       name: authStore.currentUser?.name || '',
     },
   })
-  logActivity(props.projectId, 'time_logged', { phase: props.phaseDef.name, hours: logData.hours, description: logData.description || '', action: 'added' }).catch(() => {})
+  logActivity(props.projectId, 'time_logged', { phase: phaseName.value, hours: logData.hours, description: logData.description || '', action: 'added' }).catch(() => {})
   autosave()
 }
 function deleteTimeLog(logId) {
   const log = (localPhase.value.timeLogs || []).find(l => l.id === logId)
   localPhase.value.timeLogs = (localPhase.value.timeLogs || []).filter(l => l.id !== logId)
-  if (log) logActivity(props.projectId, 'time_logged', { phase: props.phaseDef.name, hours: log.hours, description: '', action: 'deleted' }).catch(() => {})
+  if (log) logActivity(props.projectId, 'time_logged', { phase: phaseName.value, hours: log.hours, description: '', action: 'deleted' }).catch(() => {})
   autosave()
 }
 
@@ -469,11 +491,21 @@ function onUpdateSub({ subId, data }) {
     // Sequential mode: activate the next pending sub-phase when current one finishes
     if (mode === 'sequential' && data.status === 'done' && !allDone) {
       const doneIdx = subDefs.findIndex(sp => sp.id === subId)
-      const nextDef = subDefs[doneIdx + 1]
+      const doneDef = subDefs[doneIdx]
+      // For language-grouped phases: only advance within the same language's steps
+      const nextDef = props.phaseDef.dynamic
+        ? getNextLanguageSubPhase(subId, subDefs, props.phaseDef.subPhaseTemplate?.length || 0)
+        : subDefs[doneIdx + 1]
       if (nextDef && (localPhase.value.subPhases?.[nextDef.id]?.status || 'not-started') === 'not-started') {
         if (!localPhase.value.subPhases[nextDef.id]) localPhase.value.subPhases[nextDef.id] = emptyPhaseEntry()
         applyStatus(localPhase.value.subPhases[nextDef.id], 'active')
         emit('phase-toast', `${nextDef.name} is now Active`)
+        const fromLabel = doneDef?.name?.split(' — ').slice(1).join(' — ') || doneDef?.name || subId
+        logActivity(props.projectId, 'phase_auto_advanced', {
+          phase: nextDef.name,
+          from:  fromLabel,
+          to:    'active',
+        }).catch(() => {})
       }
     }
 

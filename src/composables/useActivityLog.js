@@ -5,11 +5,19 @@ import { useAuthStore } from '@/stores/auth'
 export function useActivityLog() {
   const auth = useAuthStore()
 
+  function sanitizeDetails(obj) {
+    const clean = {}
+    for (const key of Object.keys(obj)) {
+      if (obj[key] !== undefined) clean[key] = obj[key] ?? null
+    }
+    return clean
+  }
+
   async function logActivity(projectId, action, details = {}) {
     if (!projectId || !auth.currentUser) return
     const payload = {
       action,
-      details,
+      details: sanitizeDetails(details),
       performedBy: {
         uid:  auth.currentUser.uid,
         name: auth.currentUser.name,

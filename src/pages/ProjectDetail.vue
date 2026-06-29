@@ -278,16 +278,22 @@
                       <div class="il-value">{{ primaryPhaseName || '—' }}</div>
                     </div>
                     <div class="il-field">
-                      <div class="il-label">Team Members</div>
-                      <div v-if="localProject.assignedMembers?.length" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:2px">
-                        <span v-for="m in localProject.assignedMembers" :key="m.id" class="il-member-tag">
-                          <span class="il-member-av" :style="{ background: m.avatarColor || '#6366f1' }">
-                            {{ m.initials }}
-                          </span>
-                          {{ m.name }}
-                        </span>
-                      </div>
-                      <div v-else class="il-empty">—</div>
+                      <div class="il-label">Lead Developer</div>
+                      <div class="il-value">{{ memberNameById(localProject.leadDeveloperId) || localProject.developer || '—' }}</div>
+                    </div>
+                  </div>
+                  <div class="il-row il-row-3" style="margin-bottom:12px">
+                    <div class="il-field">
+                      <div class="il-label">Web Services</div>
+                      <div class="il-value">{{ memberNameById(localProject.webServicesAssigneeId) || '—' }}</div>
+                    </div>
+                    <div class="il-field">
+                      <div class="il-label">Multimedia</div>
+                      <div class="il-value">{{ memberNameById(localProject.multimediaAssigneeId) || '—' }}</div>
+                    </div>
+                    <div class="il-field">
+                      <div class="il-label">Quality Check</div>
+                      <div class="il-value">{{ memberNameById(localProject.qaAssigneeId) || '—' }}</div>
                     </div>
                   </div>
                   <!-- Additional Details accordion -->
@@ -415,8 +421,40 @@
                       </select>
                     </div>
                     <div class="form-group" style="margin-bottom:0">
-                      <label class="form-label">Team Members</label>
-                      <TeamMemberPicker v-model="infoMemberIds" />
+                      <label class="form-label">Lead Developer</label>
+                      <select class="form-select" v-model="editLeadDeveloperId">
+                        <option value="">— None —</option>
+                        <option v-for="m in allActiveMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="il-row" style="margin-bottom:12px">
+                    <div class="form-group" style="margin-bottom:0;flex:1">
+                      <label class="form-label">Developers Involved</label>
+                      <TeamMemberPicker v-model="editDevelopersInvolvedIds" :members="developersInvolvedMembers" />
+                    </div>
+                  </div>
+                  <div class="il-row il-row-3" style="margin-bottom:12px">
+                    <div class="form-group" style="margin-bottom:0">
+                      <label class="form-label">Web Services</label>
+                      <select class="form-select" v-model="editWebServicesAssigneeId">
+                        <option value="">— None —</option>
+                        <option v-for="m in allActiveMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+                      </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0">
+                      <label class="form-label">Multimedia</label>
+                      <select class="form-select" v-model="editMultimediaAssigneeId">
+                        <option value="">— None —</option>
+                        <option v-for="m in allActiveMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+                      </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0">
+                      <label class="form-label">Quality Check</label>
+                      <select class="form-select" v-model="editQaAssigneeId">
+                        <option value="">— None —</option>
+                        <option v-for="m in allActiveMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+                      </select>
                     </div>
                   </div>
                   <!-- Additional Details edit -->
@@ -629,34 +667,16 @@
                 <div v-if="!projectActivityLog.length" style="color:var(--muted);font-size:14px;padding:8px 0">
                   No activity recorded yet.
                 </div>
-                <!-- Timeline feed -->
+                <!-- Compact log list -->
                 <div v-else style="display:flex;flex-direction:column">
                   <div v-for="entry in projectActivityLog" :key="entry.id"
-                    style="display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)">
-                    <!-- Icon bubble -->
-                    <div style="width:36px;height:36px;border-radius:50%;background:var(--surface2,#f1f5f9);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:1px">
-                      {{ activityIcon(entry.action) }}
+                    style="display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:1px solid var(--border)">
+                    <span style="font-size:12px;flex-shrink:0;line-height:1.5">{{ activityIcon(entry.action) }}</span>
+                    <div style="flex:1;min-width:0;font-size:12px;line-height:1.5;color:var(--text)">
+                      <span style="font-weight:500">{{ describeActivity(entry) }}</span><span style="color:var(--muted)"> · {{ entry.performedBy?.name || entry.userName || 'System' }}</span>
+                      <span v-if="activityDetail(entry)" style="display:block;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ activityDetail(entry) }}</span>
                     </div>
-                    <div style="flex:1;min-width:0">
-                      <!-- Action description + timestamp on one row -->
-                      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap">
-                        <div style="font-size:14px;font-weight:600;color:var(--text)">
-                          {{ describeActivity(entry) }}
-                        </div>
-                        <div style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0">
-                          {{ formatDate(entry.timestamp) }}
-                        </div>
-                      </div>
-                      <!-- Detail line (structured details shown as readable text) -->
-                      <div v-if="activityDetail(entry)"
-                        style="font-size:12px;color:var(--muted);margin-top:3px">
-                        {{ activityDetail(entry) }}
-                      </div>
-                      <!-- By line -->
-                      <div style="font-size:12px;color:var(--muted);margin-top:2px">
-                        By: {{ entry.performedBy?.name || entry.userName || 'System' }}
-                      </div>
-                    </div>
+                    <span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;line-height:1.5">{{ formatDate(entry.timestamp) }}</span>
                   </div>
                 </div>
               </div>
@@ -854,7 +874,7 @@ import { usePhasesStore } from '@/stores/phases'
 import { useTeamStore } from '@/stores/team'
 import { useAuthStore } from '@/stores/auth'
 import { usePhaseLogic } from '@/composables/usePhaseLogic'
-import { subscribeToProject, getProjectComments, addProjectComment, updateProjectComment, deleteProjectComment, getProjectActivityLog, createNotification } from '@/firebase-service'
+import { subscribeToProject, getProjectComments, addProjectComment, updateProjectComment, deleteProjectComment, subscribeToActivityLog, createNotification } from '@/firebase-service'
 import { useActivityLog } from '@/composables/useActivityLog'
 import OnHoldBanner from '@/components/shared/OnHoldBanner.vue'
 import ConfirmModal from '@/components/shared/ConfirmModal.vue'
@@ -874,7 +894,7 @@ const router       = useRouter()
 const projectsStore = useProjectsStore()
 const phasesStore  = usePhasesStore()
 const teamStore    = useTeamStore()
-const authStore       = useAuthStore()
+const authStore    = useAuthStore()
 const { logActivity } = useActivityLog()
 const {
   emptyPhaseEntry, autoCompletePreviousPhases, generateDynamicPhaseConfig,
@@ -887,12 +907,19 @@ const localProject   = ref(null)
 const latestSnapshot = ref(null)
 const pageLoading    = ref(true)
 let   unsubProject   = null
+let   unsubActivityLog = null
 const projTab       = ref('info')
 const phaseView     = ref('list')
 const infoEditMode  = ref(false)
 const infoSaving    = ref(false)
-const infoMemberIds = ref([])
 const showProjectDetails = ref(true)
+
+// ── Role-specific assignment fields ──────────────────────────────────────────
+const editLeadDeveloperId       = ref('')
+const editDevelopersInvolvedIds = ref([])
+const editWebServicesAssigneeId = ref('')
+const editMultimediaAssigneeId  = ref('')
+const editQaAssigneeId          = ref('')
 
 // ── Comments + Activity ───────────────────────────────────────────────────────
 const projectComments    = ref([])
@@ -1007,6 +1034,7 @@ function activityIcon(action) {
     project_created:         '✨',
     field_updated:           '✏️',
     phase_status_changed:    '🔄',
+    phase_auto_advanced:     '⏩',
     phase_assigned:          '👤',
     checklist_updated:       '☑️',
     time_logged:             '⏱️',
@@ -1043,7 +1071,12 @@ function describeActivity(entry) {
     case 'field_updated':
       return `${d.field || 'Field'} updated${d.oldValue ? ` from "${d.oldValue}"` : ''}${d.newValue !== undefined ? ` to "${d.newValue}"` : ''}`
     case 'phase_status_changed':
+      if (!d.phase && !d.to && entry.detail) return entry.detail
       return `${d.phase || 'Phase'} marked as ${sl(d.to)}`
+    case 'phase_auto_advanced': {
+      const fromLabel = d.from || 'previous'
+      return `${d.phase || 'Phase'} marked as Active (auto-advanced from ${fromLabel})`
+    }
     case 'phase_assigned':
       return `${d.phase || 'Phase'} assigned to ${d.assignedTo || 'someone'}`
     case 'checklist_updated':
@@ -1109,6 +1142,13 @@ function activityDetail(entry) {
     default:
       return null
   }
+}
+
+function tsMillis(v) {
+  if (!v) return 0
+  if (typeof v?.toDate === 'function') return v.toDate().getTime()
+  if (v?.seconds) return v.seconds * 1000
+  return new Date(v).getTime() || 0
 }
 
 function formatDate(value) {
@@ -1389,6 +1429,33 @@ const hasQuickLinks = computed(() => !!(
   localProject.value?.logoSetUrl
 ))
 
+const allActiveMembers = computed(() =>
+  teamStore.teamMembers.filter(m => m.active !== false)
+)
+
+const developersInvolvedMembers = computed(() =>
+  editLeadDeveloperId.value
+    ? allActiveMembers.value.filter(m => m.id !== editLeadDeveloperId.value)
+    : allActiveMembers.value
+)
+
+// When Lead Developer changes, also strip that person from the selected
+// Developers Involved values (in case they were already added).
+watch(editLeadDeveloperId, (newLeadId) => {
+  if (!newLeadId) return
+  const lead = allActiveMembers.value.find(m => m.id === newLeadId)
+  const leadKey = lead?.uid || newLeadId
+  editDevelopersInvolvedIds.value = editDevelopersInvolvedIds.value.filter(selId => {
+    const selMember = teamStore.teamMembers.find(m => m.id === selId)
+    return (selMember?.uid || selId) !== leadKey
+  })
+})
+
+function memberNameById(id) {
+  if (!id) return ''
+  return teamStore.teamMembers.find(m => m.id === id)?.name || ''
+}
+
 const langStatusGroups = computed(() => {
   if (!localProject.value) return []
   const langs = localProject.value.additionalLanguages || []
@@ -1445,22 +1512,33 @@ const editPhaseValue = computed({
 })
 
 // ── Project loading ───────────────────────────────────────────────────────────
-async function loadProjectExtras(id) {
+function loadProjectExtras(id) {
   commentsLoading.value    = true
   projectComments.value    = []
   projectActivityLog.value = []
-  try {
-    const [comments, log] = await Promise.all([
-      getProjectComments(id),
-      getProjectActivityLog(id),
-    ])
-    projectComments.value    = comments
-    projectActivityLog.value = log
-  } catch (err) {
-    console.error('Error loading project extras:', err)
-  } finally {
-    commentsLoading.value = false
-  }
+
+  // Tear down any previous activity log listener for a different project
+  if (unsubActivityLog) { unsubActivityLog(); unsubActivityLog = null }
+
+  // Comments: one-time fetch (unchanged)
+  getProjectComments(id)
+    .then(c  => { projectComments.value = c })
+    .catch(err => console.error('Error loading comments:', err))
+
+  // Activity log: live listener — updates whenever a new entry is written
+  unsubActivityLog = subscribeToActivityLog(
+    id,
+    (snap) => {
+      projectActivityLog.value = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => tsMillis(b.timestamp) - tsMillis(a.timestamp))
+      commentsLoading.value = false
+    },
+    (err) => {
+      console.error('Activity log listener error:', err)
+      commentsLoading.value = false
+    }
+  )
 }
 
 function initLocalProject(p) {
@@ -1502,6 +1580,7 @@ async function ensureLanguagesPhase(data) {
 
 function startProjectListener(id) {
   if (unsubProject) unsubProject()
+  if (unsubActivityLog) { unsubActivityLog(); unsubActivityLog = null }
   pageLoading.value = true
   unsubProject = subscribeToProject(id, (snap) => {
     if (!snap.exists()) {
@@ -1541,12 +1620,17 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (unsubProject) unsubProject()
+  if (unsubActivityLog) { unsubActivityLog(); unsubActivityLog = null }
 })
 
 watch(() => route.params.id, (newId, oldId) => {
   if (!newId || newId === oldId) return
   localProject.value = null
   startProjectListener(newId)
+})
+
+watch(() => route.query.tab, (tab) => {
+  if (tab) projTab.value = tab
 })
 
 watch(projTab, (tab) => {
@@ -1576,7 +1660,11 @@ function scrollToPhase(phaseId) {
 
 // ── Info tab ──────────────────────────────────────────────────────────────────
 function enterEditMode() {
-  infoMemberIds.value = (localProject.value?.assignedMembers || []).map(m => m.id)
+  editLeadDeveloperId.value       = localProject.value?.leadDeveloperId || ''
+  editDevelopersInvolvedIds.value = [...(localProject.value?.developersInvolvedIds || [])]
+  editWebServicesAssigneeId.value = localProject.value?.webServicesAssigneeId || ''
+  editMultimediaAssigneeId.value  = localProject.value?.multimediaAssigneeId || ''
+  editQaAssigneeId.value          = localProject.value?.qaAssigneeId || ''
   // Populate edit-mode language selectors from project
   const ml = localProject.value?.mainLanguage || langPills(localProject.value)[0] || 'NL'
   if (LANGUAGE_OPTIONS.includes(ml)) {
@@ -1667,37 +1755,75 @@ async function infoSave() {
   infoSaving.value = true
   const now = new Date().toISOString()
   try {
-    const assignedMembers = infoMemberIds.value
+    const allMemberIds = [
+      editLeadDeveloperId.value,
+      ...editDevelopersInvolvedIds.value,
+      editWebServicesAssigneeId.value,
+      editMultimediaAssigneeId.value,
+      editQaAssigneeId.value,
+    ].filter(Boolean)
+    const uniqueIds = [...new Set(allMemberIds)]
+    const assignedMembers = uniqueIds
       .map(id => teamStore.teamMembers.find(m => m.id === id))
       .filter(Boolean)
       .map(m => ({ id: m.id, name: m.name, initials: m.initials || m.avatarInitials || '', avatarColor: m.avatarColor || '#6366f1' }))
 
+    const leadMember          = teamStore.teamMembers.find(m => m.id === editLeadDeveloperId.value)
+    const prevLeadDeveloperId = localProject.value.leadDeveloperId
+
     const fields = {
-      name:                localProject.value.name || '',
-      url:                 localProject.value.url || '',
-      originalSite:        localProject.value.originalSite || '',
-      platform:            localProject.value.platform || '',
-      projectType:         localProject.value.projectType || '',
-      mainLanguage:        newMain,
-      additionalLanguages: newAdditional,
-      kickstartDate:       localProject.value.kickstartDate || '',
-      liveDate:            localProject.value.liveDate || '',
-      currentPhase:        localProject.value.currentPhase || 'kickstart',
-      currentSubPhase:     localProject.value.currentSubPhase || null,
-      activePhases:        localProject.value.activePhases || [],
-      phaseData:           localProject.value.phaseData || {},
+      name:                     localProject.value.name || '',
+      url:                      localProject.value.url || '',
+      originalSite:             localProject.value.originalSite || '',
+      platform:                 localProject.value.platform || '',
+      projectType:              localProject.value.projectType || '',
+      mainLanguage:             newMain,
+      additionalLanguages:      newAdditional,
+      kickstartDate:            localProject.value.kickstartDate || '',
+      liveDate:                 localProject.value.liveDate || '',
+      currentPhase:             localProject.value.currentPhase || 'kickstart',
+      currentSubPhase:          localProject.value.currentSubPhase || null,
+      activePhases:             localProject.value.activePhases || [],
+      phaseData:                localProject.value.phaseData || {},
+      leadDeveloperId:          editLeadDeveloperId.value || null,
+      developersInvolvedIds:    editDevelopersInvolvedIds.value,
+      webServicesAssigneeId:    editWebServicesAssigneeId.value || null,
+      multimediaAssigneeId:     editMultimediaAssigneeId.value || null,
+      qaAssigneeId:             editQaAssigneeId.value || null,
       assignedMembers,
-      developer:           assignedMembers[0]?.name || localProject.value.developer || '',
-      sitemapUrl:          localProject.value.sitemapUrl || '',
-      builderLink:         localProject.value.builderLink || '',
-      briefingUrl:         localProject.value.briefingUrl || '',
-      googleKeepUrl:       localProject.value.googleKeepUrl || '',
-      logoSetUrl:          localProject.value.logoSetUrl || '',
-      updatedAt:           now,
+      developer:                leadMember?.name || '',
+      sitemapUrl:               localProject.value.sitemapUrl || '',
+      builderLink:              localProject.value.builderLink || '',
+      briefingUrl:              localProject.value.briefingUrl || '',
+      googleKeepUrl:            localProject.value.googleKeepUrl || '',
+      logoSetUrl:               localProject.value.logoSetUrl || '',
+      updatedAt:                now,
     }
     await projectsStore.updateProject(localProject.value.id, fields)
-    localProject.value.assignedMembers = assignedMembers
+    localProject.value.assignedMembers       = assignedMembers
+    localProject.value.leadDeveloperId       = editLeadDeveloperId.value || null
+    localProject.value.developersInvolvedIds = editDevelopersInvolvedIds.value
+    localProject.value.webServicesAssigneeId = editWebServicesAssigneeId.value || null
+    localProject.value.multimediaAssigneeId  = editMultimediaAssigneeId.value || null
+    localProject.value.qaAssigneeId          = editQaAssigneeId.value || null
     localProject.value.developer = fields.developer
+
+    // Notify the new lead developer if the assignment changed
+    const newLeadDevId = editLeadDeveloperId.value
+    if (newLeadDevId && newLeadDevId !== prevLeadDeveloperId && leadMember?.uid) {
+      const currentMemberId = authStore.currentUser?.memberId
+      if (newLeadDevId !== currentMemberId) {
+        createNotification({
+          userId:      leadMember.uid,
+          type:        'assignment',
+          message:     `You have been assigned to "${fields.name}"`,
+          projectId:   localProject.value.id,
+          projectName: fields.name,
+          read:        false,
+        }).catch(err => console.error('Assignment notification error:', err))
+      }
+    }
+
     const FIELD_LABELS = { name: 'Name', url: 'Site URL', originalSite: 'Original Site', platform: 'Platform', projectType: 'Type', mainLanguage: 'Main Language', kickstartDate: 'Kickstart Date', liveDate: 'Live Date', sitemapUrl: 'Sitemap', builderLink: 'Builder Link', briefingUrl: 'Briefing', googleKeepUrl: 'Google Keep', logoSetUrl: 'Google Drive' }
     const snap = latestSnapshot.value || {}
     const changedFields = Object.keys(FIELD_LABELS).filter(f => (localProject.value[f] || '') !== (snap[f] || ''))
