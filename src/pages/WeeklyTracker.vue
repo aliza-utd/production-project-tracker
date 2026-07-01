@@ -11,6 +11,12 @@
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <button class="btn btn-ghost btn-sm" @click="offset++">Next →</button>
+        <button class="btn btn-secondary btn-sm" style="font-size:12px"
+          :disabled="carryOverLoading"
+          @click="carryOverFromLastWeek">
+          {{ carryOverLoading ? 'Carrying over…' : '↩ Carry over from last week' }}
+        </button>
+        <span v-if="carryOverMsg" style="font-size:12px;color:var(--muted)">{{ carryOverMsg }}</span>
         <NotificationBell />
       </div>
     </div>
@@ -45,7 +51,23 @@
             @dragleave="dragOverId = null"
             @drop.prevent="onDrop(sec.key, item.id)">
             <span class="drag-handle" title="Drag to reorder">⠿</span>
-            <div style="flex:1;font-size:13px">{{ item.text }}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px">{{ item.text }}</div>
+              <div v-if="item.projectId" style="font-size:11px;color:var(--muted);margin-top:2px">
+                {{ projectPhase(item.projectId) || '—' }}
+                <span v-if="projectSiteStatus(item.projectId)"
+                  :style="{ color: siteStatusColor(projectSiteStatus(item.projectId)) }">
+                  · {{ projectSiteStatus(item.projectId) }}
+                </span>
+              </div>
+            </div>
+            <button v-if="!item.projectId"
+              class="btn btn-ghost btn-sm"
+              style="font-size:11px;padding:2px 8px;white-space:nowrap;flex-shrink:0"
+              :disabled="creatingProjectFor === item.id"
+              @click.stop="addToProjects(item, sec.key)">
+              {{ creatingProjectFor === item.id ? 'Creating…' : 'Add to Projects' }}
+            </button>
             <button class="btn-icon" @click="removeItem(sec.key, item.id)" title="Remove">✕</button>
           </div>
           <div v-if="!sectionItems(sec.key).length" class="wk-empty">Nothing logged yet.</div>
@@ -190,12 +212,16 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useProjectsStore } from '@/stores/projects'
 import { usePhasesStore }   from '@/stores/phases'
-import { subscribeToWeeklyTracker, saveWeeklyTrackerDoc } from '@/firebase-service'
+import { useAuthStore }     from '@/stores/auth'
+import { usePhaseLogic }    from '@/composables/usePhaseLogic'
+import { subscribeToWeeklyTracker, saveWeeklyTrackerDoc, getWeeklyTrackerDoc } from '@/firebase-service'
 import RichTextEditor from '@/components/shared/RichTextEditor.vue'
 import NotificationBell from '@/components/layout/NotificationBell.vue'
 
 const projectsStore = useProjectsStore()
 const phasesStore   = usePhasesStore()
+const authStore     = useAuthStore()
+const { emptyPhaseEntry } = usePhaseLogic()
 
 // ── Section definitions ───────────────────────────────────────────────────────
 // color: null = no accent; otherwise a CSS color for the top border
@@ -216,6 +242,13 @@ const entry   = ref({})
 const loading = ref(false)
 const addOpen = ref(null)
 const addForm = ref({ projectId: '', projectSearch: '', text: '', html: '', date: '' })
+
+// "Add to Projects" for freeform items
+const creatingProjectFor = ref(null)
+
+// Carry over
+const carryOverLoading = ref(false)
+const carryOverMsg     = ref('')
 
 // Type-ahead
 const showDropdown = ref(false)
@@ -238,15 +271,18 @@ const dragOverId      = ref(null)
 
 let unsub = null
 
-// ── Week key / label ──────────────────────────────────────────────────────────
-const weekKey = computed(() => {
+// ── Week key helpers ──────────────────────────────────────────────────────────
+function computeWeekKey(off) {
   const d = new Date()
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + offset.value * 7)
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + off * 7)
   const yr   = d.getFullYear()
   const jan1 = new Date(yr, 0, 1)
   const wn   = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7)
   return `${yr}-W${String(wn).padStart(2, '0')}`
-})
+}
+
+const weekKey     = computed(() => computeWeekKey(offset.value))
+const prevWeekKey = computed(() => computeWeekKey(offset.value - 1))
 
 const weekLabel = computed(() => {
   const d = new Date()
@@ -418,6 +454,153 @@ async function saveRichItem(sectionKey, itemId) {
 // Remove
 function removeItem(sectionKey, id) {
   saveSection(sectionKey, sectionItems(sectionKey).filter(i => i.id !== id))
+}
+
+// ── "Add to Projects" (New Projects freeform column) ─────────────────────────
+async function addToProjects(item, sectionKey) {
+  if (creatingProjectFor.value) return
+  creatingProjectFor.value = item.id
+  try {
+    const now   = new Date().toISOString()
+    const today = now.slice(0, 10)
+
+    // Build minimal phase data using defaults
+    const phaseData = {}
+    for (const ph of phasesStore.phaseConfig) {
+      if (ph.id === 'languages') continue
+      phaseData[ph.id] = emptyPhaseEntry()
+      if (ph.subPhases?.length) {
+        phaseData[ph.id].subPhases = {}
+        for (const sp of ph.subPhases) {
+          phaseData[ph.id].subPhases[sp.id] = emptyPhaseEntry()
+        }
+      }
+    }
+    // Mark kickstart as active
+    if (phaseData.kickstart) phaseData.kickstart.status = 'active'
+
+    const docData = {
+      name:                  item.text.trim(),
+      url:                   '',
+      originalSite:          '',
+      mainLanguage:          'NL',
+      additionalLanguages:   [],
+      platform:              'WordPress',
+      projectType:           'new_site',
+      kickstartDate:         today,
+      liveDate:              '',
+      siteStatus:            'development',
+      currentPhase:          'kickstart',
+      currentSubPhase:       null,
+      activePhases:          [{ phase: 'kickstart', subPhase: null }],
+      phaseData,
+      leadDeveloperId:       null,
+      developersInvolvedIds: [],
+      webServicesAssigneeId: null,
+      multimediaAssigneeId:  null,
+      qaAssigneeId:          null,
+      assignedMembers:       [],
+      developer:             '',
+      notes:                 '',
+      checklists:            {},
+      links:                 [],
+      langStatus:            {},
+      phaseHistory:          [],
+      onHoldSince:           null,
+      onHoldReason:          '',
+      cancelledAt:           null,
+      cancelledReason:       '',
+      archived:              false,
+      shareToken:            null,
+      templateId:            null,
+      createdBy:             authStore.currentUser?.name || '',
+      createdAt:             now,
+      updatedAt:             now,
+    }
+
+    const created = await projectsStore.createProject(docData)
+
+    // Update the tracker item: link it to the new project
+    const items = sectionItems(sectionKey).map(i =>
+      i.id === item.id ? { ...i, projectId: created.id } : i
+    )
+    await saveSection(sectionKey, items)
+  } catch (err) {
+    console.error('[WeeklyTracker] addToProjects failed:', err)
+  } finally {
+    creatingProjectFor.value = null
+  }
+}
+
+// ── "Carry over from last week" ───────────────────────────────────────────────
+let _carryMsgTimer = null
+
+async function carryOverFromLastWeek() {
+  if (carryOverLoading.value) return
+  carryOverLoading.value = true
+  carryOverMsg.value = ''
+
+  try {
+    const prevData = await getWeeklyTrackerDoc(prevWeekKey.value)
+
+    if (!prevData) {
+      carryOverMsg.value = 'No items in the previous week'
+      return
+    }
+
+    const hasPrevItems = SECTIONS.some(sec => (prevData[sec.key] || []).length > 0)
+    if (!hasPrevItems) {
+      carryOverMsg.value = 'No items in the previous week'
+      return
+    }
+
+    const current = { ...entry.value }
+    let copiedCount = 0
+
+    for (const sec of SECTIONS) {
+      const prevItems    = prevData[sec.key] || []
+      if (!prevItems.length) continue
+
+      const currentItems = current[sec.key] || []
+
+      // Collect source IDs that were already carried into this week
+      const alreadyCarried = new Set(
+        currentItems
+          .filter(i => i.sourceItemId)
+          .map(i => i.sourceItemId)
+      )
+
+      const newItems = prevItems
+        .filter(i => !alreadyCarried.has(i.id))
+        .map(i => ({
+          ...i,
+          id:           uid(),                       // fresh ID for this week's copy
+          sourceItemId: i.id,                        // tracks origin for dedup
+          createdAt:    new Date().toISOString(),
+        }))
+
+      if (newItems.length > 0) {
+        current[sec.key] = [...currentItems, ...newItems]
+        copiedCount += newItems.length
+      }
+    }
+
+    if (copiedCount === 0) {
+      carryOverMsg.value = 'All items were already carried over'
+      return
+    }
+
+    entry.value = current
+    await saveWeeklyTrackerDoc(weekKey.value, current)
+    carryOverMsg.value = `Carried over ${copiedCount} item${copiedCount !== 1 ? 's' : ''}`
+  } catch (err) {
+    console.error('[WeeklyTracker] carryOver failed:', err)
+    carryOverMsg.value = 'Failed to carry over items'
+  } finally {
+    carryOverLoading.value = false
+    clearTimeout(_carryMsgTimer)
+    _carryMsgTimer = setTimeout(() => { carryOverMsg.value = '' }, 4000)
+  }
 }
 
 // ── Drag-and-drop (freeform column) ──────────────────────────────────────────

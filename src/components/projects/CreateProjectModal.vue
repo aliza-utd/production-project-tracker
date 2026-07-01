@@ -17,31 +17,8 @@
           <div v-if="errors.name" class="np-error">{{ errors.name }}</div>
         </div>
 
-        <!-- Row 1: Site URL | Original Site URL -->
+        <!-- Row: Platform | Type -->
         <div class="np-row">
-          <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">Site URL</label>
-            <input class="form-input" v-model="form.url" placeholder="https://…">
-          </div>
-          <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">Original Site URL</label>
-            <input class="form-input" v-model="form.originalSite" placeholder="https://…">
-          </div>
-        </div>
-
-        <!-- Row 2: Main Language | Platform | Type -->
-        <div class="np-row np-row-3">
-          <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">Main Language *</label>
-            <select class="form-select" v-model="mainLanguage">
-              <option v-for="lang in LANGUAGE_OPTIONS" :key="lang" :value="lang">{{ lang }}</option>
-              <option value="Other">Other…</option>
-            </select>
-            <input v-if="mainLanguage === 'Other'"
-              class="form-input" v-model="mainLanguageOther"
-              placeholder="Language code (e.g. DE)"
-              style="margin-top:5px">
-          </div>
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Platform *</label>
             <select class="form-select" :class="{ 'np-field-err': errors.platform }"
@@ -66,86 +43,129 @@
           </div>
         </div>
 
-        <!-- Additional Languages -->
+        <!-- Kickstart Date -->
         <div class="np-row">
           <div class="form-group" style="margin-bottom:0;flex:1">
-            <label class="form-label">Additional Languages</label>
-            <TagInput v-model="additionalLanguages" placeholder="Add languages…" />
-            <div style="font-size:11px;color:var(--muted);margin-top:4px">
-              These will generate a Languages phase after Activation
-            </div>
-          </div>
-        </div>
-
-        <!-- Row 3: Kickstart Date | Live Date -->
-        <div class="np-row">
-          <div class="form-group" style="margin-bottom:0">
             <label class="form-label">Kickstart Date *</label>
             <input type="date" class="form-input" :class="{ 'np-field-err': errors.kickstartDate }"
               v-model="form.kickstartDate" @change="delete errors.kickstartDate">
             <div v-if="errors.kickstartDate" class="np-error">{{ errors.kickstartDate }}</div>
           </div>
-          <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">Live Date</label>
-            <input type="date" class="form-input" v-model="form.liveDate">
-          </div>
         </div>
 
-        <!-- Starting Phase toggle -->
+        <!-- Languages (combined) -->
         <div class="form-group">
-          <label class="form-label" style="display:flex;align-items:center;gap:7px;cursor:pointer">
-            <input type="checkbox" v-model="phaseOn" style="margin:0">
-            Starting Phase
-          </label>
-          <select v-if="phaseOn" class="form-select" v-model="phaseId" style="margin-top:8px">
-            <option v-for="ph in phasesStore.phaseConfig.filter(p => p.id !== 'languages')" :key="ph.id" :value="ph.id">
-              {{ ph.name }}
-            </option>
-          </select>
-        </div>
-
-        <!-- Developer Assignments -->
-        <div class="np-row" style="margin-top:4px">
-          <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">Lead Developer</label>
-            <select class="form-select" v-model="leadDeveloperId">
-              <option value="">— None —</option>
-              <option v-for="m in developerMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
-            </select>
-          </div>
-          <div class="form-group" style="margin-bottom:0;flex:1">
-            <label class="form-label">Developers Involved</label>
-            <TeamMemberPicker v-model="developersInvolvedIds" :members="developersInvolvedOptions" />
-          </div>
-        </div>
-        <div class="np-row np-row-3" style="margin-top:8px">
-          <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">Web Services</label>
-            <select class="form-select" v-model="webServicesAssigneeId">
-              <option value="">— None —</option>
-              <option v-for="m in allActiveMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
-            </select>
-          </div>
-          <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">Multimedia</label>
-            <select class="form-select" v-model="multimediaAssigneeId">
-              <option value="">— None —</option>
-              <option v-for="m in allActiveMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
-            </select>
-          </div>
-          <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">Quality Check</label>
-            <select class="form-select" v-model="qaAssigneeId">
-              <option value="">— None —</option>
-              <option v-for="m in allActiveMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
-            </select>
+          <label class="form-label">Languages</label>
+          <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+            <div style="flex:0 0 auto">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Main *</div>
+              <select class="form-select" style="min-width:110px" v-model="mainLanguage">
+                <option v-for="lang in LANGUAGE_OPTIONS" :key="lang" :value="lang">{{ lang }}</option>
+                <option value="Other">Other…</option>
+              </select>
+              <input v-if="mainLanguage === 'Other'"
+                class="form-input" v-model="mainLanguageOther"
+                placeholder="Language code (e.g. DE)"
+                style="margin-top:5px;width:110px">
+            </div>
+            <div style="flex:1;min-width:160px">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Additional</div>
+              <TagInput v-model="additionalLanguages" placeholder="Add languages…" />
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">
+                Generates a Languages phase after Activation
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Notes -->
-        <div class="form-group">
-          <label class="form-label">Notes</label>
-          <input class="form-input" v-model="form.notes" placeholder="Notes…">
+        <!-- Additional Details accordion -->
+        <div class="np-accordion">
+          <div class="np-accordion-hdr" @click="extraOpen = !extraOpen">
+            <span>Additional Details</span>
+            <span class="np-accordion-arrow" :class="{ open: extraOpen }">▶</span>
+          </div>
+          <div v-if="extraOpen" class="np-accordion-body">
+
+            <!-- Site URL | Original Site URL -->
+            <div class="np-row">
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Site URL</label>
+                <input class="form-input" v-model="form.url" placeholder="https://…">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Original Site URL</label>
+                <input class="form-input" v-model="form.originalSite" placeholder="https://…">
+              </div>
+            </div>
+
+            <!-- Live Date -->
+            <div class="np-row">
+              <div class="form-group" style="margin-bottom:0;flex:1">
+                <label class="form-label">Live Date</label>
+                <input type="date" class="form-input" v-model="form.liveDate">
+              </div>
+            </div>
+
+            <!-- Starting Phase toggle -->
+            <div class="form-group">
+              <label class="form-label" style="display:flex;align-items:center;gap:7px;cursor:pointer">
+                <input type="checkbox" v-model="phaseOn" style="margin:0">
+                Starting Phase
+              </label>
+              <select v-if="phaseOn" class="form-select" v-model="phaseId" style="margin-top:8px">
+                <option v-for="ph in phasesStore.phaseConfig.filter(p => p.id !== 'languages')" :key="ph.id" :value="ph.id">
+                  {{ ph.name }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Lead Developer | Developers Involved -->
+            <div class="np-row" style="margin-top:4px">
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Lead Developer</label>
+                <select class="form-select" v-model="leadDeveloperId">
+                  <option value="">— None —</option>
+                  <option v-for="m in developerMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:0;flex:1">
+                <label class="form-label">Developers Involved</label>
+                <TeamMemberPicker v-model="developersInvolvedIds" :members="developersInvolvedOptions" />
+              </div>
+            </div>
+
+            <!-- Web Services | Multimedia | Quality Check -->
+            <div class="np-row np-row-3" style="margin-top:8px">
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Web Services</label>
+                <select class="form-select" v-model="webServicesAssigneeId">
+                  <option value="">— None —</option>
+                  <option v-for="m in allActiveMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Multimedia</label>
+                <select class="form-select" v-model="multimediaAssigneeId">
+                  <option value="">— None —</option>
+                  <option v-for="m in allActiveMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Quality Check</label>
+                <select class="form-select" v-model="qaAssigneeId">
+                  <option value="">— None —</option>
+                  <option v-for="m in allActiveMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group" style="margin-top:8px">
+              <label class="form-label">Notes</label>
+              <input class="form-input" v-model="form.notes" placeholder="Notes…">
+            </div>
+
+          </div>
         </div>
 
         <!-- Actions -->
@@ -211,6 +231,7 @@ const phaseOn             = ref(false)
 const phaseId             = ref('kickstart')
 const errors              = reactive({})
 const saving              = ref(false)
+const extraOpen           = ref(false)
 
 // ── Role-specific assignment fields ──────────────────────────────────────────
 const leadDeveloperId      = ref('')
@@ -387,3 +408,39 @@ async function create() {
   }
 }
 </script>
+
+<style scoped>
+.np-accordion {
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.np-accordion-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--bg);
+  color: var(--text);
+  user-select: none;
+}
+.np-accordion-hdr:hover { background: var(--surface); }
+.np-accordion-arrow {
+  font-size: 10px;
+  opacity: .55;
+  transition: transform .2s;
+  display: inline-block;
+}
+.np-accordion-arrow.open { transform: rotate(90deg); }
+.np-accordion-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+}
+</style>

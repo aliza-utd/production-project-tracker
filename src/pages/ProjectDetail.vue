@@ -69,9 +69,6 @@
           <span class="badge" :class="localProject.platform === 'WordPress' ? 'badge-wp' : 'badge-blogger'">
             {{ localProject.platform }}
           </span>
-          <span v-if="localProject.projectType" class="pd-type-badge">
-            {{ projectTypeLabel(localProject.projectType) }}
-          </span>
           <span v-for="lang in langPills(localProject)" :key="lang" class="pd-lang-pill">
             {{ lang }}
           </span>
@@ -111,11 +108,11 @@
         <!-- Main tab area -->
         <div class="pd-main">
           <div class="proj-tabs-bar">
-            <div class="proj-tab" :class="{ active: projTab === 'phases' }" @click="projTab = 'phases'">
-              Phases
-            </div>
             <div class="proj-tab" :class="{ active: projTab === 'info' }" @click="projTab = 'info'">
               Project Details
+            </div>
+            <div class="proj-tab" :class="{ active: projTab === 'phases' }" @click="projTab = 'phases'">
+              Phases
             </div>
             <div v-if="localProject.id" class="proj-tab" :class="{ active: projTab === 'links' }"
               @click="projTab = 'links'">

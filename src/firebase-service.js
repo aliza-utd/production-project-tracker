@@ -373,6 +373,11 @@ export async function saveWeeklyTrackerDoc(weekKey, data) {
   return setDoc(doc(db, 'weekly_tracker', weekKey), sanitizeForFirestore(data))
 }
 
+export async function getWeeklyTrackerDoc(weekKey) {
+  const snap = await getDoc(doc(db, 'weekly_tracker', weekKey))
+  return snap.exists() ? snap.data() : null
+}
+
 export async function migrateWeeklyTrackerToFirestore(weeklyEntries) {
   for (const [wk, entry] of Object.entries(weeklyEntries)) {
     await setDoc(doc(db, 'weekly_tracker', wk), entry)

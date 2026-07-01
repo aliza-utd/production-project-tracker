@@ -381,14 +381,42 @@ function onStatusChange(status) {
         }
       }
     } else if (status === 'active') {
+      console.log(`[PhaseCard] activating ${props.phaseId} sub-phases, mode=${mode}, dynamic=${props.phaseDef.dynamic}, subDefs.length=${subDefs.length}`)
       if (mode === 'simultaneous') {
-        for (const sp of subDefs) {
-          if (!localPhase.value.subPhases[sp.id]) localPhase.value.subPhases[sp.id] = emptyPhaseEntry()
-          if ((localPhase.value.subPhases[sp.id].status || 'not-started') === 'not-started') {
-            applyStatus(localPhase.value.subPhases[sp.id], 'active')
+        if (props.phaseDef.dynamic) {
+          // Language phase simultaneous mode: activate the FIRST sub-task of each language in
+          // parallel. Sub-tasks within each language still auto-advance (sequential within language).
+          const templateLen = props.phaseDef.subPhaseTemplate?.length || 0
+          console.log(`[PhaseCard] simultaneous dynamic mode, templateLen=${templateLen}`)
+          if (templateLen > 0) {
+            for (let i = 0; i < subDefs.length; i += templateLen) {
+              const firstOfLang = subDefs[i]
+              if (!localPhase.value.subPhases[firstOfLang.id]) localPhase.value.subPhases[firstOfLang.id] = emptyPhaseEntry()
+              if ((localPhase.value.subPhases[firstOfLang.id].status || 'not-started') === 'not-started') {
+                applyStatus(localPhase.value.subPhases[firstOfLang.id], 'active')
+                console.log(`[PhaseCard] activated first sub-task for language block starting at index ${i}: ${firstOfLang.id}`)
+              }
+            }
+          } else {
+            // Fallback: no template length known, activate all
+            for (const sp of subDefs) {
+              if (!localPhase.value.subPhases[sp.id]) localPhase.value.subPhases[sp.id] = emptyPhaseEntry()
+              if ((localPhase.value.subPhases[sp.id].status || 'not-started') === 'not-started') {
+                applyStatus(localPhase.value.subPhases[sp.id], 'active')
+              }
+            }
           }
+          emit('phase-toast', `All ${props.phaseDef.name} languages are now Active`)
+        } else {
+          // Non-dynamic phase simultaneous mode: activate all sub-phases at once
+          for (const sp of subDefs) {
+            if (!localPhase.value.subPhases[sp.id]) localPhase.value.subPhases[sp.id] = emptyPhaseEntry()
+            if ((localPhase.value.subPhases[sp.id].status || 'not-started') === 'not-started') {
+              applyStatus(localPhase.value.subPhases[sp.id], 'active')
+            }
+          }
+          emit('phase-toast', `All ${props.phaseDef.name} sub-phases are now Active`)
         }
-        emit('phase-toast', `All ${props.phaseDef.name} sub-phases are now Active`)
       } else {
         // sequential: only the first not-yet-started sub-phase
         const firstPending = subDefs.find(sp =>
@@ -522,10 +550,19 @@ function onUpdateSub({ subId, data }) {
   if (!localPhase.value.subPhases) localPhase.value.subPhases = {}
   localPhase.value.subPhases[subId] = data
 
-  // Auto-activate parent when any sub-phase becomes active
-  if (data.status === 'active' && localPhase.value.status === 'not-started') {
+  // Auto-activate parent when any sub-phase is manually set to Active,
+  // provided the parent isn't already active.
+  const parentStatusBefore = localPhase.value.status
+  if (data.status === 'active' && parentStatusBefore !== 'active') {
     applyStatus(localPhase.value, 'active')
     isCollapsed.value = false
+    console.log(`[PhaseCard] parent phase "${props.phaseId}" auto-activated because sub-phase "${subId}" was set to Active (parent was "${parentStatusBefore}")`)
+    logActivity(props.projectId, 'phase_status_changed', {
+      phase: phaseName.value,
+      from:  parentStatusBefore,
+      to:    'active',
+      note:  `auto-activated by sub-phase: ${subId}`,
+    }).catch(() => {})
   }
 
   const subDefs = props.phaseDef.subPhases || []
@@ -534,20 +571,24 @@ function onUpdateSub({ subId, data }) {
 
   if (subIds.length > 0) {
     const allDone = subIds.every(id =>
-      (localPhase.value.subPhases?.[id]?.status || 'not-started') === 'done'
+      statusesStore.isComplete(localPhase.value.subPhases?.[id]?.status || 'not-started')
     )
     const anyActive = subIds.some(id =>
       (localPhase.value.subPhases?.[id]?.status || 'not-started') === 'active'
     )
 
-    if (allDone && localPhase.value.status !== 'done') {
+    if (allDone && !statusesStore.isComplete(localPhase.value.status)) {
       applyStatus(localPhase.value, 'done')
       autosave(true)  // auto-start next phase (or emit activation-complete if last)
       return
     }
 
-    // Sequential mode: activate the next pending sub-phase when current one finishes
-    if (mode === 'sequential' && data.status === 'done' && !allDone) {
+    // Auto-advance within the same language's steps in both sequential mode and
+    // simultaneous mode on dynamic (language-grouped) phases. Non-dynamic phases
+    // only auto-advance in sequential mode.
+    const shouldAutoAdvance = mode === 'sequential' ||
+      (mode === 'simultaneous' && !!props.phaseDef.dynamic)
+    if (shouldAutoAdvance && statusesStore.isComplete(data.status) && !allDone) {
       const doneIdx = subDefs.findIndex(sp => sp.id === subId)
       const doneDef = subDefs[doneIdx]
       // For language-grouped phases: only advance within the same language's steps
@@ -567,10 +608,12 @@ function onUpdateSub({ subId, data }) {
       }
     }
 
-    if (!allDone && anyActive && localPhase.value.status === 'not-started') {
+    // Guard: if parent is still not-started but has active sub-phases, activate it.
+    // (This handles the case where data.status wasn't 'active' but other subs are active.)
+    if (!allDone && anyActive && localPhase.value.status !== 'active' && !statusesStore.isComplete(localPhase.value.status)) {
       applyStatus(localPhase.value, 'active')
       isCollapsed.value = false
-    } else if (!allDone && localPhase.value.status === 'done') {
+    } else if (!allDone && statusesStore.isComplete(localPhase.value.status)) {
       applyStatus(localPhase.value, 'active')
     }
   }
