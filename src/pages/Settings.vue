@@ -98,6 +98,22 @@
             </div>
           </template>
         </div>
+
+        <div class="set-section">
+          <div class="set-section-title">Bulk sync</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">
+            Push missing link templates to every active project. Existing links and URLs are never changed — only absent templates are added.
+          </div>
+          <button class="btn btn-secondary btn-sm" :disabled="bulkSyncing || !linkTemplatesStore.loaded"
+            @click="bulkSyncLinks">
+            {{ bulkSyncing ? '⏳ Syncing…' : '⟳ Apply to All Projects' }}
+          </button>
+          <div v-if="bulkSyncResult" style="margin-top:12px;font-size:13px;line-height:1.7">
+            <span style="color:#16a34a;font-weight:500">Done.</span>
+            {{ bulkSyncResult.updated }} project{{ bulkSyncResult.updated !== 1 ? 's' : '' }} updated,
+            {{ bulkSyncResult.alreadyOk }} already had all templates.
+          </div>
+        </div>
       </div>
     </template>
 
@@ -311,6 +327,56 @@ async function ltRename(id, event) {
 async function ltRemove(id) {
   if (!confirm('Remove this link template? Existing project links are not affected.')) return
   await linkTemplatesStore.removeTemplate(id)
+}
+
+function uidShort() { return Math.random().toString(36).substr(2, 9) + Date.now().toString(36) }
+
+function buildSyncedLinks(existing, templates) {
+  const templateNames = new Set(templates.map(t => t.name.toLowerCase()))
+  const matched = (existing || []).filter(l => templateNames.has(l.name.toLowerCase()))
+  const custom  = (existing || []).filter(l => !templateNames.has(l.name.toLowerCase()))
+  const merged  = templates.map(tpl => {
+    const found = matched.find(l => l.name.toLowerCase() === tpl.name.toLowerCase())
+    return found
+      ? { ...found, order: tpl.order }
+      : { id: uidShort(), name: tpl.name, url: '', order: tpl.order }
+  })
+  const maxOrder = templates.reduce((m, t) => Math.max(m, t.order || 0), 0)
+  custom.forEach((l, i) => merged.push({ ...l, order: maxOrder + i + 1 }))
+  return merged
+}
+
+function projectNeedsSync(project, templates) {
+  const existingNames = new Set((project.links || []).map(l => l.name.toLowerCase()))
+  return templates.some(t => !existingNames.has(t.name.toLowerCase()))
+}
+
+const bulkSyncing    = ref(false)
+const bulkSyncResult = ref(null)  // { updated, alreadyOk } | null
+
+async function bulkSyncLinks() {
+  const templates = linkTemplatesStore.templates
+  if (!templates.length) { alert('No link templates configured.'); return }
+  const projects = projectsStore.projects
+  if (!projects.length) { alert('No projects loaded.'); return }
+  if (!confirm(`Apply missing link templates to all ${projects.length} active projects?\n\nThis will add any missing template entries (with blank URLs) to every project. Existing links and URLs are never changed.`)) return
+
+  bulkSyncing.value    = true
+  bulkSyncResult.value = null
+  let updated = 0, alreadyOk = 0
+  const now = new Date().toISOString()
+
+  for (const project of projects) {
+    if (!projectNeedsSync(project, templates)) { alreadyOk++; continue }
+    const merged = buildSyncedLinks(project.links, templates)
+    await projectsStore.updateProject(project.id, { links: merged, updatedAt: now }).catch(e =>
+      console.error(`[BulkSync] Failed for ${project.id}:`, e)
+    )
+    updated++
+  }
+
+  bulkSyncing.value    = false
+  bulkSyncResult.value = { updated, alreadyOk }
 }
 
 async function wnfAddField() {

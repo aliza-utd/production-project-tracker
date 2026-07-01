@@ -484,9 +484,15 @@
               <div class="il-section" style="margin-top:16px">
                 <div class="il-section-hdr">
                   <span class="il-section-title">Links</span>
-                  <button class="btn btn-secondary btn-xs" @click="showAddLink = !showAddLink">
-                    + Add Link
-                  </button>
+                  <div style="display:flex;gap:6px">
+                    <button class="btn btn-secondary btn-xs" :disabled="syncingTemplates"
+                      @click="syncLinkTemplates" title="Add any missing link templates to this project">
+                      {{ syncingTemplates ? 'Syncing…' : '⟳ Sync Templates' }}
+                    </button>
+                    <button class="btn btn-secondary btn-xs" @click="showAddLink = !showAddLink">
+                      + Add Link
+                    </button>
+                  </div>
                 </div>
                 <div v-if="showAddLink"
                   style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px">
@@ -819,6 +825,7 @@ import { usePhasesStore } from '@/stores/phases'
 import { useTeamStore } from '@/stores/team'
 import { useAuthStore } from '@/stores/auth'
 import { useStatusesStore } from '@/stores/statuses'
+import { useLinkTemplatesStore } from '@/stores/linkTemplates'
 import { usePhaseLogic } from '@/composables/usePhaseLogic'
 import { subscribeToProject, getProjectComments, addProjectComment, updateProjectComment, deleteProjectComment, subscribeToActivityLog, createNotification } from '@/firebase-service'
 import { useActivityLog } from '@/composables/useActivityLog'
@@ -842,7 +849,8 @@ const projectsStore  = useProjectsStore()
 const phasesStore    = usePhasesStore()
 const teamStore      = useTeamStore()
 const authStore      = useAuthStore()
-const statusesStore  = useStatusesStore()
+const statusesStore      = useStatusesStore()
+const linkTemplatesStore = useLinkTemplatesStore()
 const { logActivity } = useActivityLog()
 const {
   emptyPhaseEntry, autoCompletePreviousPhases, generateDynamicPhaseConfig,
@@ -880,8 +888,9 @@ const commentTextareaRef = ref(null)
 const mentionDropdown    = reactive({ show: false, query: '', filtered: [] })
 
 // ── Links ─────────────────────────────────────────────────────────────────────
-const showAddLink = ref(false)
-const newLink     = reactive({ name: '', url: '' })
+const showAddLink      = ref(false)
+const newLink          = reactive({ name: '', url: '' })
+const syncingTemplates = ref(false)
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 const toastMsg = ref('')
@@ -1841,6 +1850,25 @@ async function saveLangStatus(lang, status) {
 }
 
 // ── Links ─────────────────────────────────────────────────────────────────────
+
+// Merges existing project links with the current templates.
+// Template matches (case-insensitive) preserve the existing entry's URL and id.
+// Missing templates are added with url: ''. Custom links are appended after.
+function buildSyncedLinks(existing, templates) {
+  const templateNames = new Set(templates.map(t => t.name.toLowerCase()))
+  const matched  = (existing || []).filter(l => templateNames.has(l.name.toLowerCase()))
+  const custom   = (existing || []).filter(l => !templateNames.has(l.name.toLowerCase()))
+  const merged   = templates.map(tpl => {
+    const found = matched.find(l => l.name.toLowerCase() === tpl.name.toLowerCase())
+    return found
+      ? { ...found, order: tpl.order }
+      : { id: uid(), name: tpl.name, url: '', order: tpl.order }
+  })
+  const maxOrder = templates.reduce((m, t) => Math.max(m, t.order || 0), 0)
+  custom.forEach((l, i) => merged.push({ ...l, order: maxOrder + i + 1 }))
+  return merged
+}
+
 async function addLink() {
   if (!newLink.url.trim() && !newLink.name.trim()) return
   if (!localProject.value.links) localProject.value.links = []
@@ -1877,6 +1905,28 @@ function saveLinkImmediate() {
     links: localProject.value.links || [],
     updatedAt: new Date().toISOString(),
   }).catch(() => {})
+}
+
+async function syncLinkTemplates() {
+  if (!localProject.value?.id) return
+  await linkTemplatesStore.fetchTemplates()
+  const templates = linkTemplatesStore.templates
+  if (!templates.length) return
+  const existing = localProject.value.links || []
+  const merged = buildSyncedLinks(existing, templates)
+  localProject.value.links = merged
+  syncingTemplates.value = true
+  try {
+    await projectsStore.updateProject(localProject.value.id, {
+      links: merged,
+      updatedAt: new Date().toISOString(),
+    })
+    showToast('Link templates synced')
+  } catch (e) {
+    console.error('Sync links error:', e)
+  } finally {
+    syncingTemplates.value = false
+  }
 }
 
 // ── Comments ──────────────────────────────────────────────────────────────────

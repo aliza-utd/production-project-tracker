@@ -1,15 +1,23 @@
 <template>
   <div class="kb-card" @click="$emit('click')">
 
-    <div class="kb-name">{{ project.name }}</div>
+    <!-- Name row — when kanban, live date sits right-aligned on the same line -->
+    <div :style="kanban ? 'display:flex;align-items:flex-start;justify-content:space-between;gap:6px' : ''">
+      <div class="kb-name" :style="kanban ? 'flex:1;min-width:0' : ''">{{ project.name }}</div>
+      <div v-if="kanban" class="kb-date" :style="[dateStyle, { fontSize:'10px', whiteSpace:'nowrap', flexShrink:'0', marginTop:'1px' }]">
+        📅 {{ project.liveDate ? fmtDate(project.liveDate) : 'No live date' }}
+      </div>
+    </div>
 
+    <!-- URL -->
     <div v-if="project.url" style="font-size:11px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
       <a :href="project.url" target="_blank" class="ext" @click.stop style="color:var(--muted)">
         {{ truncateUrl(project.url) }}
       </a>
     </div>
 
-    <div class="kb-meta" style="margin-top:6px">
+    <!-- Platform + Type badges — hidden in kanban (redundant next to column header) -->
+    <div v-if="!kanban" class="kb-meta" style="margin-top:6px">
       <span class="badge" :class="project.platform === 'WordPress' ? 'badge-wp' : 'badge-blogger'"
         style="font-size:11px;padding:1px 7px">
         {{ project.platform || '—' }}
@@ -19,23 +27,34 @@
       </span>
     </div>
 
+    <!-- Language pills -->
     <div v-if="langPills.length" style="display:flex;flex-wrap:wrap;gap:3px;margin-top:5px">
       <span v-for="l in langPills" :key="l" class="pd-lang-pill" style="font-size:11px">{{ l }}</span>
     </div>
 
-    <div v-if="project.assignedMembers?.length" style="display:flex;gap:4px;margin-top:6px">
+    <!-- Assigned members: overlapping avatar stack in kanban, gapped row otherwise -->
+    <div v-if="project.assignedMembers?.length" style="display:flex;margin-top:6px;align-items:center">
       <div
-        v-for="m in project.assignedMembers" :key="m.id"
+        v-for="(m, i) in project.assignedMembers" :key="m.id"
         class="pd-team-av"
-        style="width:24px;height:24px;font-size:9px"
-        :style="{ background: avatarColor(m) }"
+        :style="{
+          background:  avatarColor(m),
+          width:       '24px',
+          height:      '24px',
+          fontSize:    '9px',
+          marginLeft:  kanban && i > 0 ? '-6px' : (kanban ? '0' : i > 0 ? '4px' : '0'),
+          border:      kanban ? '2px solid var(--surface)' : 'none',
+          position:    kanban ? 'relative' : 'static',
+          zIndex:      kanban ? String(project.assignedMembers.length - i) : 'auto',
+        }"
       >
         {{ avatarInitials(m) }}
         <div class="pd-team-av-tip">{{ m.name }}</div>
       </div>
     </div>
 
-    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;align-items:center">
+    <!-- Site status + phase badges — hidden in kanban (column already shows the phase) -->
+    <div v-if="!kanban" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;align-items:center">
       <SiteStatusBadge :status="project.siteStatus || 'development'" style="font-size:10px" />
       <span
         v-for="info in phaseInfos" :key="info.id"
@@ -47,11 +66,13 @@
       </span>
     </div>
 
+    <!-- Language status summary -->
     <div v-if="langStatusSummary" style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4">
       {{ langStatusSummary }}
     </div>
 
-    <div class="kb-date" :style="dateStyle">
+    <!-- Live date at bottom — only in non-kanban mode (kanban shows it in the name row) -->
+    <div v-if="!kanban" class="kb-date" :style="dateStyle">
       📅 {{ project.liveDate ? fmtDate(project.liveDate) : 'No live date' }}
     </div>
 
@@ -65,8 +86,9 @@ import { useTeamStore } from '@/stores/team'
 import SiteStatusBadge from '@/components/shared/SiteStatusBadge.vue'
 
 const props = defineProps({
-  project:     { type: Object, required: true },
-  phaseConfig: { type: Array,  default: null },
+  project:     { type: Object,  required: true },
+  phaseConfig: { type: Array,   default: null },
+  kanban:      { type: Boolean, default: false },
 })
 defineEmits(['click'])
 
