@@ -11,7 +11,7 @@
         class="ph-kb-col"
         :class="'ph-kb-col-' + col.id"
         @dragover.prevent
-        @drop.prevent="!readonly && onDrop(col.id)"
+        @drop.prevent="(!readonly || dragKey === 'activation') && onDrop(col.id)"
       >
         <div class="ph-kb-col-hdr">
           <span>{{ col.label }}</span>
@@ -23,7 +23,7 @@
             v-for="card in cardsForStatus(col.id)"
             :key="card.key"
             class="ph-kb-card"
-            :draggable="!readonly"
+            :draggable="!readonly || card.phaseId === 'activation'"
             @dragstart="dragKey = card.key"
             :style="{ borderLeft: '3px solid ' + card.color }"
           >
@@ -38,7 +38,7 @@
               <span v-if="card.hours > 0" class="ph-hours-badge" style="font-size:10px">
                 {{ fmtHours(card.hours) }}
               </span>
-              <span v-if="readonly" class="pc-locked-chip">🔒</span>
+              <span v-if="readonly && card.phaseId !== 'activation'" class="pc-locked-chip">🔒</span>
             </div>
           </div>
         </div>
@@ -48,19 +48,13 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { usePhaseLogic } from '@/composables/usePhaseLogic'
 import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
 import { useActivityLog } from '@/composables/useActivityLog'
 import { useProjectNotifications } from '@/composables/useProjectNotifications'
-
-const COLUMNS = [
-  { id: 'not-started', label: 'Not Started' },
-  { id: 'active',      label: 'Active' },
-  { id: 'blocked',     label: 'Blocked' },
-  { id: 'done',        label: 'Done' },
-]
+import { useStatusesStore } from '@/stores/statuses'
 
 const props = defineProps({
   phaseData:   { type: Object, default: () => ({}) },
@@ -75,8 +69,13 @@ const emit = defineEmits(['update-phase', 'activation-complete', 'next-phase-sta
 const { fmtHours, deepCopy, applyStatus, emptyPhaseEntry, computeActivePhases } = usePhaseLogic()
 const projectsStore   = useProjectsStore()
 const authStore       = useAuthStore()
+const statusesStore   = useStatusesStore()
 const { logActivity } = useActivityLog()
 const { notifyPhaseStatus, notifyPhaseStarted } = useProjectNotifications()
+
+const COLUMNS = computed(() =>
+  statusesStore.statuses.map(s => ({ id: s.id, label: s.name }))
+)
 
 // Local mutable copy of phaseData — kept in sync with prop for real-time updates
 const local   = ref(deepCopy(props.phaseData))
@@ -173,8 +172,8 @@ async function onDrop(newStatus) {
     if (!ph) return
     oldStatus = ph.status || 'not-started'
     applyStatus(ph, newStatus)
-    // Activation phase done → trigger event
-    if (phaseId === 'activation' && newStatus === 'done') {
+    // Go-Live phase done → trigger "mark site live?" prompt
+    if (phaseId === 'golive' && statusesStore.isComplete(newStatus)) {
       emit('activation-complete')
     }
   }
@@ -195,7 +194,7 @@ async function onDrop(newStatus) {
     })
   }
 
-  await saveAll(phaseId, !subId && newStatus === 'done')
+  await saveAll(phaseId, !subId && statusesStore.isComplete(newStatus))
 }
 
 async function saveAll(phaseId, autoStartNext = false) {

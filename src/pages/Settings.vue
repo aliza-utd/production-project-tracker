@@ -1,96 +1,217 @@
 <template>
-  <div class="content" style="max-width:720px">
+  <div class="content">
 
-    <h1 style="font-size:20px;font-weight:700;margin-bottom:24px;color:var(--text)">Settings</h1>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h1 style="font-size:20px;font-weight:700;color:var(--text)">Settings</h1>
+      <NotificationBell />
+    </div>
 
-    <!-- Appearance -->
-    <div class="set-section">
-      <div class="set-section-title">Appearance</div>
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div>
-          <div style="font-size:14px;font-weight:500">Dark Mode</div>
-          <div style="font-size:12px;color:var(--muted)">Toggle between light and dark theme</div>
-        </div>
-        <button class="btn btn-secondary btn-sm" @click="toggleTheme">
-          {{ isDark ? '☀️ Light Mode' : '🌙 Dark Mode' }}
-        </button>
-      </div>
+    <!-- Tab bar -->
+    <div class="app-tab-bar">
+      <button :class="['app-tab', { active: activeTab === 'data' }]" @click="activeTab = 'data'">Data</button>
+      <button :class="['app-tab', { active: activeTab === 'phases' }]" @click="activeTab = 'phases'">Phases</button>
+      <button :class="['app-tab', { active: activeTab === 'links' }]" @click="activeTab = 'links'">Links</button>
+      <button :class="['app-tab', { active: activeTab === 'status' }]" @click="activeTab = 'status'">Status</button>
+      <button :class="['app-tab', { active: activeTab === 'weekly' }]" @click="activeTab = 'weekly'">Weekly notes</button>
     </div>
 
     <!-- Data -->
-    <div class="set-section">
-      <div class="set-section-title">Data</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-secondary btn-sm" @click="exportData">⬇ Export Backup (JSON)</button>
-        <label class="btn btn-secondary btn-sm" style="cursor:pointer">
-          ⬆ Import JSON
-          <input type="file" accept=".json" style="display:none" @change="importData">
-        </label>
-      </div>
-      <div v-if="importMsg" style="font-size:13px;margin-top:8px"
-        :style="importError ? 'color:var(--danger)' : 'color:#16a34a'">
-        {{ importMsg }}
-      </div>
-    </div>
-
-    <!-- Data Migration (Manager only) -->
-    <div v-if="authStore.isManager" class="set-section">
-      <div class="set-section-title">Data Migration</div>
-      <div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:var(--r);padding:12px;margin-bottom:16px;font-size:13px;color:#92400e">
-        ⚠️ Run each migration once only. Migrations move data from localStorage to Firestore. Only needed for legacy data.
-      </div>
-
-      <div v-for="mig in migrations" :key="mig.key" class="set-mig-row">
-        <div style="flex:1">
-          <div style="font-size:14px;font-weight:500">{{ mig.label }}</div>
-          <div style="font-size:12px;color:var(--muted)">{{ mig.desc }}</div>
+    <template v-if="activeTab === 'data'">
+      <div style="max-width:720px">
+        <div class="set-section">
+          <div class="set-section-title">Backup &amp; Restore</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" @click="exportData">⬇ Export Backup (JSON)</button>
+            <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+              ⬆ Import JSON
+              <input type="file" accept=".json" style="display:none" @change="importData">
+            </label>
+          </div>
+          <div v-if="importMsg" style="font-size:13px;margin-top:8px"
+            :style="importError ? 'color:var(--danger)' : 'color:#16a34a'">
+            {{ importMsg }}
+          </div>
         </div>
-        <button class="btn btn-secondary btn-sm" :disabled="mig.running || !mig.hasData"
-          @click="runMigration(mig.key)">
-          <span v-if="mig.running">⏳ Migrating…</span>
-          <span v-else-if="!mig.hasData" style="color:var(--muted)">✓ No legacy data</span>
-          <span v-else>☁️ Migrate</span>
-        </button>
+
+        <div v-if="authStore.isManager" class="set-section">
+          <div class="set-section-title">Data Migration</div>
+          <div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:var(--r);padding:12px;margin-bottom:16px;font-size:13px;color:#92400e">
+            ⚠️ Run each migration once only. Migrations move data from localStorage to Firestore. Only needed for legacy data.
+          </div>
+          <div v-for="mig in migrations" :key="mig.key" class="set-mig-row">
+            <div style="flex:1">
+              <div style="font-size:14px;font-weight:500">{{ mig.label }}</div>
+              <div style="font-size:12px;color:var(--muted)">{{ mig.desc }}</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" :disabled="mig.running || !mig.hasData"
+              @click="runMigration(mig.key)">
+              <span v-if="mig.running">⏳ Migrating…</span>
+              <span v-else-if="!mig.hasData" style="color:var(--muted)">✓ No legacy data</span>
+              <span v-else>☁️ Migrate</span>
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+    </template>
+
+    <!-- Phases -->
+    <template v-if="activeTab === 'phases'">
+      <PhaseSettings />
+    </template>
+
+    <!-- Links -->
+    <template v-if="activeTab === 'links'">
+      <div style="max-width:720px">
+        <div class="set-section">
+          <div class="set-section-title">Link Templates</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">
+            Default links instantiated on each new project. Changes only affect new projects — existing project links are not updated.
+          </div>
+          <div v-if="!linkTemplatesStore.loaded" style="font-size:13px;color:var(--muted)">Loading…</div>
+          <template v-else>
+            <div v-for="(tpl, idx) in linkTemplatesStore.templates" :key="tpl.id" class="wnf-row">
+              <input
+                class="form-input wnf-name-input"
+                :defaultValue="tpl.name"
+                @blur="ltRename(tpl.id, $event)"
+                @keyup.enter="$event.target.blur()"
+              />
+              <button class="btn-icon" :disabled="idx === 0" @click="linkTemplatesStore.moveTemplate(idx, -1)" title="Move up">↑</button>
+              <button class="btn-icon" :disabled="idx === linkTemplatesStore.templates.length - 1" @click="linkTemplatesStore.moveTemplate(idx, 1)" title="Move down">↓</button>
+              <button class="btn-icon" style="color:var(--danger)" @click="ltRemove(tpl.id)" title="Remove">✕</button>
+            </div>
+            <div v-if="!linkTemplatesStore.templates.length"
+              style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:10px">
+              No link templates configured.
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <input
+                class="form-input"
+                style="flex:1;font-size:13px"
+                v-model="newLinkTemplateName"
+                placeholder="New link name…"
+                @keyup.enter="ltAdd"
+              />
+              <button class="btn btn-secondary btn-sm" @click="ltAdd" :disabled="!newLinkTemplateName.trim()">
+                + Add Link
+              </button>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+
+    <!-- Status -->
+    <template v-if="activeTab === 'status'">
+      <StatusSettings />
+    </template>
+
+    <!-- Weekly notes -->
+    <template v-if="activeTab === 'weekly'">
+      <div style="max-width:720px">
+        <div v-if="authStore.currentUser?.permissions?.isAdmin" class="set-section">
+          <div class="set-section-title">Weekly Notes Fields</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">
+            Controls the fields shown on each member's standup card.
+            Removing a field hides it from cards but does not delete historical data already saved under it.
+          </div>
+          <div v-if="!wnFieldsStore.loaded" style="font-size:13px;color:var(--muted)">Loading…</div>
+          <template v-else>
+            <div v-for="(field, idx) in wnFieldsStore.fields" :key="field.id" class="wnf-row">
+              <span v-if="field.isDefault" class="wnf-default-chip">Default</span>
+              <input
+                class="form-input wnf-name-input"
+                :defaultValue="field.name"
+                @blur="wnfRename(field.id, $event)"
+                @keyup.enter="$event.target.blur()"
+              />
+              <button class="btn-icon" :disabled="idx === 0" @click="wnfMove(idx, -1)" title="Move up">↑</button>
+              <button class="btn-icon" :disabled="idx === wnFieldsStore.fields.length - 1" @click="wnfMove(idx, 1)" title="Move down">↓</button>
+              <button class="btn-icon" style="color:var(--danger)" @click="wnfRemove(field)" title="Remove field">✕</button>
+            </div>
+            <div v-if="!wnFieldsStore.fields.length"
+              style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:10px">
+              No fields configured.
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <input
+                class="form-input"
+                style="flex:1;font-size:13px"
+                v-model="newFieldName"
+                placeholder="New field name…"
+                @keyup.enter="wnfAddField"
+              />
+              <button class="btn btn-secondary btn-sm" @click="wnfAddField" :disabled="!newFieldName.trim()">
+                + Add Field
+              </button>
+            </div>
+          </template>
+        </div>
+
+        <div v-if="authStore.currentUser?.permissions?.canEditAllNotes" class="set-section">
+          <div class="set-section-title">Weekly Notes Edit Requests</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
+            Team members can request edit access to their own past-week standup cards.
+          </div>
+          <div v-if="pendingRequests.length === 0"
+            style="font-size:13px;color:var(--muted);font-style:italic">
+            No pending requests.
+          </div>
+          <div v-for="req in pendingRequests" :key="req.id" class="set-mig-row">
+            <div style="flex:1">
+              <div style="font-size:14px;font-weight:500">{{ req.userName }}</div>
+              <div style="font-size:12px;color:var(--muted)">{{ req.weekLabel || req.week }}</div>
+            </div>
+            <button class="btn btn-sm er-approve-btn" @click="approveRequest(req)">Approve</button>
+            <button class="btn btn-sm er-deny-btn"    @click="denyRequest(req)">Deny</button>
+          </div>
+        </div>
+
+        <div v-if="!authStore.currentUser?.permissions?.isAdmin && !authStore.currentUser?.permissions?.canEditAllNotes"
+          class="set-section">
+          <p style="font-size:13px;color:var(--muted);margin:0">No weekly notes settings available for your role.</p>
+        </div>
+      </div>
+    </template>
 
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { useAuthStore }      from '@/stores/auth'
-import { useProjectsStore }  from '@/stores/projects'
-import { usePhasesStore }    from '@/stores/phases'
-import { useTeamStore }      from '@/stores/team'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { useAuthStore }              from '@/stores/auth'
+import { useProjectsStore }          from '@/stores/projects'
+import { usePhasesStore }            from '@/stores/phases'
+import { useTeamStore }              from '@/stores/team'
+import { useWeeklyNotesFieldsStore } from '@/stores/weeklyNotesFields'
+import { useLinkTemplatesStore }     from '@/stores/linkTemplates'
 import {
   migrateTeamMembersToFirestore,
   migrateProjectsToFirestore,
   migrateWeeklyTrackerToFirestore,
   migrateWeeklyDevNotesToFirestore,
   savePhaseConfigToFirestore,
+  subscribeToPendingEditRequests,
+  respondToWeeklyNotesEditRequest,
+  createNotification,
 } from '@/firebase-service'
 import { DEFAULT_PHASE_CONFIG as DEFAULT_PHASES } from '@/stores/phases'
+import PhaseSettings  from '@/pages/PhaseSettings.vue'
+import StatusSettings from '@/pages/StatusSettings.vue'
+import NotificationBell from '@/components/layout/NotificationBell.vue'
 
-const authStore     = useAuthStore()
-const projectsStore = useProjectsStore()
-const phasesStore   = usePhasesStore()
-const teamStore     = useTeamStore()
+const route               = useRoute()
+const authStore           = useAuthStore()
+const projectsStore       = useProjectsStore()
+const phasesStore         = usePhasesStore()
+const teamStore           = useTeamStore()
+const wnFieldsStore       = useWeeklyNotesFieldsStore()
+const linkTemplatesStore  = useLinkTemplatesStore()
 
-const isDark     = ref(document.body.classList.contains('dark'))
-const importMsg  = ref('')
+const activeTab   = ref(['data','phases','links','status','weekly'].includes(route.query.tab) ? route.query.tab : 'data')
+const importMsg   = ref('')
 const importError = ref(false)
-
-function toggleTheme() {
-  isDark.value = !isDark.value
-  if (isDark.value) {
-    document.body.classList.add('dark')
-    localStorage.setItem('pt_theme', 'dark')
-  } else {
-    document.body.classList.remove('dark')
-    localStorage.setItem('pt_theme', 'light')
-  }
-}
 
 function exportData() {
   const data = {
@@ -115,10 +236,10 @@ function importData(e) {
   reader.onload = (ev) => {
     try {
       JSON.parse(ev.target.result)
-      importMsg.value  = '✓ File parsed successfully. Use Migration buttons to import to Firestore.'
+      importMsg.value   = '✓ File parsed successfully. Use Migration buttons to import to Firestore.'
       importError.value = false
     } catch {
-      importMsg.value  = 'Invalid JSON file.'
+      importMsg.value   = 'Invalid JSON file.'
       importError.value = true
     }
   }
@@ -126,43 +247,12 @@ function importData(e) {
   e.target.value = ''
 }
 
-// ── Migration helpers ─────────────────────────────────────────────────────────
 const migrations = reactive([
-  {
-    key:     'team',
-    label:   'Team Members',
-    desc:    'Migrate pt_team from localStorage to Firestore team_members collection',
-    hasData: false,
-    running: false,
-  },
-  {
-    key:     'phases',
-    label:   'Phase Config',
-    desc:    'Migrate pt_phases from localStorage to Firestore phase_config collection',
-    hasData: false,
-    running: false,
-  },
-  {
-    key:     'projects',
-    label:   'Projects',
-    desc:    'Migrate pt_projects from localStorage to Firestore projects collection',
-    hasData: false,
-    running: false,
-  },
-  {
-    key:     'weeklyTracker',
-    label:   'Weekly Tracker',
-    desc:    'Migrate pt_weekly from localStorage to Firestore weekly_tracker collection',
-    hasData: false,
-    running: false,
-  },
-  {
-    key:     'devNotes',
-    label:   'Developer Notes',
-    desc:    'Migrate pt_devnotes from localStorage to Firestore weekly_dev_notes collection',
-    hasData: false,
-    running: false,
-  },
+  { key: 'team',          label: 'Team Members',   desc: 'Migrate pt_team from localStorage to Firestore team_members collection',         hasData: false, running: false },
+  { key: 'phases',        label: 'Phase Config',    desc: 'Migrate pt_phases from localStorage to Firestore phase_config collection',       hasData: false, running: false },
+  { key: 'projects',      label: 'Projects',        desc: 'Migrate pt_projects from localStorage to Firestore projects collection',         hasData: false, running: false },
+  { key: 'weeklyTracker', label: 'Weekly Tracker',  desc: 'Migrate pt_weekly from localStorage to Firestore weekly_tracker collection',     hasData: false, running: false },
+  { key: 'devNotes',      label: 'Developer Notes', desc: 'Migrate pt_devnotes from localStorage to Firestore weekly_dev_notes collection', hasData: false, running: false },
 ])
 
 function checkLegacyData() {
@@ -179,20 +269,16 @@ async function runMigration(key) {
   mig.running = true
   try {
     if (key === 'team') {
-      const raw = JSON.parse(localStorage.getItem('pt_team') || '[]')
-      await migrateTeamMembersToFirestore(raw)
+      await migrateTeamMembersToFirestore(JSON.parse(localStorage.getItem('pt_team') || '[]'))
     } else if (key === 'phases') {
       const raw = JSON.parse(localStorage.getItem('pt_phases') || '[]')
-      const phases = raw.length ? raw : DEFAULT_PHASES
-      await savePhaseConfigToFirestore(phases, authStore.currentUser?.uid)
+      await savePhaseConfigToFirestore(raw.length ? raw : DEFAULT_PHASES, authStore.currentUser?.uid)
     } else if (key === 'projects') {
-      const raw = JSON.parse(localStorage.getItem('pt_projects') || '[]')
-      await migrateProjectsToFirestore(raw)
+      await migrateProjectsToFirestore(JSON.parse(localStorage.getItem('pt_projects') || '[]'))
     } else if (key === 'weeklyTracker') {
-      const raw = JSON.parse(localStorage.getItem('pt_weekly') || '{}')
-      await migrateWeeklyTrackerToFirestore(raw)
+      await migrateWeeklyTrackerToFirestore(JSON.parse(localStorage.getItem('pt_weekly') || '{}'))
     } else if (key === 'devNotes') {
-      const raw = JSON.parse(localStorage.getItem('pt_devnotes') || '{}')
+      const raw       = JSON.parse(localStorage.getItem('pt_devnotes') || '{}')
       const memberMap = Object.fromEntries(teamStore.teamMembers.map(m => [m.id, m.name]))
       await migrateWeeklyDevNotesToFirestore(raw, memberMap)
     }
@@ -205,7 +291,85 @@ async function runMigration(key) {
   }
 }
 
-onMounted(checkLegacyData)
+const newFieldName        = ref('')
+const renamingSaving      = ref(false)
+const newLinkTemplateName = ref('')
+
+async function ltAdd() {
+  const name = newLinkTemplateName.value.trim()
+  if (!name) return
+  await linkTemplatesStore.addTemplate(name)
+  newLinkTemplateName.value = ''
+}
+
+async function ltRename(id, event) {
+  const name = (event.target.value || '').trim()
+  if (!name) { event.target.value = linkTemplatesStore.templates.find(t => t.id === id)?.name || ''; return }
+  await linkTemplatesStore.renameTemplate(id, name).catch(() => {})
+}
+
+async function ltRemove(id) {
+  if (!confirm('Remove this link template? Existing project links are not affected.')) return
+  await linkTemplatesStore.removeTemplate(id)
+}
+
+async function wnfAddField() {
+  const name = newFieldName.value.trim()
+  if (!name) return
+  await wnFieldsStore.addField(name)
+  newFieldName.value = ''
+}
+
+async function wnfRename(id, event) {
+  const name = (event.target.value || '').trim()
+  if (!name) { event.target.value = wnFieldsStore.fields.find(f => f.id === id)?.name || ''; return }
+  renamingSaving.value = true
+  await wnFieldsStore.updateField(id, { name }).catch(() => {})
+  renamingSaving.value = false
+}
+
+async function wnfMove(idx, dir) {
+  const arr  = [...wnFieldsStore.fields]
+  const dest = idx + dir
+  if (dest < 0 || dest >= arr.length) return
+  const a = arr[idx]
+  const b = arr[dest]
+  await Promise.all([
+    wnFieldsStore.updateField(a.id, { order: b.order }),
+    wnFieldsStore.updateField(b.id, { order: a.order }),
+  ])
+}
+
+async function wnfRemove(field) {
+  if (!confirm(`Remove "${field.name}"?\n\nHistorical standup data saved under this field is NOT deleted — it stays in Firestore but won't be shown on cards.`)) return
+  await wnFieldsStore.removeField(field.id)
+}
+
+const pendingRequests   = ref([])
+let   unsubEditRequests = null
+
+async function approveRequest(req) {
+  await respondToWeeklyNotesEditRequest(req.id, 'approved', authStore.currentUser?.name || '')
+  createNotification({ userId: req.userId, type: 'weekly_notes_request_approved', message: `Your edit request for ${req.weekLabel || req.week} was approved`, weekKey: req.week, read: false }).catch(() => {})
+}
+
+async function denyRequest(req) {
+  await respondToWeeklyNotesEditRequest(req.id, 'denied', authStore.currentUser?.name || '')
+  createNotification({ userId: req.userId, type: 'weekly_notes_request_denied', message: `Your edit request for ${req.weekLabel || req.week} was denied`, weekKey: req.week, read: false }).catch(() => {})
+}
+
+onMounted(() => {
+  checkLegacyData()
+  wnFieldsStore.fetchFields()
+  linkTemplatesStore.fetchTemplates()
+  if (authStore.currentUser?.permissions?.canEditAllNotes) {
+    unsubEditRequests = subscribeToPendingEditRequests((snap) => {
+      pendingRequests.value = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    })
+  }
+})
+
+onUnmounted(() => { if (unsubEditRequests) unsubEditRequests() })
 </script>
 
 <style scoped>
@@ -232,4 +396,27 @@ onMounted(checkLegacyData)
   border-bottom: 1px solid var(--border);
 }
 .set-mig-row:last-child { border-bottom: none; }
+.wnf-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.wnf-row:last-of-type { border-bottom: none; }
+.wnf-name-input { flex: 1; font-size: 13px; }
+.er-approve-btn { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+.er-approve-btn:hover { background: #dcfce7; }
+.er-deny-btn    { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.er-deny-btn:hover { background: #fee2e2; }
+.wnf-default-chip {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--badge-dev-bg);
+  color: var(--badge-dev-text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 </style>

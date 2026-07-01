@@ -62,6 +62,7 @@
               <div class="notif-time-row">
                 <span class="notif-time">{{ fmtTs(n.createdAt) }}</span>
                 <span v-if="n.projectId" class="notif-goto">→ View project</span>
+                <span v-else-if="n.weekKey" class="notif-goto">→ View weekly notes</span>
               </div>
             </div>
 
@@ -89,14 +90,18 @@ const { notifications, loading } = storeToRefs(notifStore)
 const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
 function notifIcon(type) {
-  if (type === 'mention')          return '👤'
-  if (type === 'new_comment')      return '💬'
-  if (type === 'comment')          return '💬'
-  if (type === 'phase_status')     return '🔄'
-  if (type === 'phase_started')    return '▶️'
-  if (type === 'assignment')       return '📋'
-  if (type === 'deadline_overdue') return '🚨'
-  if (type === 'deadline_warning') return '⏰'
+  if (type === 'mention')                         return '👤'
+  if (type === 'new_comment')                     return '💬'
+  if (type === 'comment')                         return '💬'
+  if (type === 'phase_status')                    return '🔄'
+  if (type === 'phase_started')                   return '▶️'
+  if (type === 'assignment')                      return '📋'
+  if (type === 'deadline_overdue')                return '🚨'
+  if (type === 'deadline_warning')                return '⏰'
+  if (type === 'weekly_notes_updated')            return '📝'
+  if (type === 'weekly_notes_edit_request')       return '🔑'
+  if (type === 'weekly_notes_request_approved')   return '✅'
+  if (type === 'weekly_notes_request_denied')     return '❌'
   return '🔔'
 }
 
@@ -130,6 +135,22 @@ async function handleMarkAllRead() {
 async function handleNotifClick(n) {
   showPanel.value = false
   if (!n.read) await notifStore.markAsRead(n.id)
+  if (n.weekKey) {
+    // highlight=own  → receiver IS the relevant card (approved/denied notifications)
+    // highlight=pending → admin should see the pending-request card highlighted
+    // no highlight    → weekly_notes_updated (can't derive which card without schema change)
+    const highlight =
+      n.type === 'weekly_notes_request_approved' || n.type === 'weekly_notes_request_denied'
+        ? 'own'
+        : n.type === 'weekly_notes_edit_request'
+          ? 'pending'
+          : null
+    router.push({
+      path:  '/weekly-notes',
+      query: highlight ? { week: n.weekKey, highlight } : { week: n.weekKey },
+    })
+    return
+  }
   if (n.projectId) {
     const isCommentType = n.type === 'mention' || n.type === 'new_comment' || n.type === 'comment'
     const isPhaseType   = n.type === 'phase_status' || n.type === 'phase_started'
@@ -139,11 +160,3 @@ async function handleNotifClick(n) {
 }
 </script>
 
-<style scoped>
-.notif-wrap {
-  position: fixed;
-  top: 12px;
-  right: 16px;
-  z-index: 60;
-}
-</style>

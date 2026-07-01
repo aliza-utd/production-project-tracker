@@ -1,6 +1,11 @@
 <template>
   <div class="content">
 
+    <!-- Page header with notification bell -->
+    <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
+      <NotificationBell />
+    </div>
+
     <!-- KPI Cards -->
     <div class="dash-stats">
       <div class="stat-card">
@@ -79,6 +84,7 @@ import { useProjectsStore }     from '@/stores/projects'
 import { usePhasesStore }       from '@/stores/phases'
 import { useNotificationsStore } from '@/stores/notifications'
 import TimeCalcWidget from '@/components/shared/TimeCalcWidget.vue'
+import NotificationBell from '@/components/layout/NotificationBell.vue'
 
 const projectsStore = useProjectsStore()
 const phasesStore   = usePhasesStore()
@@ -91,11 +97,14 @@ const active = computed(() =>
 const activeCount       = computed(() => active.value.length)
 const liveCount         = computed(() => projectsStore.projects.filter(p => p.siteStatus === 'live').length)
 const deadlinesThisWeek = computed(() => {
-  const now = Date.now()
+  const now  = Date.now()
+  const week = 7 * 86400000
   return active.value.filter(p => {
-    if (!p.liveDate) return false
-    const diff = new Date(p.liveDate + 'T00:00:00') - now
-    return diff >= 0 && diff <= 7 * 86400000
+    const dates = [p.previewDate, p.deliveryDate, p.deadline].filter(Boolean)
+    return dates.some(d => {
+      const diff = new Date(d + 'T00:00:00') - now
+      return diff >= 0 && diff <= week
+    })
   }).length
 })
 const overdueCount = computed(() =>

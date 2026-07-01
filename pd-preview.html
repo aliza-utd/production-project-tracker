@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<title>Project Detail — Polish Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Encode+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F5F5F7;--surface:#FFFFFF;--border:#E5E5E7;--row-divider:#EFEFF1;
+  --text:#1A1A1C;--secondary:#5A5A5E;--muted:#8A8A8E;
+  --nav-active-bg:rgba(26,161,219,0.10);
+  --badge-done-bg:#EAF3DE;--badge-done-text:#27500A;
+  --badge-progress-bg:#FAEEDA;--badge-progress-text:#854F0B;
+  --badge-blocked-bg:#FCEBEB;--badge-blocked-text:#791F1F;
+  --badge-pending-bg:#F1EFE8;--badge-pending-text:#444441;
+  --badge-dev-bg:#DDE9F7;--badge-dev-text:#1A3E6B;
+  --primary:#1AA1DB;--danger:#ef4444;
+  --r:12px;--sh:none;
+}
+.dark{
+  --bg:#15171A;--surface:#1C1E22;--border:#2A2C30;--row-divider:#26282C;
+  --text:#F0F0F2;--secondary:#A8A8AD;--muted:#8E8E93;
+  --nav-active-bg:rgba(26,161,219,0.17);
+  --badge-done-bg:#173404;--badge-done-text:#97C459;
+  --badge-progress-bg:#412402;--badge-progress-text:#FAC775;
+  --badge-blocked-bg:#501313;--badge-blocked-text:#F09595;
+  --badge-pending-bg:#2C2C2A;--badge-pending-text:#B4B2A9;
+  --badge-dev-bg:#0D1E33;--badge-dev-text:#7AACDE;
+  color-scheme:dark
+}
+body{font-family:'Encode Sans',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+
+/* Layout columns */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:0;min-height:100vh}
+.col{padding:0}
+.col-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#fff;background:#1AA1DB;padding:4px 16px}
+.dark-col{background:#15171A}
+
+/* App topbar */
+.app-topbar{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:flex-end;padding:0 28px;position:sticky;top:0;z-index:50}
+.notif-wrap{position:relative}
+.notif-btn{position:relative;width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0}
+.notif-badge{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:100px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+
+/* Content */
+.content{padding:24px}
+
+/* Page header card */
+.pd-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px 24px;display:flex;flex-direction:column;gap:0;margin-bottom:20px}
+.pd-header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px}
+.pd-header-title{font-size:20px;font-weight:700;color:var(--text);line-height:1.3;flex:1}
+.pd-header-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.pd-header-div{border-top:1px solid var(--border);margin:14px 0 12px}
+.pd-badge-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:var(--r);font-size:13px;font-weight:500;cursor:pointer;border:none;white-space:nowrap;font-family:inherit}
+.btn-secondary{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.btn-ghost{background:transparent;color:var(--muted);padding:6px 8px;border:none}
+.pd-back-btn{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:13px;font-weight:500;padding:0;display:flex;align-items:center;gap:3px;font-family:inherit;margin-bottom:10px}
+
+/* Badge system */
+.pd-status-badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:100px;white-space:nowrap}
+.pd-status-dev{background:var(--badge-dev-bg);color:var(--badge-dev-text)}
+.pd-status-live{background:var(--badge-done-bg);color:var(--badge-done-text)}
+.pd-status-hold{background:var(--badge-progress-bg);color:var(--badge-progress-text)}
+.pd-status-cancelled{background:var(--badge-blocked-bg);color:var(--badge-blocked-text)}
+.pd-type-badge{background:var(--bg);color:var(--muted);font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px;border:1px solid var(--border);white-space:nowrap}
+.pd-lang-pill{display:inline-flex;align-items:center;background:var(--badge-pending-bg);color:var(--badge-pending-text);font-size:11px;font-weight:500;padding:2px 9px;border-radius:100px;white-space:nowrap}
+.status-dot{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;flex-shrink:0}
+.urgent-pill{background:#fef2f2;color:#ef4444;border:1px solid #fecaca;border-radius:100px;padding:1px 7px;font-size:11px;font-weight:700}
+
+/* Phase list expanded panel */
+.ph-section-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px}
+.ph-list-expanded-body{padding:12px;background:var(--bg)}
+.ph-list-exp-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.ph-list-exp-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.ph-list-exp-col{padding:14px 16px}
+.ph-list-exp-col+.ph-list-exp-col{border-left:1px solid var(--border)}
+.ph-list-exp-timelog{padding:14px 16px;border-top:1px solid var(--border)}
+
+/* Phase progress badges in right panel */
+.pd-panel-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.pd-panel-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+.pd-pp-row{display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:5px}
+.pd-pp-icon{font-size:11px;flex-shrink:0;width:13px;text-align:center}
+.pd-pp-icon[data-st="done"]{color:var(--badge-done-text)}
+.pd-pp-icon[data-st="active"]{color:var(--badge-progress-text)}
+.pd-pp-icon[data-st="blocked"]{color:var(--badge-blocked-text)}
+.pd-pp-icon[data-st="not-started"]{color:var(--muted)}
+.pd-pp-name{flex:1;font-size:12px;color:var(--text)}
+.pd-pp-badge{font-size:10px;font-weight:600;padding:1px 5px;border-radius:999px;white-space:nowrap}
+.pd-pp-badge[data-st="done"]{background:var(--badge-done-bg);color:var(--badge-done-text)}
+.pd-pp-badge[data-st="active"]{background:var(--badge-progress-bg);color:var(--badge-progress-text)}
+.pd-pp-badge[data-st="not-started"]{background:var(--badge-pending-bg);color:var(--badge-pending-text)}
+
+/* Simulate phase list row */
+.ph-list-table{width:100%;border-collapse:collapse;margin-bottom:0}
+.ph-list-table th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--border);background:var(--bg);white-space:nowrap}
+.ph-list-table td{padding:9px 12px;border-bottom:1px solid var(--row-divider);vertical-align:middle;font-size:13px}
+.ph-list-row-active td{background:var(--nav-active-bg)}
+.ph-list-row-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+
+/* Status selects */
+.ph-status-sel{padding:3px 8px;border-radius:6px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--surface);font-family:inherit}
+.ph-st-not-started{background:var(--badge-pending-bg);border-color:var(--border);color:var(--badge-pending-text)}
+.ph-st-active{background:var(--badge-progress-bg);border-color:var(--border);color:var(--badge-progress-text)}
+.ph-st-done{background:var(--badge-done-bg);border-color:var(--border);color:var(--badge-done-text)}
+
+/* Textarea mock */
+.form-textarea{width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;color:var(--text);background:var(--surface);font-family:inherit;resize:none;min-height:72px;line-height:1.5}
+
+/* Time log mock */
+.ph-tl-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px}
+.ph-tl-table th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);padding:4px 8px;border-bottom:1px solid var(--border)}
+.ph-tl-table td{padding:5px 8px;border-bottom:1px solid var(--row-divider);color:var(--text)}
+
+/* Page divider */
+.page-divider{border:none;border-top:4px solid var(--border);margin:0}
+</style>
+</head>
+<body>
+
+<div class="cols">
+
+  <!-- LIGHT MODE -->
+  <div class="col">
+    <div class="col-label">Light mode</div>
+    <div class="app-topbar">
+      <div class="notif-wrap">
+        <button class="notif-btn">🔔
+          <span class="notif-badge">3</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+      <button class="pd-back-btn">← Back to Projects</button>
+
+      <!-- Header card -->
+      <div class="pd-header">
+        <div class="pd-header-top">
+          <div class="pd-header-title">Schilderswerken Pieter Janssen</div>
+          <div class="pd-header-actions">
+            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px">Share</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px">CSV</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px">TSV</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px">⏱</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px">Archive</button>
+          </div>
+        </div>
+        <div style="font-size:13px;color:#1AA1DB;margin-bottom:10px">schilderswerken.pieterjanssen.be</div>
+        <div class="pd-header-div"></div>
+        <div class="pd-badge-row">
+          <span class="pd-type-badge">WordPress</span>
+          <span class="pd-type-badge">Redesign</span>
+          <span class="pd-lang-pill">NL</span>
+          <span class="pd-lang-pill">FR</span>
+          <span class="pd-status-badge pd-status-dev"><span class="status-dot"></span>Development</span>
+          <span class="urgent-pill">⚡ Urgent</span>
+        </div>
+      </div>
+
+      <!-- Phase list wrapper -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px">
+        <table class="ph-list-table">
+          <thead>
+            <tr>
+              <th>Phase</th>
+              <th>Assignee</th>
+              <th>Status</th>
+              <th>Started</th>
+              <th>Completed</th>
+              <th>Hours</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Kickstart</strong></td>
+              <td style="color:var(--muted);font-size:12px">Bea</td>
+              <td><select class="ph-status-sel ph-st-done"><option>Done</option></select></td>
+              <td style="color:var(--muted);font-size:12px">Jun 01</td>
+              <td style="color:var(--muted);font-size:12px">Jun 03</td>
+              <td style="font-size:12px">4.5h</td>
+              <td style="font-size:12px;color:var(--muted)">Briefing done</td>
+            </tr>
+            <tr class="ph-list-row-active">
+              <td><strong style="color:var(--primary)">Development ▾</strong></td>
+              <td style="color:var(--muted);font-size:12px">John</td>
+              <td><select class="ph-status-sel ph-st-active"><option>Active</option></select></td>
+              <td style="color:var(--muted);font-size:12px">Jun 05</td>
+              <td style="color:var(--muted);font-size:12px">—</td>
+              <td style="font-size:12px">12h</td>
+              <td style="font-size:12px;color:var(--muted)">—</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Expanded accordion panel — Issue 4 fix -->
+        <div class="ph-list-expanded-body">
+          <div class="ph-list-exp-card">
+            <div class="ph-list-exp-grid">
+              <div class="ph-list-exp-col">
+                <div class="ph-section-lbl">Notes</div>
+                <textarea class="form-textarea" placeholder="Notes for Development…">Homepage design approved. Working on inner pages.</textarea>
+              </div>
+              <div class="ph-list-exp-col">
+                <div class="ph-section-lbl">Task Checklist</div>
+                <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:2px 0">
+                  <div style="display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid var(--row-divider);font-size:13px">
+                    <span style="flex:1;color:var(--text)">Homepage</span>
+                    <select class="ph-status-sel ph-st-done" style="font-size:11px;padding:2px 6px">
+                      <option>Done</option>
+                    </select>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid var(--row-divider);font-size:13px">
+                    <span style="flex:1;color:var(--text)">About page</span>
+                    <select class="ph-status-sel ph-st-active" style="font-size:11px;padding:2px 6px">
+                      <option>Active</option>
+                    </select>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;padding:6px 12px;font-size:13px">
+                    <span style="flex:1;color:var(--text)">Contact page</span>
+                    <select class="ph-status-sel ph-st-not-started" style="font-size:11px;padding:2px 6px">
+                      <option>Not Started</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Time Log section with divider -->
+            <div class="ph-list-exp-timelog">
+              <div class="ph-section-lbl">Time Log</div>
+              <table class="ph-tl-table">
+                <thead>
+                  <tr>
+                    <th>Date</th><th>Hours</th><th>Note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Jun 05</td><td>4h</td><td style="color:var(--muted)">Initial setup</td>
+                  </tr>
+                  <tr>
+                    <td>Jun 07</td><td>8h</td><td style="color:var(--muted)">Homepage build</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right panel preview -->
+      <div class="pd-panel-card">
+        <div class="pd-panel-title">Phase Progress</div>
+        <div class="pd-pp-row">
+          <span class="pd-pp-icon" data-st="done">✓</span>
+          <span class="pd-pp-name">Kickstart</span>
+          <span class="pd-pp-badge" data-st="done">Done</span>
+        </div>
+        <div class="pd-pp-row">
+          <span class="pd-pp-icon" data-st="active">▶</span>
+          <span class="pd-pp-name">Development</span>
+          <span class="pd-pp-badge" data-st="active">In progress</span>
+        </div>
+        <div class="pd-pp-row">
+          <span class="pd-pp-icon" data-st="not-started">○</span>
+          <span class="pd-pp-name">QA</span>
+          <span class="pd-pp-badge" data-st="not-started">Not started</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DARK MODE -->
+  <div class="col dark dark-col">
+    <div class="col-label" style="background:#0A6E94">Dark mode</div>
+    <div class="app-topbar">
+      <div class="notif-wrap">
+        <button class="notif-btn">🔔
+          <span class="notif-badge">3</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+      <button class="pd-back-btn">← Back to Projects</button>
+
+      <!-- Header card -->
+      <div class="pd-header">
+        <div class="pd-header-top">
+          <div class="pd-header-title">Schilderswerken Pieter Janssen</div>
+          <div class="pd-header-actions">
+            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px">Share</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px">CSV</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px">TSV</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px">⏱</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px">Archive</button>
+          </div>
+        </div>
+        <div style="font-size:13px;color:#4FBBE5;margin-bottom:10px">schilderswerken.pieterjanssen.be</div>
+        <div class="pd-header-div"></div>
+        <div class="pd-badge-row">
+          <span class="pd-type-badge">WordPress</span>
+          <span class="pd-type-badge">Redesign</span>
+          <span class="pd-lang-pill">NL</span>
+          <span class="pd-lang-pill">FR</span>
+          <span class="pd-status-badge pd-status-dev"><span class="status-dot"></span>Development</span>
+          <span class="urgent-pill">⚡ Urgent</span>
+        </div>
+      </div>
+
+      <!-- Phase list wrapper -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px">
+        <table class="ph-list-table">
+          <thead>
+            <tr>
+              <th>Phase</th>
+              <th>Assignee</th>
+              <th>Status</th>
+              <th>Started</th>
+              <th>Completed</th>
+              <th>Hours</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Kickstart</strong></td>
+              <td style="color:var(--muted);font-size:12px">Bea</td>
+              <td><select class="ph-status-sel ph-st-done"><option>Done</option></select></td>
+              <td style="color:var(--muted);font-size:12px">Jun 01</td>
+              <td style="color:var(--muted);font-size:12px">Jun 03</td>
+              <td style="font-size:12px">4.5h</td>
+              <td style="font-size:12px;color:var(--muted)">Briefing done</td>
+            </tr>
+            <tr class="ph-list-row-active">
+              <td><strong style="color:#4FBBE5">Development ▾</strong></td>
+              <td style="color:var(--muted);font-size:12px">John</td>
+              <td><select class="ph-status-sel ph-st-active"><option>Active</option></select></td>
+              <td style="color:var(--muted);font-size:12px">Jun 05</td>
+              <td style="color:var(--muted);font-size:12px">—</td>
+              <td style="font-size:12px">12h</td>
+              <td style="font-size:12px;color:var(--muted)">—</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Expanded accordion panel — Issue 4 fix -->
+        <div class="ph-list-expanded-body">
+          <div class="ph-list-exp-card">
+            <div class="ph-list-exp-grid">
+              <div class="ph-list-exp-col">
+                <div class="ph-section-lbl">Notes</div>
+                <textarea class="form-textarea" placeholder="Notes for Development…">Homepage design approved. Working on inner pages.</textarea>
+              </div>
+              <div class="ph-list-exp-col">
+                <div class="ph-section-lbl">Task Checklist</div>
+                <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:2px 0">
+                  <div style="display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid var(--row-divider);font-size:13px">
+                    <span style="flex:1;color:var(--text)">Homepage</span>
+                    <select class="ph-status-sel ph-st-done" style="font-size:11px;padding:2px 6px">
+                      <option>Done</option>
+                    </select>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid var(--row-divider);font-size:13px">
+                    <span style="flex:1;color:var(--text)">About page</span>
+                    <select class="ph-status-sel ph-st-active" style="font-size:11px;padding:2px 6px">
+                      <option>Active</option>
+                    </select>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;padding:6px 12px;font-size:13px">
+                    <span style="flex:1;color:var(--text)">Contact page</span>
+                    <select class="ph-status-sel ph-st-not-started" style="font-size:11px;padding:2px 6px">
+                      <option>Not Started</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Time Log section with divider -->
+            <div class="ph-list-exp-timelog">
+              <div class="ph-section-lbl">Time Log</div>
+              <table class="ph-tl-table">
+                <thead>
+                  <tr>
+                    <th>Date</th><th>Hours</th><th>Note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Jun 05</td><td>4h</td><td style="color:var(--muted)">Initial setup</td>
+                  </tr>
+                  <tr>
+                    <td>Jun 07</td><td>8h</td><td style="color:var(--muted)">Homepage build</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right panel preview -->
+      <div class="pd-panel-card">
+        <div class="pd-panel-title">Phase Progress</div>
+        <div class="pd-pp-row">
+          <span class="pd-pp-icon" data-st="done">✓</span>
+          <span class="pd-pp-name">Kickstart</span>
+          <span class="pd-pp-badge" data-st="done">Done</span>
+        </div>
+        <div class="pd-pp-row">
+          <span class="pd-pp-icon" data-st="active">▶</span>
+          <span class="pd-pp-name">Development</span>
+          <span class="pd-pp-badge" data-st="active">In progress</span>
+        </div>
+        <div class="pd-pp-row">
+          <span class="pd-pp-icon" data-st="not-started">○</span>
+          <span class="pd-pp-name">QA</span>
+          <span class="pd-pp-badge" data-st="not-started">Not started</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

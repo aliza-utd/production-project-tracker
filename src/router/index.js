@@ -9,7 +9,6 @@ import Reports       from '@/pages/Reports.vue'
 import Archived      from '@/pages/Archived.vue'
 import Settings      from '@/pages/Settings.vue'
 import TeamMembers   from '@/pages/TeamMembers.vue'
-import PhaseSettings from '@/pages/PhaseSettings.vue'
 import JoinPage      from '@/pages/JoinPage.vue'
 
 const routes = [
@@ -70,8 +69,7 @@ const routes = [
   },
   {
     path: '/phase-settings',
-    component: PhaseSettings,
-    meta: { requiresAuth: true, requiresManager: true },
+    redirect: '/settings?tab=phases',
   },
 ]
 

@@ -3,7 +3,7 @@
     class="ph-sub-card"
     :class="{
       'ph-card-blocked': localSub.status === 'blocked',
-      'ph-card-done':    localSub.status === 'done',
+      'ph-card-done':    statusesStore.isComplete(localSub.status),
     }"
     :style="{ borderLeft: '3px solid ' + (localSub.status === 'blocked' ? '#d97706' : parentColor) }"
   >
@@ -28,10 +28,7 @@
         v-model="statusModel"
         @click.stop
       >
-        <option value="not-started">Not Started</option>
-        <option value="active">Active</option>
-        <option value="blocked">Blocked</option>
-        <option value="done">Done</option>
+        <option v-for="st in statusesStore.statuses" :key="st.id" :value="st.id">{{ st.name }}</option>
       </select>
 
       <span v-if="subHours > 0" class="ph-hours-badge" style="font-size:10px">{{ fmtHours(subHours) }}</span>
@@ -77,7 +74,7 @@
             @input="!effectiveReadonly && setDate('dateStarted', $event.target.value)"
             @blur="!effectiveReadonly && debounceSave()" />
         </div>
-        <div v-if="localSub.status === 'done'" class="form-group" style="margin-bottom:0">
+        <div v-if="statusesStore.isComplete(localSub.status)" class="form-group" style="margin-bottom:0">
           <label class="form-label">Date Completed</label>
           <input type="date" class="form-input" :readonly="effectiveReadonly"
             :value="isoToDateInput(localSub.dateCompleted)"
@@ -95,21 +92,26 @@
           :placeholder="subDef.name + ' notes…'"></textarea>
       </div>
 
-      <!-- Checklist -->
-      <div class="form-group">
-        <div class="ph-section-lbl">Checklist</div>
-        <div v-if="localSub.checklist && localSub.checklist.length"
-          style="background:#f8fafc;border:1px solid var(--border);border-radius:var(--r);padding:4px 12px;margin-bottom:8px">
-          <div v-for="item in localSub.checklist" :key="item.id" class="checklist-item">
-            <input type="checkbox" v-model="item.done" :disabled="effectiveReadonly" @change="!effectiveReadonly && requestSave()" />
-            <span class="checklist-text" :class="{ done: item.done }">{{ item.text }}</span>
-            <button v-if="!effectiveReadonly" class="btn-icon" @click="removeChecklistItem(item.id)">🗑️</button>
+      <!-- Structured Task Checklist (template-based + manual additions) -->
+      <div v-if="localChecklist.length || !effectiveReadonly" class="form-group">
+        <div class="ph-section-lbl">Task Checklist</div>
+        <div class="cl-items">
+          <div v-for="item in localChecklist" :key="item.itemId" class="cl-item">
+            <span class="cl-item-name">{{ item.name }}</span>
+            <select
+              class="ph-status-sel ph-status-sel-sm cl-status-sel"
+              :class="'ph-st-' + item.status"
+              :disabled="effectiveReadonly"
+              :value="item.status"
+              @change="!effectiveReadonly && updateChecklistItemStatus(item.itemId, $event.target.value)"
+            >
+              <option v-for="st in statusesStore.statuses" :key="st.id" :value="st.id">{{ st.name }}</option>
+            </select>
           </div>
         </div>
-        <div v-else style="font-size:13px;color:var(--muted);padding:2px 0 8px">No items yet.</div>
-        <div v-if="!effectiveReadonly" class="checklist-add">
+        <div v-if="!effectiveReadonly" class="checklist-add" style="margin-top:6px">
           <input class="form-input" placeholder="Add item…"
-            v-model="newChecklistText"
+            v-model="newItemText"
             @keyup.enter="addChecklistItem" />
           <button class="btn btn-secondary btn-sm" @click="addChecklistItem">Add</button>
         </div>
@@ -139,6 +141,9 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { usePhaseLogic } from '@/composables/usePhaseLogic'
+import { useProjectsStore } from '@/stores/projects'
+import { useStatusesStore } from '@/stores/statuses'
+import { useActivityLog } from '@/composables/useActivityLog'
 import TimeLogSection from '@/components/phases/TimeLogSection.vue'
 
 const props = defineProps({
@@ -147,6 +152,7 @@ const props = defineProps({
   subDef:        { type: Object, required: true },
   parentPhaseId: { type: String, required: true },
   parentColor:   { type: String, default: '#6366f1' },
+  projectId:     { type: String, default: '' },
   teamMembers:   { type: Array,  default: () => [] },
   readonly:      { type: Boolean, default: false },
   locked:        { type: Boolean, default: false },
@@ -154,8 +160,81 @@ const props = defineProps({
 const emit = defineEmits(['update-sub', 'hours-updated'])
 
 const { uid, isoToDateInput, fmtHours, deepCopy, applyStatus } = usePhaseLogic()
+const projectsStore = useProjectsStore()
+const { logActivity } = useActivityLog()
+const statusesStore = useStatusesStore()
 
 const effectiveReadonly = computed(() => props.readonly || props.locked)
+
+// ── Structured (template-based) checklist ────────────────────────────────
+const localChecklist = ref([])
+
+const structuredChecklist = computed(() => {
+  if (!props.projectId) return []
+  const project = projectsStore.projects.find(p => p.id === props.projectId)
+  return project?.checklists?.[props.subId] || []
+})
+
+watch(structuredChecklist, (items) => {
+  if (!items.length) { localChecklist.value = []; return }
+  const currentIds = localChecklist.value.map(i => i.itemId).join(',')
+  const newIds     = items.map(i => i.itemId).join(',')
+  if (currentIds !== newIds) localChecklist.value = JSON.parse(JSON.stringify(items))
+}, { immediate: true })
+
+async function updateChecklistItemStatus(itemId, newStatus) {
+  const idx = localChecklist.value.findIndex(i => i.itemId === itemId)
+  if (idx < 0 || !props.projectId) return
+  localChecklist.value[idx].status = newStatus
+  try {
+    const items = JSON.parse(JSON.stringify(localChecklist.value))
+    await projectsStore.updateProject(props.projectId, {
+      [`checklists.${props.subId}`]: items,
+    })
+    logActivity(props.projectId, 'checklist_updated', {
+      phase: props.subDef.name, item: localChecklist.value[idx].name,
+      action: 'status_changed', to: newStatus,
+    }).catch(() => {})
+    if (items.every(i => statusesStore.isComplete(i.status)) && !statusesStore.isComplete(localSub.value.status || 'not-started')) {
+      onStatusChange(statusesStore.completeStatusId())
+    }
+  } catch (err) {
+    console.error('[SubPhaseCard] Structured checklist update failed:', err)
+    const stored = structuredChecklist.value[idx]
+    if (stored) localChecklist.value[idx].status = stored.status
+  }
+}
+
+async function markChecklistDone() {
+  const doneId = statusesStore.completeStatusId()
+  localChecklist.value = localChecklist.value.map(i => ({ ...i, status: doneId }))
+  try {
+    await projectsStore.updateProject(props.projectId, {
+      [`checklists.${props.subId}`]: JSON.parse(JSON.stringify(localChecklist.value)),
+    })
+  } catch (err) {
+    console.error('[SubPhaseCard] Mark checklist done failed:', err)
+  }
+}
+
+async function addChecklistItem() {
+  const name = newItemText.value.trim()
+  if (!name) return
+  const newItem = { itemId: uid(), name, status: 'not-started' }
+  localChecklist.value.push(newItem)
+  newItemText.value = ''
+  try {
+    await projectsStore.updateProject(props.projectId, {
+      [`checklists.${props.subId}`]: JSON.parse(JSON.stringify(localChecklist.value)),
+    })
+    logActivity(props.projectId, 'checklist_updated', {
+      phase: props.subDef.name, item: name, action: 'added',
+    }).catch(() => {})
+  } catch (err) {
+    console.error('[SubPhaseCard] Add checklist item failed:', err)
+    localChecklist.value = localChecklist.value.filter(i => i.itemId !== newItem.itemId)
+  }
+}
 
 const localSub = ref(deepCopy(props.subPhase))
 
@@ -165,7 +244,7 @@ watch(() => props.subPhase?.status, (newStatus) => {
   if (newStatus !== undefined && newStatus !== localSub.value.status) {
     localSub.value.status = newStatus
     if (newStatus === 'active') isCollapsed.value = false
-    if (newStatus === 'done')   isCollapsed.value = true
+    if (statusesStore.isComplete(newStatus)) isCollapsed.value = true
   }
 })
 
@@ -175,9 +254,9 @@ const statusModel = computed({
   set: (val) => onStatusChange(val),
 })
 
-const isCollapsed      = ref(props.readonly || ['not-started', 'done'].includes(localSub.value.status))
+const isCollapsed      = ref(props.readonly || !localSub.value.status || localSub.value.status === 'not-started' || statusesStore.isComplete(localSub.value.status))
 const assigneeOpen     = ref(false)
-const newChecklistText = ref('')
+const newItemText      = ref('')
 
 const activeMembers  = computed(() => props.teamMembers.filter(m => m.active))
 const assigneeMember = computed(() =>
@@ -201,6 +280,7 @@ function debounceSave() {
 
 function onStatusChange(status) {
   applyStatus(localSub.value, status)
+  if (statusesStore.isComplete(status) && localChecklist.value.length) markChecklistDone()
   requestSave()
 }
 
@@ -215,19 +295,6 @@ function setAssignee(id) {
 }
 function onAssigneeBlur() {
   setTimeout(() => { assigneeOpen.value = false }, 150)
-}
-
-function addChecklistItem() {
-  const text = newChecklistText.value.trim()
-  if (!text) return
-  if (!localSub.value.checklist) localSub.value.checklist = []
-  localSub.value.checklist.push({ id: uid(), text, done: false })
-  newChecklistText.value = ''
-  requestSave()
-}
-function removeChecklistItem(itemId) {
-  localSub.value.checklist = (localSub.value.checklist || []).filter(i => i.id !== itemId)
-  requestSave()
 }
 
 function addTimeLog(logData) {

@@ -37,7 +37,7 @@
               </div>
             </td>
             <td @click.stop>
-              <select v-if="!readonly" class="ph-list-sel"
+              <select v-if="!phReadonly(ph.id)" class="ph-list-sel"
                 :value="local[ph.id]?.assignedTo || ''"
                 @change="setAssignee(ph.id, null, $event.target.value || null)">
                 <option value="">—</option>
@@ -48,13 +48,10 @@
             <td @click.stop>
               <select class="ph-list-sel ph-list-status-sel"
                 :class="'ph-st-' + phStatus(ph.id)"
-                :disabled="readonly"
+                :disabled="phReadonly(ph.id)"
                 :value="phStatus(ph.id)"
                 @change="setStatus(ph.id, null, $event.target.value)">
-                <option value="not-started">Not Started</option>
-                <option value="active">Active</option>
-                <option value="blocked">Blocked</option>
-                <option value="done">Done</option>
+                <option v-for="st in statusesStore.statuses" :key="st.id" :value="st.id">{{ st.name }}</option>
               </select>
             </td>
             <td style="font-size:12px;color:var(--muted);white-space:nowrap">
@@ -82,61 +79,53 @@
           <tr v-if="rowOpen[ph.id]" class="ph-list-expanded-row" @click.stop>
             <td colspan="7">
               <div class="ph-list-expanded-body">
-                <div class="ph-list-exp-grid">
-                  <div>
-                    <div class="ph-section-lbl">Notes</div>
-                    <textarea class="form-textarea" rows="3" :readonly="readonly"
-                      :value="local[ph.id]?.notes || ''"
-                      @input="!readonly && setNotes(ph.id, null, $event.target.value)"
-                      @blur="!readonly && debounceAutosave(ph.id)"
-                      :placeholder="'Notes for ' + ph.name + '…'"></textarea>
-                  </div>
-                  <div>
-                    <div class="ph-section-lbl">Checklist</div>
-                    <div v-if="(local[ph.id]?.checklist || []).length"
-                      style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 10px;margin-bottom:6px">
-                      <div v-for="item in local[ph.id].checklist" :key="item.id" class="checklist-item">
-                        <input type="checkbox" v-model="item.done" :disabled="readonly"
-                          @change="!readonly && autosave(ph.id)" />
-                        <span class="checklist-text" :class="{ done: item.done }">{{ item.text }}</span>
-                        <button v-if="!readonly" class="btn-icon"
-                          @click="removeChecklist(ph.id, null, item.id)">🗑️</button>
+                <div class="ph-list-exp-card">
+                  <div class="ph-list-exp-grid">
+                    <div class="ph-list-exp-col">
+                      <div class="ph-section-lbl">Notes</div>
+                      <textarea class="form-textarea" rows="3" :readonly="phReadonly(ph.id)"
+                        :value="local[ph.id]?.notes || ''"
+                        @input="!phReadonly(ph.id) && setNotes(ph.id, null, $event.target.value)"
+                        @blur="!phReadonly(ph.id) && debounceAutosave(ph.id)"
+                        :placeholder="'Notes for ' + ph.name + '…'"></textarea>
+                    </div>
+                    <div v-if="projectChecklists[ph.id]?.length || !phReadonly(ph.id)" class="ph-list-exp-col">
+                      <div class="ph-section-lbl">Task Checklist</div>
+                      <div class="cl-items">
+                        <div v-for="item in projectChecklists[ph.id]" :key="item.itemId" class="cl-item">
+                          <span class="cl-item-name">{{ item.name }}</span>
+                          <select
+                            class="ph-status-sel ph-status-sel-sm cl-status-sel"
+                            :class="'ph-st-' + item.status"
+                            :disabled="phReadonly(ph.id)"
+                            :value="item.status"
+                            @change="!phReadonly(ph.id) && onClItemChange(ph.id, item.itemId, $event.target.value)"
+                          >
+                            <option v-for="st in statusesStore.statuses" :key="st.id" :value="st.id">{{ st.name }}</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div v-if="!phReadonly(ph.id)" class="checklist-add" style="margin-top:6px">
+                        <input class="form-input" placeholder="Add item…"
+                          v-model="listNewItemText[ph.id]"
+                          @keyup.enter="addClItem(ph.id)" />
+                        <button class="btn btn-secondary btn-sm" @click="addClItem(ph.id)">Add</button>
                       </div>
                     </div>
-                    <div v-else style="font-size:12px;color:var(--muted);margin-bottom:6px">No items.</div>
-                    <div v-if="!readonly" class="checklist-add">
-                      <input class="form-input" placeholder="Add item…"
-                        v-model="newChecklistText[ph.id]"
-                        @keyup.enter="addChecklist(ph.id, null)" />
-                      <button class="btn btn-secondary btn-sm" @click="addChecklist(ph.id, null)">Add</button>
-                    </div>
                   </div>
-                </div>
 
-                <!-- Time log collapsible -->
-                <div style="margin-top:12px">
-                  <div class="ph-section-lbl"
-                    style="display:flex;align-items:center;justify-content:space-between;cursor:pointer"
-                    @click="toggleTl(ph.id)">
-                    <span>Time Log
-                      <span v-if="phHours(ph.id, null) > 0"
-                        style="color:var(--text);font-weight:700;margin-left:6px">
-                        {{ fmtHours(phHours(ph.id, null)) }}
-                      </span>
-                    </span>
-                    <span>{{ tlOpen[ph.id] ? '▲' : '▼' }}</span>
-                  </div>
-                  <template v-if="tlOpen[ph.id]">
+                  <!-- Time Log -->
+                  <div class="ph-list-exp-timelog">
+                    <div class="ph-section-lbl">Time Log</div>
                     <TimeLogSection
                       :timeLogs="local[ph.id]?.timeLogs || []"
                       :phaseName="ph.name"
-                      :readonly="readonly"
+                      :readonly="phReadonly(ph.id)"
                       @add-log="(d) => addTimeLog(ph.id, null, d)"
                       @delete-log="(id) => deleteTimeLog(ph.id, null, id)"
                     />
-                  </template>
+                  </div>
                 </div>
-
               </div>
             </td>
           </tr>
@@ -175,10 +164,7 @@
                     :disabled="readonly"
                     :value="spStatus(ph.id, sp.id)"
                     @change="setStatus(ph.id, sp.id, $event.target.value)">
-                    <option value="not-started">Not Started</option>
-                    <option value="active">Active</option>
-                    <option value="blocked">Blocked</option>
-                    <option value="done">Done</option>
+                    <option v-for="st in statusesStore.statuses" :key="st.id" :value="st.id">{{ st.name }}</option>
                   </select>
                 </td>
                 <td style="font-size:12px;color:var(--muted);white-space:nowrap">
@@ -206,51 +192,42 @@
               <tr v-if="rowOpen[ph.id + '_sp_' + sp.id]" class="ph-list-expanded-row" @click.stop>
                 <td colspan="7">
                   <div class="ph-list-expanded-body">
-                    <div class="ph-list-exp-grid">
-                      <div>
-                        <div class="ph-section-lbl">Notes</div>
-                        <textarea class="form-textarea" rows="3" :readonly="readonly"
-                          :value="local[ph.id]?.subPhases?.[sp.id]?.notes || ''"
-                          @input="!readonly && setNotes(ph.id, sp.id, $event.target.value)"
-                          @blur="!readonly && debounceAutosave(ph.id)"
-                          :placeholder="sp.name + ' notes…'"></textarea>
-                      </div>
-                      <div>
-                        <div class="ph-section-lbl">Checklist</div>
-                        <div v-if="(local[ph.id]?.subPhases?.[sp.id]?.checklist || []).length"
-                          style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 10px;margin-bottom:6px">
-                          <div v-for="item in local[ph.id].subPhases[sp.id].checklist" :key="item.id"
-                            class="checklist-item">
-                            <input type="checkbox" v-model="item.done" :disabled="readonly"
-                              @change="!readonly && autosave(ph.id)" />
-                            <span class="checklist-text" :class="{ done: item.done }">{{ item.text }}</span>
-                            <button v-if="!readonly" class="btn-icon"
-                              @click="removeChecklist(ph.id, sp.id, item.id)">🗑️</button>
+                    <div class="ph-list-exp-card">
+                      <div class="ph-list-exp-grid">
+                        <div class="ph-list-exp-col">
+                          <div class="ph-section-lbl">Notes</div>
+                          <textarea class="form-textarea" rows="3" :readonly="readonly"
+                            :value="local[ph.id]?.subPhases?.[sp.id]?.notes || ''"
+                            @input="!readonly && setNotes(ph.id, sp.id, $event.target.value)"
+                            @blur="!readonly && debounceAutosave(ph.id)"
+                            :placeholder="sp.name + ' notes…'"></textarea>
+                        </div>
+                        <div v-if="projectChecklists[sp.id]?.length || !readonly" class="ph-list-exp-col">
+                          <div class="ph-section-lbl">Task Checklist</div>
+                          <div class="cl-items">
+                            <div v-for="item in projectChecklists[sp.id]" :key="item.itemId" class="cl-item">
+                              <span class="cl-item-name">{{ item.name }}</span>
+                              <select
+                                class="ph-status-sel ph-status-sel-sm cl-status-sel"
+                                :class="'ph-st-' + item.status"
+                                :disabled="readonly"
+                                :value="item.status"
+                                @change="!readonly && onClItemChange(sp.id, item.itemId, $event.target.value)"
+                              >
+                                <option v-for="st in statusesStore.statuses" :key="st.id" :value="st.id">{{ st.name }}</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div v-if="!readonly" class="checklist-add" style="margin-top:6px">
+                            <input class="form-input" placeholder="Add item…"
+                              v-model="listNewItemText[sp.id]"
+                              @keyup.enter="addClItem(sp.id)" />
+                            <button class="btn btn-secondary btn-sm" @click="addClItem(sp.id)">Add</button>
                           </div>
                         </div>
-                        <div v-else style="font-size:12px;color:var(--muted);margin-bottom:6px">No items.</div>
-                        <div v-if="!readonly" class="checklist-add">
-                          <input class="form-input" placeholder="Add item…"
-                            v-model="newChecklistText[ph.id + ':' + sp.id]"
-                            @keyup.enter="addChecklist(ph.id, sp.id)" />
-                          <button class="btn btn-secondary btn-sm"
-                            @click="addChecklist(ph.id, sp.id)">Add</button>
-                        </div>
                       </div>
-                    </div>
-                    <div style="margin-top:12px">
-                      <div class="ph-section-lbl"
-                        style="display:flex;align-items:center;justify-content:space-between;cursor:pointer"
-                        @click="toggleTl(ph.id + '_sp_' + sp.id)">
-                        <span>Time Log
-                          <span v-if="phHours(ph.id, sp.id) > 0"
-                            style="color:var(--text);font-weight:700;margin-left:6px">
-                            {{ fmtHours(phHours(ph.id, sp.id)) }}
-                          </span>
-                        </span>
-                        <span>{{ tlOpen[ph.id + '_sp_' + sp.id] ? '▲' : '▼' }}</span>
-                      </div>
-                      <template v-if="tlOpen[ph.id + '_sp_' + sp.id]">
+                      <div class="ph-list-exp-timelog">
+                        <div class="ph-section-lbl">Time Log</div>
                         <TimeLogSection
                           :timeLogs="local[ph.id]?.subPhases?.[sp.id]?.timeLogs || []"
                           :phaseName="sp.name"
@@ -258,11 +235,11 @@
                           @add-log="(d) => addTimeLog(ph.id, sp.id, d)"
                           @delete-log="(id) => deleteTimeLog(ph.id, sp.id, id)"
                         />
-                      </template>
-                    </div>
-                    <div v-if="!readonly"
-                      style="display:flex;justify-content:flex-end;margin-top:12px">
-                      <button class="btn btn-primary btn-sm" @click="autosave(ph.id)">Save</button>
+                      </div>
+                      <div v-if="!readonly"
+                        style="display:flex;justify-content:flex-end;padding:10px 16px;border-top:1px solid var(--border)">
+                        <button class="btn btn-primary btn-sm" @click="autosave(ph.id)">Save</button>
+                      </div>
                     </div>
                   </div>
                 </td>
@@ -282,6 +259,7 @@ import { useProjectsStore } from '@/stores/projects'
 import { useAuthStore } from '@/stores/auth'
 import { useActivityLog } from '@/composables/useActivityLog'
 import { useProjectNotifications } from '@/composables/useProjectNotifications'
+import { useStatusesStore } from '@/stores/statuses'
 import TimeLogSection from '@/components/phases/TimeLogSection.vue'
 
 const props = defineProps({
@@ -292,11 +270,12 @@ const props = defineProps({
   siteStatus:  { type: String, default: '' },
   readonly:    { type: Boolean, default: false },
 })
-const emit = defineEmits(['update-phase', 'next-phase-started'])
+const emit = defineEmits(['update-phase', 'next-phase-started', 'activation-complete'])
 
 const { uid, isoToDateInput, fmtHours, deepCopy, applyStatus, emptyPhaseEntry, computeActivePhases, getNextLanguageSubPhase } = usePhaseLogic()
 const projectsStore   = useProjectsStore()
 const authStore       = useAuthStore()
+const statusesStore   = useStatusesStore()
 const { logActivity } = useActivityLog()
 const { notifyPhaseStatus, notifyPhaseStarted } = useProjectNotifications()
 
@@ -305,14 +284,25 @@ const local = ref(deepCopy(props.phaseData))
 
 watch(() => props.phaseData, (v) => { local.value = deepCopy(v) }, { deep: true })
 
-const rowOpen          = reactive({})
-const tlOpen           = reactive({})
-const newChecklistText = reactive({})
+const rowOpen         = reactive({})
+const tlOpen          = reactive({})
+const listNewItemText = reactive({})
 
 const activeMembers = computed(() => props.teamMembers.filter(m => m.active))
 
+const projectChecklists = computed(() => {
+  const project = projectsStore.projects.find(p => p.id === props.projectId)
+  return project?.checklists || {}
+})
+
 function toggleRow(key) { rowOpen[key] = !rowOpen[key] }
 function toggleTl(key)  { tlOpen[key]  = !tlOpen[key] }
+
+// Activation stays editable when the site is Live; all other phases follow readonly prop
+function phReadonly(phId) {
+  if (props.siteStatus === 'live' && phId === 'activation') return false
+  return props.readonly
+}
 
 function phStatus(phId)        { return local.value[phId]?.status || 'not-started' }
 function spStatus(phId, spId)  { return local.value[phId]?.subPhases?.[spId]?.status || 'not-started' }
@@ -356,6 +346,9 @@ function setStatus(phId, spId, status) {
   const target = getTarget(phId, spId)
   const oldStatus = target.status || 'not-started'
   applyStatus(target, status)
+  console.log('[PhaseListView] setStatus', phId, spId ? '/ ' + spId : '(main)', '→', status)
+  if (statusesStore.isComplete(status)) markListChecklistDone(spId || phId)
+  if (statusesStore.isComplete(status) && phId === 'golive' && !spId) emit('activation-complete')
   if (oldStatus !== status) {
     const ph = props.phaseConfig.find(p => p.id === phId)
     const spName = spId ? ph?.subPhases?.find(s => s.id === spId)?.name : null
@@ -372,7 +365,7 @@ function setStatus(phId, spId, status) {
     })
 
     // Language-aware sequential auto-progression for dynamic (Languages) phases
-    if (spId && status === 'done' && ph?.dynamic && (ph.subPhaseMode || 'simultaneous') === 'sequential') {
+    if (spId && statusesStore.isComplete(status) && ph?.dynamic && (ph.subPhaseMode || 'simultaneous') === 'sequential') {
       const tmplLen = ph.subPhaseTemplate?.length || 0
       const nextDef = getNextLanguageSubPhase(spId, ph.subPhases || [], tmplLen)
       if (nextDef) {
@@ -389,7 +382,7 @@ function setStatus(phId, spId, status) {
       }
     }
   }
-  autosave(phId, !spId && status === 'done')
+  autosave(phId, !spId && statusesStore.isComplete(status))
 }
 
 function setAssignee(phId, spId, memberId) {
@@ -406,28 +399,61 @@ function setNotes(phId, spId, value) {
   target.notes = value
 }
 
-function addChecklist(phId, spId) {
-  const key  = spId ? `${phId}:${spId}` : phId
-  const text = (newChecklistText[key] || '').trim()
-  if (!text) return
-  const target = getTarget(phId, spId)
-  if (!target.checklist) target.checklist = []
-  target.checklist.push({ id: uid(), text, done: false })
-  newChecklistText[key] = ''
-  const ph = props.phaseConfig.find(p => p.id === phId)
-  logActivity(props.projectId, 'checklist_updated', { phase: ph?.name || phId, item: text, action: 'added' }).catch(() => {})
-  autosave(phId)
+async function onClItemChange(clKey, itemId, newStatus) {
+  const items = (projectChecklists.value[clKey] || []).map(i =>
+    i.itemId === itemId ? { ...i, status: newStatus } : i
+  )
+  try {
+    await projectsStore.updateProject(props.projectId, { [`checklists.${clKey}`]: items })
+    const ph = props.phaseConfig.find(p => p.id === clKey)
+    logActivity(props.projectId, 'checklist_updated', {
+      phase: ph?.name || clKey, action: 'status_changed', to: newStatus,
+    }).catch(() => {})
+    // Auto-completion: if all items done, mark the phase/sub-phase done
+    if (items.every(i => statusesStore.isComplete(i.status))) {
+      const doneId = statusesStore.completeStatusId()
+      const isMainPhase = !!props.phaseConfig.find(p => p.id === clKey)
+      if (isMainPhase) {
+        if (!statusesStore.isComplete(phStatus(clKey))) setStatus(clKey, null, doneId)
+      } else {
+        const parent = props.phaseConfig.find(p => p.subPhases?.some(s => s.id === clKey))
+        if (parent && !statusesStore.isComplete(spStatus(parent.id, clKey))) {
+          setStatus(parent.id, clKey, doneId)
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[PhaseListView] Checklist item update failed:', err)
+  }
 }
 
-function removeChecklist(phId, spId, itemId) {
-  const target = getTarget(phId, spId)
-  const item = (target.checklist || []).find(i => i.id === itemId)
-  target.checklist = (target.checklist || []).filter(i => i.id !== itemId)
-  if (item) {
-    const ph = props.phaseConfig.find(p => p.id === phId)
-    logActivity(props.projectId, 'checklist_updated', { phase: ph?.name || phId, item: item.text, action: 'deleted' }).catch(() => {})
+async function addClItem(clKey) {
+  const name = (listNewItemText[clKey] || '').trim()
+  if (!name) return
+  listNewItemText[clKey] = ''
+  const existing = projectChecklists.value[clKey] || []
+  const items = [...existing, { itemId: uid(), name, status: 'not-started' }]
+  try {
+    await projectsStore.updateProject(props.projectId, { [`checklists.${clKey}`]: items })
+    const ph = props.phaseConfig.find(p => p.id === clKey)
+    logActivity(props.projectId, 'checklist_updated', {
+      phase: ph?.name || clKey, item: name, action: 'added',
+    }).catch(() => {})
+  } catch (err) {
+    console.error('[PhaseListView] Add checklist item failed:', err)
   }
-  autosave(phId)
+}
+
+async function markListChecklistDone(clKey) {
+  const existing = projectChecklists.value[clKey] || []
+  if (!existing.length) return
+  console.log('[PhaseListView] markListChecklistDone:', clKey, '—', existing.length, 'items')
+  const items = existing.map(i => ({ ...i, status: statusesStore.completeStatusId() }))
+  try {
+    await projectsStore.updateProject(props.projectId, { [`checklists.${clKey}`]: items })
+  } catch (err) {
+    console.error('[PhaseListView] Mark checklist done failed:', err)
+  }
 }
 
 function addTimeLog(phId, spId, logData) {

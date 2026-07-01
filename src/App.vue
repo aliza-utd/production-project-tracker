@@ -11,7 +11,6 @@
     <main class="main-content">
       <RouterView />
     </main>
-    <NotificationBell />
   </div>
 </template>
 
@@ -24,18 +23,24 @@ import { usePhasesStore }        from '@/stores/phases'
 import { useTeamStore }          from '@/stores/team'
 import { useRolesStore }         from '@/stores/roles'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useStatusesStore }      from '@/stores/statuses'
+import { useLinkTemplatesStore } from '@/stores/linkTemplates'
+import { useStatusStyles }       from '@/composables/useStatusStyles'
 import LoginPage         from '@/pages/LoginPage.vue'
 import Sidebar           from '@/components/layout/Sidebar.vue'
-import NotificationBell  from '@/components/layout/NotificationBell.vue'
 
 const router        = useRouter()
 const route         = useRoute()
-const authStore     = useAuthStore()
-const projectsStore = useProjectsStore()
-const phasesStore   = usePhasesStore()
-const teamStore     = useTeamStore()
-const rolesStore    = useRolesStore()
-const notifStore    = useNotificationsStore()
+const authStore          = useAuthStore()
+const projectsStore      = useProjectsStore()
+const phasesStore        = usePhasesStore()
+const teamStore          = useTeamStore()
+const rolesStore         = useRolesStore()
+const notifStore         = useNotificationsStore()
+const statusesStore      = useStatusesStore()
+const linkTemplatesStore = useLinkTemplatesStore()
+
+useStatusStyles()
 
 const authState  = computed(() => authStore.authState)
 const isJoinRoute = computed(() => route.path.startsWith('/join/'))
@@ -50,6 +55,8 @@ watch(authState, (state) => {
     phasesStore.fetchPhaseConfig()
     teamStore.fetchTeamMembers()
     rolesStore.fetchRoles()
+    statusesStore.fetchStatuses()
+    linkTemplatesStore.fetchTemplates()
     notifStore.fetchNotifications(user?.uid)
   } else if (state === 'login') {
     const cp = router.currentRoute.value.path
@@ -57,6 +64,7 @@ watch(authState, (state) => {
     projectsStore.stopListener()
     phasesStore.stopListener()
     rolesStore.stopListener()
+    statusesStore.stopListener()
     notifStore.stopListener()
   }
 }, { immediate: true })

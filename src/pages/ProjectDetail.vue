@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="content">
     <!-- Loading / Not Found -->
     <div v-if="pageLoading && !localProject"
       style="display:flex;align-items:center;justify-content:center;padding:80px;gap:12px;color:var(--muted)">
@@ -18,9 +18,10 @@
 
     <div v-else-if="localProject" class="pd-wrap">
 
-      <!-- ── Back button (above header card) ── -->
-      <div style="margin-bottom:10px">
+      <!-- ── Back button + bell ── -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <button class="pd-back-btn" @click="router.push('/projects')">← Back to Projects</button>
+        <NotificationBell />
       </div>
 
       <!-- ── Header card ── -->
@@ -57,7 +58,7 @@
 
         <!-- Site URL -->
         <div v-if="localProject.url" class="pd-header-url">
-          <a :href="localProject.url" target="_blank" class="ext"
+          <a :href="safeUrl(localProject.url)" target="_blank" class="ext"
             style="font-size:13px;color:var(--primary);text-decoration:none;display:inline-flex;align-items:center;gap:4px">
             🔗 {{ localProject.url }}
           </a>
@@ -116,6 +117,10 @@
             <div class="proj-tab" :class="{ active: projTab === 'info' }" @click="projTab = 'info'">
               Project Details
             </div>
+            <div v-if="localProject.id" class="proj-tab" :class="{ active: projTab === 'links' }"
+              @click="projTab = 'links'">
+              Links
+            </div>
             <div v-if="localProject.id" class="proj-tab" :class="{ active: projTab === 'comments' }"
               @click="projTab = 'comments'">
               Comments
@@ -170,8 +175,8 @@
                   :phaseDef="ph"
                   :projectId="localProject.id"
                   :teamMembers="teamStore.teamMembers"
-                  :readonly="readonly"
-                  :locked="isLiveWithPendingLanguages && ph.id !== 'languages'"
+                  :readonly="readonly && !(localProject.siteStatus === 'live' && ph.id === 'activation')"
+                  :locked="isLiveWithPendingLanguages && ph.id !== 'languages' && ph.id !== 'activation'"
                   :expandedPhaseConfig="dynamicPhaseConfig"
                   @update-phase="onUpdatePhase"
                   @activation-complete="onActivationComplete"
@@ -190,6 +195,7 @@
                   :siteStatus="localProject.siteStatus"
                   :readonly="readonly"
                   @update-phase="onUpdatePhase"
+                  @activation-complete="onActivationComplete"
                   @next-phase-started="onNextPhaseStarted"
                 />
               </div>
@@ -227,14 +233,14 @@
                   <div class="il-row" style="margin-bottom:12px">
                     <div class="il-field">
                       <div class="il-label">Site URL</div>
-                      <a v-if="localProject.url" :href="localProject.url" target="_blank" class="il-link">
+                      <a v-if="localProject.url" :href="safeUrl(localProject.url)" target="_blank" class="il-link">
                         {{ localProject.url }}
                       </a>
                       <div v-else class="il-empty">—</div>
                     </div>
                     <div class="il-field">
                       <div class="il-label">Original Site URL</div>
-                      <a v-if="localProject.originalSite" :href="localProject.originalSite" target="_blank" class="il-link">
+                      <a v-if="localProject.originalSite" :href="safeUrl(localProject.originalSite)" target="_blank" class="il-link">
                         {{ localProject.originalSite }}
                       </a>
                       <div v-else class="il-empty">—</div>
@@ -272,6 +278,20 @@
                       <div class="il-value">{{ fmtDate(localProject.liveDate) || '—' }}</div>
                     </div>
                   </div>
+                  <div class="il-row il-row-3" style="margin-bottom:12px">
+                    <div class="il-field">
+                      <div class="il-label">Preview Date</div>
+                      <div class="il-value">{{ fmtDate(localProject.previewDate) || '—' }}</div>
+                    </div>
+                    <div class="il-field">
+                      <div class="il-label">Delivery Date</div>
+                      <div class="il-value">{{ fmtDate(localProject.deliveryDate) || '—' }}</div>
+                    </div>
+                    <div class="il-field">
+                      <div class="il-label">Deadline</div>
+                      <div class="il-value">{{ fmtDate(localProject.deadline) || '—' }}</div>
+                    </div>
+                  </div>
                   <div class="il-row" style="margin-bottom:12px">
                     <div class="il-field">
                       <div class="il-label">Current Phase</div>
@@ -294,52 +314,6 @@
                     <div class="il-field">
                       <div class="il-label">Quality Check</div>
                       <div class="il-value">{{ memberNameById(localProject.qaAssigneeId) || '—' }}</div>
-                    </div>
-                  </div>
-                  <!-- Additional Details accordion -->
-                  <div>
-                    <div class="il-acc-hdr" @click="showProjectDetails = !showProjectDetails">
-                      <span class="il-acc-arrow" :class="{ open: showProjectDetails }">▶</span>
-                      Additional Details
-                    </div>
-                    <div v-if="showProjectDetails" class="il-acc-body">
-                      <div class="il-acc-row">
-                        <div class="il-field">
-                          <div class="il-label">Sitemap</div>
-                          <a v-if="localProject.sitemapUrl" :href="localProject.sitemapUrl" target="_blank" class="il-link">
-                            {{ localProject.sitemapUrl }}
-                          </a>
-                          <div v-else class="il-empty">—</div>
-                        </div>
-                        <div class="il-field">
-                          <div class="il-label">Builder Link</div>
-                          <a v-if="localProject.builderLink" :href="localProject.builderLink" target="_blank" class="il-link">
-                            {{ localProject.builderLink }}
-                          </a>
-                          <div v-else class="il-empty">—</div>
-                        </div>
-                        <div class="il-field">
-                          <div class="il-label">Briefing</div>
-                          <a v-if="localProject.briefingUrl" :href="localProject.briefingUrl" target="_blank" class="il-link">
-                            {{ localProject.briefingUrl }}
-                          </a>
-                          <div v-else class="il-empty">—</div>
-                        </div>
-                        <div class="il-field">
-                          <div class="il-label">Google Keep</div>
-                          <a v-if="localProject.googleKeepUrl" :href="localProject.googleKeepUrl" target="_blank" class="il-link">
-                            {{ localProject.googleKeepUrl }}
-                          </a>
-                          <div v-else class="il-empty">—</div>
-                        </div>
-                        <div class="il-field">
-                          <div class="il-label">Google Drive</div>
-                          <a v-if="localProject.logoSetUrl" :href="localProject.logoSetUrl" target="_blank" class="il-link">
-                            {{ localProject.logoSetUrl }}
-                          </a>
-                          <div v-else class="il-empty">—</div>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div><!-- end read-only -->
@@ -411,6 +385,20 @@
                       <input type="date" class="form-input" v-model="localProject.liveDate">
                     </div>
                   </div>
+                  <div class="il-row il-row-3" style="margin-bottom:12px">
+                    <div class="form-group" style="margin-bottom:0">
+                      <label class="form-label">Preview Date</label>
+                      <input type="date" class="form-input" v-model="localProject.previewDate">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0">
+                      <label class="form-label">Delivery Date</label>
+                      <input type="date" class="form-input" v-model="localProject.deliveryDate">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0">
+                      <label class="form-label">Deadline</label>
+                      <input type="date" class="form-input" v-model="localProject.deadline">
+                    </div>
+                  </div>
                   <div class="il-row" style="margin-bottom:12px">
                     <div class="form-group" style="margin-bottom:0">
                       <label class="form-label">Current Phase</label>
@@ -457,35 +445,6 @@
                       </select>
                     </div>
                   </div>
-                  <!-- Additional Details edit -->
-                  <div class="il-acc-hdr" @click="showProjectDetails = !showProjectDetails" style="margin-bottom:8px">
-                    <span class="il-acc-arrow" :class="{ open: showProjectDetails }">▶</span>
-                    Additional Details
-                  </div>
-                  <div v-if="showProjectDetails" class="il-acc-body" style="margin-bottom:12px">
-                    <div class="il-acc-row">
-                      <div class="form-group" style="margin-bottom:0">
-                        <label class="form-label">Sitemap</label>
-                        <input class="form-input" v-model="localProject.sitemapUrl" placeholder="https://…">
-                      </div>
-                      <div class="form-group" style="margin-bottom:0">
-                        <label class="form-label">Builder Link</label>
-                        <input class="form-input" v-model="localProject.builderLink" placeholder="Builder URL…">
-                      </div>
-                      <div class="form-group" style="margin-bottom:0">
-                        <label class="form-label">Briefing</label>
-                        <input class="form-input" v-model="localProject.briefingUrl" placeholder="Briefing link…">
-                      </div>
-                      <div class="form-group" style="margin-bottom:0">
-                        <label class="form-label">Google Keep</label>
-                        <input class="form-input" v-model="localProject.googleKeepUrl" placeholder="Google Keep…">
-                      </div>
-                      <div class="form-group" style="margin-bottom:0">
-                        <label class="form-label">Google Drive</label>
-                        <input class="form-input" v-model="localProject.logoSetUrl" placeholder="Drive folder link…">
-                      </div>
-                    </div>
-                  </div>
                   <!-- Save / Cancel -->
                   <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:10px;border-top:1px solid var(--border)">
                     <button class="btn btn-ghost btn-sm" @click="cancelEdit">Cancel</button>
@@ -518,44 +477,46 @@
                 </div>
               </div>
 
-              <!-- Google Sheets Section -->
-              <div class="il-section">
+            </div><!-- end info tab -->
+
+            <!-- ══ LINKS TAB ══ -->
+            <div v-else-if="projTab === 'links'">
+              <div class="il-section" style="margin-top:16px">
                 <div class="il-section-hdr">
-                  <span class="il-section-title">Google Sheet Links</span>
-                  <button class="btn btn-secondary btn-xs" @click="showAddSheet = !showAddSheet">
+                  <span class="il-section-title">Links</span>
+                  <button class="btn btn-secondary btn-xs" @click="showAddLink = !showAddLink">
                     + Add Link
                   </button>
                 </div>
-                <div v-if="showAddSheet"
-                  style="background:#f8fafc;border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px">
+                <div v-if="showAddLink"
+                  style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px">
                   <div class="il-row" style="margin-bottom:10px">
                     <div class="form-group" style="margin-bottom:0">
-                      <label class="form-label">Label</label>
-                      <input class="form-input" placeholder="e.g. Content Sheet" v-model="newSheet.label">
+                      <label class="form-label">Name</label>
+                      <input class="form-input" placeholder="e.g. Content Sheet" v-model="newLink.name">
                     </div>
                     <div class="form-group" style="margin-bottom:0">
                       <label class="form-label">URL</label>
-                      <input class="form-input" placeholder="https://docs.google.com/…" v-model="newSheet.url">
+                      <input class="form-input" placeholder="https://…" v-model="newLink.url">
                     </div>
                   </div>
                   <div style="display:flex;gap:8px">
-                    <button class="btn btn-primary btn-sm" @click="addSheet">Add Link</button>
-                    <button class="btn btn-ghost btn-sm" @click="showAddSheet = false">Cancel</button>
+                    <button class="btn btn-primary btn-sm" @click="addLink">Add Link</button>
+                    <button class="btn btn-ghost btn-sm" @click="showAddLink = false">Cancel</button>
                   </div>
                 </div>
-                <div v-if="localProject.googleSheets?.length">
-                  <div v-for="s in localProject.googleSheets" :key="s.id" class="il-sheet-row">
-                    <input class="form-input" v-model="s.label" placeholder="Label"
-                      @blur="saveSheetImmediate" style="font-size:13px">
-                    <input class="form-input" v-model="s.url" placeholder="https://…"
-                      @blur="saveSheetImmediate" style="font-size:13px">
-                    <button class="btn-icon" @click="removeSheet(s.id)" title="Remove">🗑️</button>
+                <div v-if="(localProject.links || []).length">
+                  <div v-for="lnk in (localProject.links || [])" :key="lnk.id" class="il-sheet-row">
+                    <input class="form-input" v-model="lnk.name" placeholder="Link name"
+                      @blur="saveLinkImmediate" style="font-size:13px;flex:0 0 180px;min-width:0">
+                    <input class="form-input" v-model="lnk.url" placeholder="https://…"
+                      @blur="saveLinkImmediate" style="font-size:13px">
+                    <button class="btn-icon" @click="removeLink(lnk.id)" title="Remove">🗑️</button>
                   </div>
                 </div>
-                <div v-else style="font-size:13px;color:var(--muted)">No sheet links added yet.</div>
+                <div v-else style="font-size:13px;color:var(--muted)">No links added yet.</div>
               </div>
-
-            </div><!-- end info tab -->
+            </div><!-- end links tab -->
 
             <!-- ══ COMMENTS TAB ══ -->
             <div v-else-if="projTab === 'comments'">
@@ -706,25 +667,9 @@
           <div class="pd-panel-card">
             <div class="pd-panel-title">Quick Links</div>
             <template v-if="hasQuickLinks">
-              <div v-if="localProject.builderLink" class="pd-ql-item">
+              <div v-for="lnk in quickLinks" :key="lnk.id" class="pd-ql-item">
                 <span class="pd-ql-icon">🔗</span>
-                <a :href="localProject.builderLink" target="_blank" class="pd-ql-link">Builder Link</a>
-              </div>
-              <div v-if="localProject.briefingUrl" class="pd-ql-item">
-                <span class="pd-ql-icon">📋</span>
-                <a :href="localProject.briefingUrl" target="_blank" class="pd-ql-link">Briefing</a>
-              </div>
-              <div v-if="localProject.sitemapUrl" class="pd-ql-item">
-                <span class="pd-ql-icon">🗺</span>
-                <a :href="localProject.sitemapUrl" target="_blank" class="pd-ql-link">Sitemap</a>
-              </div>
-              <div v-if="localProject.googleKeepUrl" class="pd-ql-item">
-                <span class="pd-ql-icon">📍</span>
-                <a :href="localProject.googleKeepUrl" target="_blank" class="pd-ql-link">Google Keep</a>
-              </div>
-              <div v-if="localProject.logoSetUrl" class="pd-ql-item">
-                <span class="pd-ql-icon">📁</span>
-                <a :href="localProject.logoSetUrl" target="_blank" class="pd-ql-link">Google Drive</a>
+                <a :href="safeUrl(lnk.url)" target="_blank" class="pd-ql-link">{{ lnk.name }}</a>
               </div>
             </template>
             <div v-else style="font-size:12px;color:var(--muted)">No links added</div>
@@ -758,8 +703,8 @@
                   <span v-if="isLiveWithPendingLanguages && ph.id !== 'languages'"
                     style="font-size:10px;opacity:.55;flex-shrink:0" title="Locked while Languages phase completes">🔒</span>
                   <!-- Done + has sub-phases → show count with expand toggle -->
-                  <template v-if="getPhaseStatus(localProject.phaseData || {}, ph.id) === 'done' && (ph.subPhases || []).length">
-                    <span class="pd-pp-badge" data-st="done" style="cursor:pointer;gap:3px">
+                  <template v-if="statusesStore.isComplete(getPhaseStatus(localProject.phaseData || {}, ph.id)) && (ph.subPhases || []).length">
+                    <span class="pd-pp-badge" :data-st="statusesStore.completeStatusId()" style="cursor:pointer;gap:3px">
                       {{ doneSubCount(ph) }}/{{ ph.subPhases.length }}
                       <span style="opacity:.6;font-size:9px">{{ sidebarExpanded[ph.id] ? '▾' : '▸' }}</span>
                     </span>
@@ -873,6 +818,7 @@ import { useProjectsStore } from '@/stores/projects'
 import { usePhasesStore } from '@/stores/phases'
 import { useTeamStore } from '@/stores/team'
 import { useAuthStore } from '@/stores/auth'
+import { useStatusesStore } from '@/stores/statuses'
 import { usePhaseLogic } from '@/composables/usePhaseLogic'
 import { subscribeToProject, getProjectComments, addProjectComment, updateProjectComment, deleteProjectComment, subscribeToActivityLog, createNotification } from '@/firebase-service'
 import { useActivityLog } from '@/composables/useActivityLog'
@@ -885,16 +831,18 @@ import TeamMemberPicker from '@/components/shared/TeamMemberPicker.vue'
 import SiteStatusBadge from '@/components/shared/SiteStatusBadge.vue'
 import TimeCalcWidget from '@/components/shared/TimeCalcWidget.vue'
 import TagInput from '@/components/shared/TagInput.vue'
+import NotificationBell from '@/components/layout/NotificationBell.vue'
 import { downloadCSV, copyTSV } from '@/utils/exportUtils'
 
 const LANGUAGE_OPTIONS = ['NL', 'EN', 'FR', 'DE', 'ES', 'IT', 'PT', 'PL', 'CS', 'HU', 'RO', 'TR', 'AR', 'ZH', 'JA', 'KO', 'RU']
 
 const route        = useRoute()
 const router       = useRouter()
-const projectsStore = useProjectsStore()
-const phasesStore  = usePhasesStore()
-const teamStore    = useTeamStore()
-const authStore    = useAuthStore()
+const projectsStore  = useProjectsStore()
+const phasesStore    = usePhasesStore()
+const teamStore      = useTeamStore()
+const authStore      = useAuthStore()
+const statusesStore  = useStatusesStore()
 const { logActivity } = useActivityLog()
 const {
   emptyPhaseEntry, autoCompletePreviousPhases, generateDynamicPhaseConfig,
@@ -912,7 +860,6 @@ const projTab       = ref('info')
 const phaseView     = ref('list')
 const infoEditMode  = ref(false)
 const infoSaving    = ref(false)
-const showProjectDetails = ref(true)
 
 // ── Role-specific assignment fields ──────────────────────────────────────────
 const editLeadDeveloperId       = ref('')
@@ -932,9 +879,9 @@ const lastReadTs         = ref('')
 const commentTextareaRef = ref(null)
 const mentionDropdown    = reactive({ show: false, query: '', filtered: [] })
 
-// ── Google Sheets ─────────────────────────────────────────────────────────────
-const showAddSheet = ref(false)
-const newSheet     = reactive({ label: '', url: '' })
+// ── Links ─────────────────────────────────────────────────────────────────────
+const showAddLink = ref(false)
+const newLink     = reactive({ name: '', url: '' })
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 const toastMsg = ref('')
@@ -1151,6 +1098,14 @@ function tsMillis(v) {
   return new Date(v).getTime() || 0
 }
 
+function safeUrl(url) {
+  if (!url) return ''
+  const s = url.trim()
+  if (!s) return ''
+  if (/^https?:\/\//i.test(s)) return s
+  return 'https://' + s
+}
+
 function formatDate(value) {
   if (!value) return '—'
   let date
@@ -1189,13 +1144,15 @@ function langStatusText(status) {
 }
 
 function phProgressIcon(status) {
-  if (status === 'done')    return '✓'
-  if (status === 'active')  return '◉'
-  if (status === 'blocked') return '⊘'
+  if (statusesStore.isComplete(status)) return '✓'
+  if (status === 'active')              return '◉'
+  if (status === 'blocked')             return '⊘'
   return '○'
 }
 
 function phProgressLabel(status) {
+  const s = statusesStore.statusById(status)
+  if (s) return s.name
   if (status === 'done')    return 'Done'
   if (status === 'active')  return 'Active'
   if (status === 'blocked') return 'Blocked'
@@ -1208,13 +1165,13 @@ const sidebarExpanded = reactive({})
 function shouldShowSubPhases(ph) {
   const status = getPhaseStatus(localProject.value?.phaseData || {}, ph.id)
   if (status === 'active' || status === 'blocked') return true
-  if (status === 'done') return !!sidebarExpanded[ph.id]
-  return false  // not-started: always hidden
+  if (statusesStore.isComplete(status)) return !!sidebarExpanded[ph.id]
+  return false
 }
 
 function onSidebarPhaseClick(ph) {
   const status = getPhaseStatus(localProject.value?.phaseData || {}, ph.id)
-  if (status === 'done' && (ph.subPhases || []).length > 0) {
+  if (statusesStore.isComplete(status) && (ph.subPhases || []).length > 0) {
     sidebarExpanded[ph.id] = !sidebarExpanded[ph.id]
   } else {
     scrollToPhase(ph.id)
@@ -1224,7 +1181,7 @@ function onSidebarPhaseClick(ph) {
 function doneSubCount(ph) {
   const phData = localProject.value?.phaseData || {}
   return (ph.subPhases || []).filter(sp =>
-    getSubPhaseStatus(phData, ph.id, sp.id) === 'done'
+    statusesStore.isComplete(getSubPhaseStatus(phData, ph.id, sp.id))
   ).length
 }
 
@@ -1421,13 +1378,14 @@ const primaryPhaseName = computed(() => {
   return ph.name
 })
 
-const hasQuickLinks = computed(() => !!(
-  localProject.value?.builderLink ||
-  localProject.value?.briefingUrl ||
-  localProject.value?.sitemapUrl  ||
-  localProject.value?.googleKeepUrl ||
-  localProject.value?.logoSetUrl
-))
+const quickLinks = computed(() =>
+  (localProject.value?.links || [])
+    .filter(l => l.url && l.url.trim())
+    .slice()
+    .sort((a, b) => (a.order || 0) - (b.order || 0))
+)
+
+const hasQuickLinks = computed(() => quickLinks.value.length > 0)
 
 const allActiveMembers = computed(() =>
   teamStore.teamMembers.filter(m => m.active !== false)
@@ -1546,7 +1504,7 @@ function initLocalProject(p) {
   projTab.value        = 'info'
   phaseView.value      = 'list'
   infoEditMode.value   = false
-  showAddSheet.value   = false
+  showAddLink.value    = false
   newCommentText.value = ''
 }
 
@@ -1560,6 +1518,30 @@ function migrateLanguageFields(data) {
     return l.split(',').map(s => s.trim()).filter(Boolean)
   })()
   return { ...data, mainLanguage: langs[0] || 'NL', additionalLanguages: langs.slice(1) }
+}
+
+// Migrates old hardcoded link fields and googleSheets to the unified links array.
+// Runs exactly once: when a project document has no links field yet.
+async function ensureLinksArray(data) {
+  if (data.links !== undefined) return
+  const TEMPLATE_DEFAULTS = [
+    { id: uid(), name: 'QA Checklist', url: data.qaChecklistLink || '', order: 1 },
+    { id: uid(), name: 'Briefing',     url: data.briefingUrl    || '', order: 2 },
+    { id: uid(), name: 'Sitemap',      url: data.sitemapUrl     || '', order: 3 },
+    { id: uid(), name: 'Builder Link', url: data.builderLink    || '', order: 4 },
+    { id: uid(), name: 'Google Drive', url: data.logoSetUrl     || '', order: 5 },
+    { id: uid(), name: 'Google Keep',  url: data.googleKeepUrl  || '', order: 6 },
+  ]
+  const customLinks = (data.googleSheets || []).map((s, i) => ({
+    id: s.id || uid(),
+    name: s.label || s.name || '',
+    url: s.url || '',
+    order: 6 + i + 1,
+  }))
+  const links = [...TEMPLATE_DEFAULTS, ...customLinks]
+  data.links = links
+  await projectsStore.updateProject(data.id, { links, updatedAt: new Date().toISOString() })
+    .catch(e => console.warn('[Migration] ensureLinksArray failed:', e))
 }
 
 // Ensures phaseData.languages exists for projects that have additionalLanguages but
@@ -1599,6 +1581,8 @@ function startProjectListener(id) {
     }
     // Ensure phaseData.languages exists for projects with additional languages
     ensureLanguagesPhase(data).catch(e => console.warn('[Migration] ensureLanguagesPhase failed:', e))
+    // Migrate old link fields to unified links array
+    ensureLinksArray(data).catch(e => console.warn('[Migration] ensureLinksArray failed:', e))
     latestSnapshot.value = data
     if (!localProject.value) {
       initLocalProject(data)
@@ -1781,6 +1765,9 @@ async function infoSave() {
       additionalLanguages:      newAdditional,
       kickstartDate:            localProject.value.kickstartDate || '',
       liveDate:                 localProject.value.liveDate || '',
+      previewDate:              localProject.value.previewDate || '',
+      deliveryDate:             localProject.value.deliveryDate || '',
+      deadline:                 localProject.value.deadline || '',
       currentPhase:             localProject.value.currentPhase || 'kickstart',
       currentSubPhase:          localProject.value.currentSubPhase || null,
       activePhases:             localProject.value.activePhases || [],
@@ -1792,11 +1779,6 @@ async function infoSave() {
       qaAssigneeId:             editQaAssigneeId.value || null,
       assignedMembers,
       developer:                leadMember?.name || '',
-      sitemapUrl:               localProject.value.sitemapUrl || '',
-      builderLink:              localProject.value.builderLink || '',
-      briefingUrl:              localProject.value.briefingUrl || '',
-      googleKeepUrl:            localProject.value.googleKeepUrl || '',
-      logoSetUrl:               localProject.value.logoSetUrl || '',
       updatedAt:                now,
     }
     await projectsStore.updateProject(localProject.value.id, fields)
@@ -1824,7 +1806,7 @@ async function infoSave() {
       }
     }
 
-    const FIELD_LABELS = { name: 'Name', url: 'Site URL', originalSite: 'Original Site', platform: 'Platform', projectType: 'Type', mainLanguage: 'Main Language', kickstartDate: 'Kickstart Date', liveDate: 'Live Date', sitemapUrl: 'Sitemap', builderLink: 'Builder Link', briefingUrl: 'Briefing', googleKeepUrl: 'Google Keep', logoSetUrl: 'Google Drive' }
+    const FIELD_LABELS = { name: 'Name', url: 'Site URL', originalSite: 'Original Site', platform: 'Platform', projectType: 'Type', mainLanguage: 'Main Language', kickstartDate: 'Kickstart Date', liveDate: 'Live Date', previewDate: 'Preview Date', deliveryDate: 'Delivery Date', deadline: 'Deadline' }
     const snap = latestSnapshot.value || {}
     const changedFields = Object.keys(FIELD_LABELS).filter(f => (localProject.value[f] || '') !== (snap[f] || ''))
     for (const f of changedFields) {
@@ -1858,40 +1840,41 @@ async function saveLangStatus(lang, status) {
   }
 }
 
-// ── Google Sheets ─────────────────────────────────────────────────────────────
-async function addSheet() {
-  if (!newSheet.url.trim()) return
-  const entry = { id: uid(), label: newSheet.label, url: newSheet.url }
-  if (!localProject.value.googleSheets) localProject.value.googleSheets = []
-  localProject.value.googleSheets.push(entry)
-  const label = newSheet.label || newSheet.url
-  newSheet.label = ''; newSheet.url = ''; showAddSheet.value = false
+// ── Links ─────────────────────────────────────────────────────────────────────
+async function addLink() {
+  if (!newLink.url.trim() && !newLink.name.trim()) return
+  if (!localProject.value.links) localProject.value.links = []
+  const maxOrder = (localProject.value.links).reduce((m, l) => Math.max(m, l.order || 0), 0)
+  const entry = { id: uid(), name: newLink.name, url: newLink.url, order: maxOrder + 1 }
+  localProject.value.links.push(entry)
+  const name = newLink.name || newLink.url
+  newLink.name = ''; newLink.url = ''; showAddLink.value = false
   if (localProject.value.id) {
     projectsStore.updateProject(localProject.value.id, {
-      googleSheets: localProject.value.googleSheets,
+      links: localProject.value.links,
       updatedAt: new Date().toISOString(),
     }).catch(() => {})
-    logActivity(localProject.value.id, 'link_updated', { action: 'added', label }).catch(() => {})
+    logActivity(localProject.value.id, 'link_updated', { action: 'added', label: name }).catch(() => {})
   }
 }
 
-async function removeSheet(sheetId) {
+async function removeLink(linkId) {
   if (!localProject.value) return
-  const sheet = (localProject.value.googleSheets || []).find(s => s.id === sheetId)
-  localProject.value.googleSheets = (localProject.value.googleSheets || []).filter(s => s.id !== sheetId)
+  const lnk = (localProject.value.links || []).find(l => l.id === linkId)
+  localProject.value.links = (localProject.value.links || []).filter(l => l.id !== linkId)
   if (localProject.value.id) {
     projectsStore.updateProject(localProject.value.id, {
-      googleSheets: localProject.value.googleSheets,
+      links: localProject.value.links,
       updatedAt: new Date().toISOString(),
     }).catch(() => {})
-    if (sheet) logActivity(localProject.value.id, 'link_updated', { action: 'deleted', label: sheet.label || sheet.url }).catch(() => {})
+    if (lnk) logActivity(localProject.value.id, 'link_updated', { action: 'deleted', label: lnk.name || lnk.url }).catch(() => {})
   }
 }
 
-function saveSheetImmediate() {
+function saveLinkImmediate() {
   if (!localProject.value?.id) return
   projectsStore.updateProject(localProject.value.id, {
-    googleSheets: localProject.value.googleSheets || [],
+    links: localProject.value.links || [],
     updatedAt: new Date().toISOString(),
   }).catch(() => {})
 }

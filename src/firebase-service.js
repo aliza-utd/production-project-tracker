@@ -370,7 +370,7 @@ export function subscribeToWeeklyTracker(weekKey, onNext, onError) {
 }
 
 export async function saveWeeklyTrackerDoc(weekKey, data) {
-  return setDoc(doc(db, 'weekly_tracker', weekKey), data)
+  return setDoc(doc(db, 'weekly_tracker', weekKey), sanitizeForFirestore(data))
 }
 
 export async function migrateWeeklyTrackerToFirestore(weeklyEntries) {
@@ -729,4 +729,189 @@ export async function createFirebaseEmailUser(email, password) {
 
 export async function signInWithEmailPassword(email, password) {
   return signInWithEmailAndPassword(auth, email, password)
+}
+
+// ── Checklist Templates (Firestore) ──────────────────────────────────────────
+
+export function subscribeToChecklistTemplates(onNext, onError) {
+  return onSnapshot(
+    collection(db, 'checklist_templates'),
+    onNext,
+    onError || (err => console.error('[ChecklistTemplates] snapshot error:', err))
+  )
+}
+
+export async function saveChecklistTemplate(phaseId, items) {
+  return setDoc(doc(db, 'checklist_templates', phaseId), {
+    phaseId,
+    items,
+    updatedAt: new Date().toISOString(),
+  })
+}
+
+export async function deleteChecklistTemplate(phaseId) {
+  return deleteDoc(doc(db, 'checklist_templates', phaseId))
+}
+
+// ── Link Templates (Firestore) ────────────────────────────────────────────────
+
+const DEFAULT_LINK_TEMPLATES = [
+  { id: 'qa_checklist', name: 'QA Checklist', order: 1 },
+  { id: 'briefing',     name: 'Briefing',     order: 2 },
+  { id: 'sitemap',      name: 'Sitemap',       order: 3 },
+  { id: 'builder_link', name: 'Builder Link',  order: 4 },
+  { id: 'google_drive', name: 'Google Drive',  order: 5 },
+  { id: 'google_keep',  name: 'Google Keep',   order: 6 },
+]
+
+export function subscribeLinkTemplates(onNext, onError) {
+  return onSnapshot(
+    query(collection(db, 'link_templates'), orderBy('order')),
+    onNext,
+    onError || (err => console.error('[LinkTemplates] snapshot error:', err))
+  )
+}
+
+export async function seedLinkTemplates() {
+  const batch = writeBatch(db)
+  for (const t of DEFAULT_LINK_TEMPLATES) {
+    batch.set(doc(db, 'link_templates', t.id), t)
+  }
+  await batch.commit()
+}
+
+export async function addLinkTemplate(data) {
+  return addDoc(collection(db, 'link_templates'), data)
+}
+
+export async function updateLinkTemplate(id, data) {
+  return updateDoc(doc(db, 'link_templates', id), data)
+}
+
+export async function deleteLinkTemplate(id) {
+  return deleteDoc(doc(db, 'link_templates', id))
+}
+
+// ── Weekly Notes Fields (Firestore) ──────────────────────────────────────────
+
+export function subscribeToWeeklyNotesFields(onNext, onError) {
+  return onSnapshot(
+    collection(db, 'weekly_notes_fields'),
+    onNext,
+    onError || (err => console.error('[WeeklyNotesFields] snapshot error:', err))
+  )
+}
+
+export async function setWeeklyNotesField(id, data) {
+  return setDoc(doc(db, 'weekly_notes_fields', id), data)
+}
+
+export async function createWeeklyNotesField(data) {
+  const ref = await addDoc(collection(db, 'weekly_notes_fields'), data)
+  return { id: ref.id, ...data }
+}
+
+export async function deleteWeeklyNotesField(id) {
+  return deleteDoc(doc(db, 'weekly_notes_fields', id))
+}
+
+// ── Weekly Notes Edit Requests (Firestore) ───────────────────────────────────
+
+export function subscribeToUserEditRequests(userId, onNext, onError) {
+  const q = query(
+    collection(db, 'weekly_notes_edit_requests'),
+    where('userId', '==', userId)
+  )
+  return onSnapshot(q, onNext, onError || (err => console.error('[EditRequests] user snapshot error:', err)))
+}
+
+export function subscribeToPendingEditRequests(onNext, onError) {
+  const q = query(
+    collection(db, 'weekly_notes_edit_requests'),
+    where('status', '==', 'pending')
+  )
+  return onSnapshot(q, onNext, onError || (err => console.error('[EditRequests] pending snapshot error:', err)))
+}
+
+export async function submitWeeklyNotesEditRequest(docId, data) {
+  return setDoc(doc(db, 'weekly_notes_edit_requests', docId), {
+    ...data,
+    requestedAt: serverTimestamp(),
+  })
+}
+
+export async function respondToWeeklyNotesEditRequest(docId, status, respondedBy) {
+  return updateDoc(doc(db, 'weekly_notes_edit_requests', docId), {
+    status,
+    respondedBy,
+    respondedAt: serverTimestamp(),
+  })
+}
+
+export async function seedDefaultWeeklyNotesFields() {
+  const defaults = [
+    { id: 'ongoingTasks',    name: 'Ongoing Tasks',      order: 1, isDefault: true },
+    { id: 'blockers',        name: 'Blockers / Issues',  order: 2, isDefault: true },
+    { id: 'endOfWeekUpdate', name: 'End of Week Update', order: 3, isDefault: true },
+  ]
+  for (const { id, ...data } of defaults) {
+    const snap = await getDoc(doc(db, 'weekly_notes_fields', id))
+    if (!snap.exists()) {
+      await setDoc(doc(db, 'weekly_notes_fields', id), data)
+      console.log('[WeeklyNotesFields] seeded:', id)
+    }
+  }
+}
+
+// ── Phase / Checklist Statuses (Firestore) ───────────────────────────────────
+
+const DEFAULT_STATUS_DOCS = [
+  {
+    id: 'not-started', name: 'Not Started', baseColor: '#94a3b8',
+    lightBg: '#F1EFE8', lightText: '#64748b',
+    darkBg:  '#2C2C2A', darkText:  '#B4B2A9',
+    order: 1, isComplete: false, isDefault: true,
+  },
+  {
+    id: 'active', name: 'Active', baseColor: '#f59e0b',
+    lightBg: '#FAEEDA', lightText: '#9a3412',
+    darkBg:  '#412402', darkText:  '#FAC775',
+    order: 2, isComplete: false, isDefault: true,
+  },
+  {
+    id: 'blocked', name: 'Blocked', baseColor: '#ef4444',
+    lightBg: '#FCEBEB', lightText: '#b91c1c',
+    darkBg:  '#501313', darkText:  '#F09595',
+    order: 3, isComplete: false, isDefault: true,
+  },
+  {
+    id: 'done', name: 'Done', baseColor: '#22c55e',
+    lightBg: '#EAF3DE', lightText: '#166534',
+    darkBg:  '#173404', darkText:  '#97C459',
+    order: 4, isComplete: true, isDefault: true,
+  },
+]
+
+export async function seedDefaultStatuses() {
+  for (const { id, ...data } of DEFAULT_STATUS_DOCS) {
+    await setDoc(doc(db, 'statuses', id), data)
+    console.log('[Statuses] seeded:', id)
+  }
+}
+
+export function subscribeToStatuses(onNext, onError) {
+  const q = query(collection(db, 'statuses'), orderBy('order', 'asc'))
+  return onSnapshot(q, onNext, onError || (err => console.error('[Statuses] snapshot error:', err)))
+}
+
+export async function createStatusInFirestore(data) {
+  return addDoc(collection(db, 'statuses'), data)
+}
+
+export async function updateStatusInFirestore(id, data) {
+  return updateDoc(doc(db, 'statuses', id), data)
+}
+
+export async function deleteStatusInFirestore(id) {
+  return deleteDoc(doc(db, 'statuses', id))
 }

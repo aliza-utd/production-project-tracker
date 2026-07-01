@@ -142,44 +142,10 @@
           </div>
         </div>
 
-        <!-- Additional Details accordion -->
-        <div>
-          <div class="np-accord-hdr" @click="detailsOpen = !detailsOpen">
-            Additional Details
-            <span class="np-accord-arrow" :class="{ open: detailsOpen }">▶</span>
-          </div>
-          <div v-if="detailsOpen" class="np-accord-body">
-            <div class="np-row">
-              <div class="form-group" style="margin-bottom:0">
-                <label class="form-label">Sitemap URL</label>
-                <input class="form-input" v-model="form.sitemapUrl" placeholder="https://…">
-              </div>
-              <div class="form-group" style="margin-bottom:0">
-                <label class="form-label">Builder Link</label>
-                <input class="form-input" v-model="form.builderLink" placeholder="Builder URL…">
-              </div>
-            </div>
-            <div class="np-row" style="margin-top:8px">
-              <div class="form-group" style="margin-bottom:0">
-                <label class="form-label">Briefing</label>
-                <input class="form-input" v-model="form.briefingUrl" placeholder="Briefing link…">
-              </div>
-              <div class="form-group" style="margin-bottom:0">
-                <label class="form-label">Google Keep</label>
-                <input class="form-input" v-model="form.googleKeepUrl" placeholder="https://keep.google.com/…">
-              </div>
-            </div>
-            <div class="np-row" style="margin-top:8px">
-              <div class="form-group" style="margin-bottom:0">
-                <label class="form-label">Google Drive</label>
-                <input class="form-input" v-model="form.logoSetUrl" placeholder="Drive folder link…">
-              </div>
-              <div class="form-group" style="margin-bottom:0">
-                <label class="form-label">Notes</label>
-                <input class="form-input" v-model="form.notes" placeholder="Notes…">
-              </div>
-            </div>
-          </div>
+        <!-- Notes -->
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <input class="form-input" v-model="form.notes" placeholder="Notes…">
         </div>
 
         <!-- Actions -->
@@ -197,7 +163,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import TagInput from '@/components/shared/TagInput.vue'
 import TeamMemberPicker from '@/components/shared/TeamMemberPicker.vue'
@@ -208,16 +174,27 @@ import { useTeamStore } from '@/stores/team'
 import { useRolesStore } from '@/stores/roles'
 import { usePhaseLogic } from '@/composables/usePhaseLogic'
 import { useActivityLog } from '@/composables/useActivityLog'
+import { useChecklistTemplatesStore } from '@/stores/checklistTemplates'
+import { useLinkTemplatesStore }      from '@/stores/linkTemplates'
 
 const emit = defineEmits(['created', 'cancel'])
 const router = useRouter()
-const projectsStore = useProjectsStore()
-const phasesStore   = usePhasesStore()
-const authStore     = useAuthStore()
-const teamStore     = useTeamStore()
-const rolesStore    = useRolesStore()
+const projectsStore              = useProjectsStore()
+const phasesStore                = usePhasesStore()
+const authStore                  = useAuthStore()
+const teamStore                  = useTeamStore()
+const rolesStore                 = useRolesStore()
+const checklistTemplatesStore = useChecklistTemplatesStore()
+const linkTemplatesStore      = useLinkTemplatesStore()
 const { emptyPhaseEntry, autoCompletePreviousPhases, generateLanguagePhaseData } = usePhaseLogic()
 const { logActivity } = useActivityLog()
+
+function uidShort() { return Math.random().toString(36).substr(2, 9) + Date.now().toString(36) }
+
+onMounted(() => {
+  checklistTemplatesStore.fetchTemplates()
+  linkTemplatesStore.fetchTemplates()
+})
 
 const LANGUAGE_OPTIONS = ['NL', 'EN', 'FR', 'DE', 'ES', 'IT', 'PT', 'PL', 'CS', 'HU', 'RO', 'TR', 'AR', 'ZH', 'JA', 'KO', 'RU']
 
@@ -225,15 +202,13 @@ const form = reactive({
   name: '', url: '', originalSite: '',
   platform: 'WordPress', projectType: 'new_site',
   kickstartDate: new Date().toISOString().slice(0, 10), liveDate: '',
-  sitemapUrl: '', builderLink: '', briefingUrl: '',
-  googleKeepUrl: '', logoSetUrl: '', notes: '',
+  notes: '',
 })
 const mainLanguage        = ref('NL')
 const mainLanguageOther   = ref('')
 const additionalLanguages = ref([])
 const phaseOn             = ref(false)
 const phaseId             = ref('kickstart')
-const detailsOpen         = ref(true)
 const errors              = reactive({})
 const saving              = ref(false)
 
@@ -241,13 +216,14 @@ const saving              = ref(false)
 const leadDeveloperId      = ref('')
 const developersInvolvedIds = ref([])
 
-// Pre-fill from phase config defaults (only for new projects)
+// Pre-fill from phase config defaults (only for new projects).
+// Sub-phases inherit the parent phase default when their own defaultAssigneeId is null.
 const _prodPhase  = phasesStore.phaseConfig.find(p => p.id === 'production')
 const _wsSp       = (_prodPhase?.subPhases || []).find(s => s.id === 'web_services')
 const _mmSp       = (_prodPhase?.subPhases || []).find(s => s.id === 'multimedia')
 const _qaPhase    = phasesStore.phaseConfig.find(p => p.id === 'qa')
-const webServicesAssigneeId = ref(_wsSp?.defaultAssigneeId || '')
-const multimediaAssigneeId  = ref(_mmSp?.defaultAssigneeId || '')
+const webServicesAssigneeId = ref(_wsSp?.defaultAssigneeId || _prodPhase?.defaultAssigneeId || '')
+const multimediaAssigneeId  = ref(_mmSp?.defaultAssigneeId || _prodPhase?.defaultAssigneeId || '')
 const qaAssigneeId          = ref(_qaPhase?.defaultAssigneeId || '')
 
 const developerMembers = computed(() =>
@@ -276,21 +252,40 @@ function effectiveMainLanguage() {
 }
 
 function buildDefaultPhaseData() {
-  const pd = {}
+  const pd         = {}
+  const checklists = {}
+
+  console.log('[Checklist Debug] all templates:', checklistTemplatesStore.templates)
+
   for (const ph of phasesStore.phaseConfig) {
     if (ph.id === 'languages') continue
     pd[ph.id] = emptyPhaseEntry()
+    const phTplItems = checklistTemplatesStore.getTemplateItems(ph.id)
+    console.log('[Checklist Debug] getTemplateItems(' + ph.id + '):', checklistTemplatesStore.getTemplateItems(ph.id))
+    if (phTplItems.length) {
+      checklists[ph.id] = phTplItems.map(item => ({
+        itemId: item.id, name: item.name, status: 'not-started',
+      }))
+    }
     if (ph.subPhases?.length) {
       pd[ph.id].subPhases = {}
       for (const sp of ph.subPhases) {
         pd[ph.id].subPhases[sp.id] = emptyPhaseEntry()
+        const spTplItems = checklistTemplatesStore.getTemplateItems(sp.id)
+        console.log('[Checklist Debug] getTemplateItems(' + sp.id + '):', checklistTemplatesStore.getTemplateItems(sp.id))
+        if (spTplItems.length) {
+          checklists[sp.id] = spTplItems.map(item => ({
+            itemId: item.id, name: item.name, status: 'not-started',
+          }))
+        }
       }
     }
   }
   if (additionalLanguages.value.length > 0) {
     pd.languages = generateLanguagePhaseData(additionalLanguages.value)
   }
-  return pd
+  console.log('[Checklist Debug] checklists map to be written:', JSON.stringify(checklists))
+  return { phaseData: pd, checklists }
 }
 
 function validate() {
@@ -308,7 +303,17 @@ async function create() {
   try {
     const now         = new Date().toISOString()
     const targetPhase = phaseOn.value ? phaseId.value : 'kickstart'
-    const phaseData   = buildDefaultPhaseData()
+    // Ensure templates are loaded from Firestore before snapshotting
+    await checklistTemplatesStore.fetchTemplates()
+    await linkTemplatesStore.fetchTemplates()
+    const { phaseData, checklists } = buildDefaultPhaseData()
+    // Instantiate links from current link_templates (blank URLs)
+    const links = linkTemplatesStore.templates.map((tpl, i) => ({
+      id: uidShort(),
+      name: tpl.name,
+      url: '',
+      order: tpl.order || i + 1,
+    }))
     // Exclude Languages phase from auto-complete (it activates separately after Activation)
     autoCompletePreviousPhases(targetPhase, phaseData, phasesStore.phaseConfig.filter(p => p.id !== 'languages'))
 
@@ -353,13 +358,9 @@ async function create() {
       qaAssigneeId:             qaAssigneeId.value || null,
       assignedMembers,
       developer:                leadMember?.name || '',
-      sitemapUrl:          form.sitemapUrl.trim(),
-      builderLink:         form.builderLink.trim(),
-      briefingUrl:         form.briefingUrl.trim(),
-      googleKeepUrl:       form.googleKeepUrl.trim(),
-      logoSetUrl:          form.logoSetUrl.trim(),
       notes:               form.notes.trim(),
-      googleSheets:        [],
+      checklists:          checklists,
+      links:               links,
       langStatus:          {},
       phaseHistory:        [],
       onHoldSince:         null,
@@ -374,6 +375,7 @@ async function create() {
       updatedAt:           now,
     }
 
+    console.log('[Checklist Debug] full docData:', docData)
     const created = await projectsStore.createProject(docData)
     logActivity(created.id, 'project_created', { name: docData.name }).catch(() => {})
 

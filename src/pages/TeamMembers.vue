@@ -2,20 +2,21 @@
   <div class="content">
 
     <!-- ── Page header ──────────────────────────────────────────────── -->
-    <div class="page-top">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <h1 style="font-size:20px;font-weight:700;color:var(--text);margin:0">Team Members</h1>
-
-      <div class="tab-bar">
-        <button class="tab-btn" :class="{ active: activeTab === 'members' }"
-          @click="activeTab = 'members'">Members</button>
-        <button class="tab-btn" :class="{ active: activeTab === 'roles' }"
-          @click="activeTab = 'roles'">Roles &amp; Permissions</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button v-if="authStore.isManager && activeTab === 'members'"
+          class="btn btn-primary btn-sm" @click="openAdd">+ Add Member</button>
+        <button v-if="authStore.isManager && activeTab === 'roles'"
+          class="btn btn-primary btn-sm" @click="openNewRole">+ New Role</button>
+        <NotificationBell />
       </div>
-
-      <button v-if="authStore.isManager && activeTab === 'members'"
-        class="btn btn-primary btn-sm" @click="openAdd">+ Add Member</button>
-      <button v-if="authStore.isManager && activeTab === 'roles'"
-        class="btn btn-primary btn-sm" @click="openNewRole">+ New Role</button>
+    </div>
+    <div class="app-tab-bar">
+      <button class="app-tab" :class="{ active: activeTab === 'members' }"
+        @click="activeTab = 'members'">Members</button>
+      <button class="app-tab" :class="{ active: activeTab === 'roles' }"
+        @click="activeTab = 'roles'">Roles &amp; Permissions</button>
     </div>
 
     <!-- ── Members tab ───────────────────────────────────────────────── -->
@@ -385,6 +386,7 @@ import { useAuthStore }  from '@/stores/auth'
 import { useTeamStore }  from '@/stores/team'
 import { useRolesStore } from '@/stores/roles'
 import { createInvitedMember, resendInvite } from '@/firebase-service'
+import NotificationBell from '@/components/layout/NotificationBell.vue'
 
 const authStore  = useAuthStore()
 const teamStore  = useTeamStore()
@@ -713,22 +715,6 @@ async function deleteRole() {
 </script>
 
 <style scoped>
-/* ── Layout ───────────────────────────────────────────────────────── */
-.page-top {
-  display: flex; align-items: center; gap: 16px;
-  margin-bottom: 24px; flex-wrap: wrap;
-}
-.page-top h1 { flex-shrink: 0; }
-
-.tab-bar { display: flex; gap: 2px; flex: 1; }
-.tab-btn {
-  padding: 6px 16px; border: none; border-radius: 6px;
-  background: transparent; color: var(--muted);
-  font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s, color 0.15s;
-}
-.tab-btn:hover { background: var(--bg); color: var(--text); }
-.tab-btn.active { background: var(--bg); color: var(--primary); font-weight: 700; }
-
 /* ── Member cards ─────────────────────────────────────────────────── */
 .dept-group  { margin-bottom: 28px; }
 .dept-header {

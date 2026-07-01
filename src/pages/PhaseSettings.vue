@@ -1,5 +1,5 @@
 <template>
-  <div class="content">
+  <div>
 
     <!-- Header + Save -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
@@ -23,12 +23,12 @@
 
     <!-- Phase list -->
     <div class="ps-list">
-      <div v-for="(ph, idx) in phases" :key="ph.id">
+      <div v-for="(ph, idx) in phases" :key="ph.id" class="ps-phase-block">
 
         <!-- Phase row -->
         <div
           class="ps-row"
-          :class="{ 'ps-drag-over': dragOverIdx === idx }"
+          :class="{ 'ps-drag-over': dragOverIdx === idx, 'ps-row-expanded': expandedIdx === idx || ph.dynamic }"
           draggable="true"
           @dragstart="onDragStart(idx, $event)"
           @dragover.prevent="onDragOver(idx)"
@@ -55,29 +55,41 @@
           <!-- Phase name -->
           <input class="form-input ps-name-input" v-model="ph.name" placeholder="Phase name">
 
-          <!-- Default Assignee -->
-          <select
-            v-if="authStore.isManager"
-            class="form-select ps-assignee-select"
-            v-model="ph.defaultAssigneeId"
-            @click.stop
-          >
-            <option value="">No default</option>
-            <option v-for="m in activeTeamMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
-          </select>
-
-          <!-- Sub-phases expand button (hidden for dynamic phases) -->
-          <button v-if="!ph.dynamic" class="btn btn-ghost btn-sm" style="white-space:nowrap" @click="toggleExpanded(idx)">
-            <template v-if="ph.subPhases?.length">
-              {{ ph.subPhases.length }} sub-phase{{ ph.subPhases.length !== 1 ? 's' : '' }}
-            </template>
-            <template v-else>+ Sub-phases</template>
-            {{ expandedIdx === idx ? '▾' : '▸' }}
-          </button>
-          <span v-else class="ps-dynamic-chip">Dynamic</span>
-
-          <!-- Delete phase -->
-          <button class="btn-icon" style="color:var(--danger)" @click="removePhase(idx)" title="Delete phase">✕</button>
+          <!-- Right-side controls -->
+          <div class="ps-row-actions">
+            <select
+              v-if="authStore.isManager"
+              class="form-select ps-assignee-select"
+              v-model="ph.defaultAssigneeId"
+              @click.stop
+            >
+              <option value="">No default</option>
+              <option v-for="m in activeTeamMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+            </select>
+            <!-- Sub-phases chip -->
+            <button v-if="!ph.dynamic" class="ps-chip"
+              :style="ph.subPhases?.length ? phChipStyle(ph) : {}"
+              @click="toggleExpanded(idx)">
+              <svg class="ps-chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 01-9 9"/>
+              </svg>
+              Sub-phases
+              <span v-if="ph.subPhases?.length" class="ps-chip-badge" :style="'background:'+ph.color">{{ ph.subPhases.length }}</span>
+            </button>
+            <span v-else class="ps-dynamic-chip">Dynamic</span>
+            <!-- Checklist chip -->
+            <button v-if="!ph.subPhases?.length" class="ps-chip"
+              :style="clItemCount(ph.id) ? phChipStyle(ph) : {}"
+              @click.stop="toggleChecklistExpanded(ph.id)">
+              <svg class="ps-chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/>
+                <polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/>
+              </svg>
+              Checklist
+              <span v-if="clItemCount(ph.id)" class="ps-chip-badge" :style="'background:'+ph.color">{{ clItemCount(ph.id) }}</span>
+            </button>
+            <button class="btn-icon" style="color:var(--muted)" @click="removePhase(idx)" title="Delete phase">✕</button>
+          </div>
         </div>
 
         <!-- Sub-phases panel (regular phases only — dynamic phases show inline note) -->
@@ -98,24 +110,101 @@
 
           <div class="ps-sub-title">Sub-phases for <strong>{{ ph.name }}</strong></div>
 
-          <div v-for="(sp, spIdx) in (ph.subPhases || [])" :key="sp.id" class="ps-sub-row">
-            <input class="form-input" style="flex:1" v-model="sp.name" placeholder="Sub-phase name">
-            <select
-              v-if="authStore.isManager"
-              class="form-select ps-assignee-select"
-              :value="sp.defaultAssigneeId ?? ph.defaultAssigneeId ?? ''"
-              @change="sp.defaultAssigneeId = $event.target.value || null"
-              title="Default assignee (inherits phase default when not set)"
-            >
-              <option value="">No default</option>
-              <option v-for="m in activeTeamMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
-            </select>
-            <button class="btn-icon" style="color:var(--danger)" @click="removeSubPhase(idx, spIdx)">✕</button>
-          </div>
+          <template v-for="(sp, spIdx) in (ph.subPhases || [])" :key="sp.id">
+            <div class="ps-sub-row">
+              <input class="form-input" style="flex:1" v-model="sp.name" placeholder="Sub-phase name">
+              <select
+                v-if="authStore.isManager"
+                class="form-select ps-assignee-select"
+                :value="sp.defaultAssigneeId ?? ph.defaultAssigneeId ?? ''"
+                @change="sp.defaultAssigneeId = $event.target.value || null"
+                title="Default assignee (inherits phase default when not set)"
+              >
+                <option value="">No default</option>
+                <option v-for="m in activeTeamMembers" :key="m.id" :value="m.id">{{ m.name }}</option>
+              </select>
+              <!-- Sub-phase checklist template toggle -->
+              <button class="btn btn-ghost btn-sm ps-cl-btn" style="white-space:nowrap;font-size:11px"
+                @click.stop="toggleChecklistExpanded(sp.id)">
+                CL{{ clItemCount(sp.id) ? ' (' + clItemCount(sp.id) + ')' : '' }}
+                {{ checklistExpanded[sp.id] ? '▾' : '▸' }}
+              </button>
+              <button class="btn-icon" style="color:var(--danger)" @click="removeSubPhase(idx, spIdx)">✕</button>
+            </div>
+            <!-- Sub-phase checklist template editor -->
+            <div v-if="checklistExpanded[sp.id]"
+              style="background:var(--bg);border:1px solid var(--border);border-left:3px solid var(--primary);border-radius:var(--r);padding:10px 14px;margin-bottom:4px">
+              <div class="ps-sub-title" style="margin-bottom:6px">Checklist: {{ sp.name }}</div>
+              <div
+                v-for="(item, itemIdx) in (localClItems[sp.id] || [])"
+                :key="item.id"
+                class="ps-sub-row"
+                :class="{ 'ps-drag-over': clDragOverIdx === itemIdx && clDragPhaseId === sp.id }"
+                draggable="true"
+                @dragstart="onClDragStart(sp.id, itemIdx, $event)"
+                @dragover.prevent="onClDragOver(sp.id, itemIdx)"
+                @dragleave="onClDragLeave"
+                @drop.prevent="onClDrop(sp.id, itemIdx)"
+                style="margin-bottom:4px"
+              >
+                <div class="ps-handle" style="font-size:12px;cursor:grab">⠿</div>
+                <input class="form-input" style="flex:1;font-size:12px" v-model="item.name"
+                  placeholder="Item name" @input="onClItemRename(sp.id)" />
+                <button class="btn-icon" style="color:var(--danger);font-size:11px"
+                  @click="removeClItem(sp.id, item.id)">✕</button>
+              </div>
+              <div v-if="!(localClItems[sp.id] || []).length"
+                style="font-size:11px;color:var(--muted);margin-bottom:6px;font-style:italic">
+                No items yet.
+              </div>
+              <div class="ps-sub-row" style="margin-top:4px">
+                <input class="form-input" style="flex:1;font-size:12px" :value="newClInput[sp.id] || ''"
+                  placeholder="New item…"
+                  @input="newClInput[sp.id] = $event.target.value"
+                  @keyup.enter="addClItem(sp.id)" />
+                <button class="btn btn-secondary btn-sm" style="font-size:11px" @click="addClItem(sp.id)">+ Add</button>
+              </div>
+            </div>
+          </template>
 
           <button class="btn btn-ghost btn-sm" style="margin-top:8px" @click="addSubPhase(idx)">+ Add Sub-phase</button>
 
         </div><!-- end sub-phases panel -->
+
+        <!-- Checklist template card — standalone (no flush connection to row) -->
+        <div v-if="checklistExpanded[ph.id] && !ph.dynamic" class="ps-cl-card">
+          <div class="ps-sub-title" style="margin-bottom:10px">
+            Checklist template — <strong>{{ ph.name }}</strong>
+          </div>
+          <div
+            v-for="(item, itemIdx) in (localClItems[ph.id] || [])"
+            :key="item.id"
+            class="ps-cl-item-row"
+            :class="{ 'ps-drag-over': clDragOverIdx === itemIdx && clDragPhaseId === ph.id }"
+            draggable="true"
+            @dragstart="onClDragStart(ph.id, itemIdx, $event)"
+            @dragover.prevent="onClDragOver(ph.id, itemIdx)"
+            @dragleave="onClDragLeave"
+            @drop.prevent="onClDrop(ph.id, itemIdx)"
+          >
+            <div class="ps-handle" style="font-size:13px;cursor:grab">⠿</div>
+            <input class="form-input" style="flex:1;font-size:13px" v-model="item.name"
+              placeholder="Item name" @input="onClItemRename(ph.id)" />
+            <button class="btn-icon" style="color:var(--danger)" title="Remove"
+              @click="removeClItem(ph.id, item.id)">✕</button>
+          </div>
+          <div v-if="!(localClItems[ph.id] || []).length"
+            style="font-size:12px;color:var(--muted);margin-bottom:8px;font-style:italic">
+            No checklist items yet.
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input class="form-input" style="flex:1;font-size:13px" :value="newClInput[ph.id] || ''"
+              placeholder="New item name…"
+              @input="newClInput[ph.id] = $event.target.value"
+              @keyup.enter="addClItem(ph.id)" />
+            <button class="btn btn-primary btn-sm" @click="addClItem(ph.id)">+ Add Item</button>
+          </div>
+        </div>
 
         <!-- Dynamic phase settings panel (Languages phase) -->
         <div v-if="ph.dynamic" class="ps-sub-panel ps-dynamic-panel">
@@ -204,11 +293,13 @@ import { useAuthStore }    from '@/stores/auth'
 import { useProjectsStore } from '@/stores/projects'
 import { useTeamStore }    from '@/stores/team'
 import { usePhaseLogic }   from '@/composables/usePhaseLogic'
+import { useChecklistTemplatesStore } from '@/stores/checklistTemplates'
 
-const phasesStore   = usePhasesStore()
-const authStore     = useAuthStore()
-const projectsStore = useProjectsStore()
-const teamStore     = useTeamStore()
+const phasesStore              = usePhasesStore()
+const authStore                = useAuthStore()
+const projectsStore            = useProjectsStore()
+const teamStore                = useTeamStore()
+const checklistTemplatesStore  = useChecklistTemplatesStore()
 
 const activeTeamMembers = computed(() => teamStore.teamMembers.filter(m => m.active !== false))
 const { generateLanguagePhaseData } = usePhaseLogic()
@@ -218,6 +309,7 @@ const COLOR_SWATCHES = [
   '#f97316','#f59e0b','#eab308','#10b981','#14b8a6',
   '#0ea5e9','#3b82f6','#6b7280','#374151',
 ]
+
 
 const DEFAULT_LANG_TEMPLATE = [
   { id: 'development',      name: 'Development' },
@@ -238,6 +330,30 @@ const dragOverIdx    = ref(null)
 const tplDragSrcIdx   = ref(null)
 const tplDragPhaseIdx = ref(null)
 const tplDragOverIdx  = ref(null)
+
+// ── Checklist template editing state ─────────────────────────────────────────
+// checklistExpanded: { phaseOrSubId: boolean }
+const checklistExpanded   = reactive({})
+// localClItems: { phaseOrSubId: [{ id, name, order }] }
+const localClItems        = reactive({})
+// newClInput: { phaseOrSubId: '' }
+const newClInput          = reactive({})
+// drag state for checklist item reorder
+const clDragSrcId   = ref(null)
+const clDragPhaseId = ref(null)
+const clDragOverIdx = ref(null)
+// rename debounce timers
+const _clRenameTimers = {}
+
+
+function hexToRgb(hex) {
+  const h = hex.replace('#', '')
+  return `${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)}`
+}
+function phChipStyle(ph) {
+  const rgb = hexToRgb(ph.color || '#6366f1')
+  return { background: `rgba(${rgb},0.09)`, color: ph.color, borderColor: `rgba(${rgb},0.3)` }
+}
 
 function nameToId(name) {
   return name.toLowerCase()
@@ -263,9 +379,11 @@ function loadFromStore() {
   })
 }
 
+
 onMounted(() => {
   loadFromStore()
   document.addEventListener('click', onDocClick)
+  checklistTemplatesStore.fetchTemplates()
 })
 onUnmounted(() => document.removeEventListener('click', onDocClick))
 
@@ -391,6 +509,72 @@ function removeSubPhase(phaseIdx, spIdx) {
   phases[phaseIdx].subPhases.splice(spIdx, 1)
 }
 
+// ── Checklist template functions ──────────────────────────────────────────────
+function clItemCount(id) {
+  return checklistTemplatesStore.getTemplateItems(id).length
+}
+
+function toggleChecklistExpanded(id) {
+  if (!checklistExpanded[id]) {
+    localClItems[id]  = JSON.parse(JSON.stringify(checklistTemplatesStore.getTemplateItems(id)))
+    newClInput[id]    = ''
+  }
+  checklistExpanded[id] = !checklistExpanded[id]
+}
+
+async function addClItem(id) {
+  const name = (newClInput[id] || '').trim()
+  if (!name) return
+  if (!localClItems[id]) localClItems[id] = []
+  localClItems[id].push({ id: Math.random().toString(36).slice(2), name, order: localClItems[id].length })
+  newClInput[id] = ''
+  await saveClTemplate(id)
+}
+
+async function removeClItem(id, itemId) {
+  if (!confirm('Remove this checklist item from the template?')) return
+  localClItems[id] = (localClItems[id] || []).filter(i => i.id !== itemId)
+  await saveClTemplate(id)
+}
+
+function onClItemRename(id) {
+  clearTimeout(_clRenameTimers[id])
+  _clRenameTimers[id] = setTimeout(() => saveClTemplate(id), 800)
+}
+
+async function saveClTemplate(id) {
+  const items = (localClItems[id] || [])
+    .filter(i => i.name.trim())
+    .map((i, idx) => ({ id: i.id, name: i.name.trim(), order: idx }))
+  if (items.length === 0) {
+    await checklistTemplatesStore.removeTemplate(id).catch(() => {})
+  } else {
+    await checklistTemplatesStore.saveTemplate(id, items)
+  }
+}
+
+// drag-reorder for checklist items
+function onClDragStart(phaseId, itemIdx, e) {
+  clDragPhaseId.value = phaseId
+  clDragSrcId.value   = itemIdx
+  e.dataTransfer.effectAllowed = 'move'
+}
+function onClDragOver(phaseId, itemIdx) {
+  if (clDragPhaseId.value === phaseId) clDragOverIdx.value = itemIdx
+}
+function onClDragLeave() { clDragOverIdx.value = null }
+function onClDrop(phaseId, targetIdx) {
+  const src = clDragSrcId.value
+  if (src === null || src === targetIdx || clDragPhaseId.value !== phaseId) {
+    clDragOverIdx.value = null; return
+  }
+  const items = localClItems[phaseId]
+  const item  = items.splice(src, 1)[0]
+  items.splice(targetIdx, 0, item)
+  clDragSrcId.value = clDragPhaseId.value = clDragOverIdx.value = null
+  saveClTemplate(phaseId)
+}
+
 // ── Drag & drop ───────────────────────────────────────────────────────────────
 function onDragStart(idx, e) {
   dragSrcIdx.value = idx
@@ -446,7 +630,9 @@ async function save() {
       }
       return base
     })
+    console.log('[PhaseSettings] saving phase config. defaultAssigneeIds:', clean.map(p => ({ id: p.id, assignee: p.defaultAssigneeId, subs: (p.subPhases || []).map(s => ({ id: s.id, assignee: s.defaultAssigneeId })) })))
     await phasesStore.saveConfig(clean, authStore.currentUser?.uid)
+    console.log('[PhaseSettings] save complete.')
     savedMsg.value = true
     setTimeout(() => { savedMsg.value = false }, 3000)
   } catch (err) {
@@ -465,23 +651,29 @@ function reset() {
 <style scoped>
 .ps-list { display: flex; flex-direction: column; gap: 0; }
 
+/* Each phase item (row + optional expanded panel) is a self-contained block */
+.ps-phase-block { margin-bottom: 8px; }
+
 .ps-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 11px 14px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r);
-  margin-bottom: 0;
-  border-bottom: none;
-  border-radius: var(--r) var(--r) 0 0;
   cursor: grab;
   transition: background .15s;
 }
-.ps-row:last-of-type { border-radius: var(--r); border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+.ps-row.ps-row-expanded {
+  border-radius: var(--r) var(--r) 0 0;
+  border-bottom: none;
+}
 .ps-row:active { cursor: grabbing; }
-.ps-drag-over { border-color: var(--primary); background: var(--primary-ghost, #eef2ff); }
+.ps-drag-over { border-color: var(--primary); background: var(--nav-active-bg); }
+
+/* Groups assignee select + action buttons to the right */
+.ps-row-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; }
 
 .ps-handle { font-size: 18px; color: var(--muted); cursor: grab; flex-shrink: 0; }
 .ps-color-swatch {
@@ -511,8 +703,8 @@ function reset() {
 }
 .ps-color-opt:hover { transform: scale(1.2); }
 
-.ps-name-input { flex: 1; min-width: 100px; }
-.ps-assignee-select { flex: 0 1 150px; min-width: 110px; font-size: 12px; }
+.ps-name-input { flex: 1; max-width: 240px; min-width: 100px; background: var(--bg); }
+.ps-assignee-select { width: 130px; flex-shrink: 0; font-size: 12px; min-width: 0; }
 .ps-lang-toggle {
   display: flex; align-items: center; gap: 5px;
   font-size: 12px; color: var(--text);
@@ -525,7 +717,6 @@ function reset() {
   border-top: none;
   border-radius: 0 0 var(--r) var(--r);
   padding: 14px 16px;
-  margin-bottom: 6px;
 }
 .ps-dynamic-panel {
   display: block !important;
@@ -535,27 +726,52 @@ function reset() {
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #ede9fe;
-  color: #7c3aed;
+  background: var(--badge-pending-bg);
+  color: var(--badge-pending-text);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .ps-lang-note {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: var(--badge-dev-bg);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 12px;
-  color: #1d4ed8;
+  color: var(--badge-dev-text);
   margin-bottom: 12px;
 }
 
 .ps-sub-title { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
-.ps-submode-wrap { margin-bottom: 12px; padding: 8px 10px; background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; }
+.ps-submode-wrap { margin-bottom: 12px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
 .ps-radio-opt { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; padding: 3px 0; }
 .ps-radio-opt input { margin: 0; cursor: pointer; }
 .ps-sub-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+
+/* Phase chips (Sub-phases / Checklist) */
+.ps-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); color: var(--muted);
+  font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  transition: background .12s, color .12s, border-color .12s; font-family: inherit;
+}
+.ps-chip-icon { width: 13px; height: 13px; flex-shrink: 0; }
+.ps-chip-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 16px; height: 16px; border-radius: 999px;
+  color: #fff; font-size: 9px; font-weight: 700; padding: 0 4px; flex-shrink: 0;
+}
+/* Standalone checklist template card */
+.ps-cl-card {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px; margin-top: 6px;
+}
+.ps-cl-item-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; margin-bottom: 5px;
+}
 
 /* Preview */
 .ps-preview {

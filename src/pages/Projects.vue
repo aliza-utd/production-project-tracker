@@ -1,6 +1,12 @@
 <template>
   <div class="content">
 
+    <!-- Page header -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h1 style="font-size:20px;font-weight:700;color:var(--text);margin:0">Projects</h1>
+      <NotificationBell />
+    </div>
+
     <!-- Filter Bar -->
     <div class="filter-bar">
       <input class="filter-input" placeholder="🔍 Search projects…" v-model="filters.search" style="min-width:180px">
@@ -71,8 +77,9 @@
       </div>
     </div>
 
-    <!-- View Toggle -->
-    <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+    <!-- View Toggle + Archived -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <button class="btn btn-secondary btn-sm" @click="router.push('/archived')">🗄 Archived</button>
       <div class="ph-view-toggle">
         <button class="ph-view-btn active">List</button>
         <button class="ph-view-btn" title="Coming soon" style="opacity:.5;cursor:not-allowed">Kanban</button>
@@ -107,6 +114,7 @@ import { useTeamStore } from '@/stores/team'
 import ProjectListView from '@/components/projects/ProjectListView.vue'
 import CreateProjectModal from '@/components/projects/CreateProjectModal.vue'
 import { downloadCSV, copyTSV } from '@/utils/exportUtils'
+import NotificationBell from '@/components/layout/NotificationBell.vue'
 
 const router        = useRouter()
 const projectsStore = useProjectsStore()

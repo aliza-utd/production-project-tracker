@@ -74,7 +74,8 @@ function phaseNotes(project, phaseConfig) {
 }
 
 function sheetsUrls(project) {
-  return (project.googleSheets || []).map(s => s.url).join(' | ')
+  const src = project.links?.length ? project.links : (project.googleSheets || [])
+  return src.filter(l => l.url).map(l => l.url).join(' | ')
 }
 
 function getPhaseIds(phaseConfig) {

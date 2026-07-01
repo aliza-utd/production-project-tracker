@@ -9,7 +9,10 @@
         <button v-if="offset !== 0" class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px"
           @click="offset = 0">Today</button>
       </div>
-      <button class="btn btn-ghost btn-sm" @click="offset++">Next →</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn btn-ghost btn-sm" @click="offset++">Next →</button>
+        <NotificationBell />
+      </div>
     </div>
 
     <!-- Loading -->
@@ -19,7 +22,9 @@
 
     <!-- Sections grid -->
     <div v-else class="wk-grid">
-      <div v-for="sec in SECTIONS" :key="sec.key" class="wk-section">
+      <div v-for="sec in SECTIONS" :key="sec.key" class="wk-section"
+        :style="sec.color ? { borderTop: `3px solid ${sec.color}` } : {}">
+
         <!-- Section header -->
         <div class="wk-sec-hdr">
           <span>{{ sec.icon }} {{ sec.label }}</span>
@@ -29,35 +34,152 @@
           </button>
         </div>
 
-        <!-- Items -->
-        <div v-for="item in sectionItems(sec.key)" :key="item.id" class="wk-item">
-          <div style="flex:1;min-width:0">
-            <div v-if="item.projectId" style="font-size:12px;color:var(--muted);margin-bottom:1px">
-              {{ projectName(item.projectId) }}
-            </div>
-            <div style="font-size:13px">{{ item.note || item.text }}</div>
+        <!-- ── FREEFORM (New Projects) — drag-reorderable ── -->
+        <template v-if="sec.kind === 'freeform'">
+          <div v-for="item in sectionItems(sec.key)" :key="item.id"
+            class="wk-item wk-draggable"
+            :class="{ 'wk-drag-over': dragOverId === item.id }"
+            draggable="true"
+            @dragstart="onDragStart(sec.key, item.id, $event)"
+            @dragover.prevent="dragOverId = item.id"
+            @dragleave="dragOverId = null"
+            @drop.prevent="onDrop(sec.key, item.id)">
+            <span class="drag-handle" title="Drag to reorder">⠿</span>
+            <div style="flex:1;font-size:13px">{{ item.text }}</div>
+            <button class="btn-icon" @click="removeItem(sec.key, item.id)" title="Remove">✕</button>
           </div>
-          <button class="btn-icon" style="flex-shrink:0" @click="removeItem(sec.key, item.id)"
-            title="Remove">✕</button>
-        </div>
-        <div v-if="!sectionItems(sec.key).length"
-          style="font-size:12px;color:var(--muted);padding:8px 0">Nothing logged yet.</div>
+          <div v-if="!sectionItems(sec.key).length" class="wk-empty">Nothing logged yet.</div>
 
-        <!-- Add form -->
-        <div v-if="addOpen === sec.key" class="wk-add-form">
-          <select v-if="sec.needsProject" class="form-select" v-model="addForm.projectId"
-            style="font-size:13px;margin-bottom:8px">
-            <option value="">Select project…</option>
-            <option v-for="p in projectsStore.projects" :key="p.id" :value="p.id">{{ p.name }}</option>
-          </select>
-          <input class="form-input" v-model="addForm.text" placeholder="Note…"
-            style="font-size:13px;margin-bottom:8px"
-            @keydown.enter="addItem(sec.key, sec.needsProject)">
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-primary btn-sm" @click="addItem(sec.key, sec.needsProject)">Add</button>
-            <button class="btn btn-ghost btn-sm" @click="addOpen = null">Cancel</button>
+          <div v-if="addOpen === sec.key" class="wk-add-form">
+            <input class="form-input" v-model="addForm.text"
+              placeholder="Project name or note…" style="font-size:13px;margin-bottom:8px"
+              @keydown.enter="addFreeformItem(sec.key)">
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-primary btn-sm" @click="addFreeformItem(sec.key)">Add</button>
+              <button class="btn btn-ghost btn-sm" @click="addOpen = null">Cancel</button>
+            </div>
           </div>
-        </div>
+        </template>
+
+        <!-- ── PROJECT LINK (Pending to Ongoing) ── -->
+        <template v-else-if="sec.kind === 'project'">
+          <div v-for="item in sectionItems(sec.key)" :key="item.id" class="wk-item">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:500">{{ projectName(item.projectId) }}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">
+                {{ projectPhase(item.projectId) || '—' }}
+                <span v-if="projectSiteStatus(item.projectId)"
+                  :style="{ color: siteStatusColor(projectSiteStatus(item.projectId)) }">
+                  · {{ projectSiteStatus(item.projectId) }}
+                </span>
+              </div>
+            </div>
+            <button class="btn-icon" @click="removeItem(sec.key, item.id)" title="Remove">✕</button>
+          </div>
+          <div v-if="!sectionItems(sec.key).length" class="wk-empty">Nothing logged yet.</div>
+
+          <div v-if="addOpen === sec.key" class="wk-add-form">
+            <div class="wk-project-search" style="margin-bottom:8px">
+              <input class="form-input" v-model="addForm.projectSearch"
+                placeholder="Search projects…" style="font-size:13px"
+                autocomplete="off"
+                @input="showDropdown = true"
+                @focus="showDropdown = true"
+                @keydown.escape="showDropdown = false"
+                @keydown.enter.prevent="selectFirstProject(sec)">
+              <div v-if="showDropdown && filteredProjects.length" class="wk-dropdown">
+                <div v-for="p in filteredProjects" :key="p.id"
+                  class="wk-dropdown-item"
+                  @mousedown.prevent="selectProject(p, sec)">
+                  {{ p.name }}
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-primary btn-sm"
+                :disabled="!addForm.projectId"
+                @click="addProjectItem(sec.key)">Add</button>
+              <button class="btn btn-ghost btn-sm" @click="addOpen = null">Cancel</button>
+            </div>
+          </div>
+        </template>
+
+        <!-- ── PROJECT + DATE (Delivery & Previews, Sites Going Live) ── -->
+        <template v-else-if="sec.kind === 'project-date'">
+          <div v-for="item in sectionItems(sec.key)" :key="item.id"
+            class="wk-item" style="flex-direction:column;align-items:stretch;gap:6px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="flex:1;font-size:13px;font-weight:500;min-width:0">
+                {{ projectName(item.projectId) }}
+              </div>
+              <button class="btn-icon" @click="removeItem(sec.key, item.id)" title="Remove">✕</button>
+            </div>
+            <input type="date" class="form-input"
+              :value="item.date"
+              style="font-size:12px"
+              @change="onItemDateChange(sec, item.id, $event.target.value)">
+          </div>
+          <div v-if="!sectionItems(sec.key).length" class="wk-empty">Nothing logged yet.</div>
+
+          <div v-if="addOpen === sec.key" class="wk-add-form">
+            <div class="wk-project-search" style="margin-bottom:8px">
+              <input class="form-input" v-model="addForm.projectSearch"
+                placeholder="Search projects…" style="font-size:13px"
+                autocomplete="off"
+                @input="showDropdown = true"
+                @focus="showDropdown = true"
+                @keydown.escape="showDropdown = false"
+                @keydown.enter.prevent="selectFirstProject(sec)">
+              <div v-if="showDropdown && filteredProjects.length" class="wk-dropdown">
+                <div v-for="p in filteredProjects" :key="p.id"
+                  class="wk-dropdown-item"
+                  @mousedown.prevent="selectProject(p, sec)">
+                  {{ p.name }}
+                </div>
+              </div>
+            </div>
+            <input type="date" class="form-input" v-model="addForm.date"
+              style="font-size:13px;margin-bottom:8px">
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-primary btn-sm"
+                :disabled="!addForm.projectId"
+                @click="addProjectDateItem(sec)">Add</button>
+              <button class="btn btn-ghost btn-sm" @click="addOpen = null">Cancel</button>
+            </div>
+          </div>
+        </template>
+
+        <!-- ── RICH TEXT (Urgent Requests, Blockers & Issues) ── -->
+        <template v-else-if="sec.kind === 'richtext'">
+          <div v-for="item in sectionItems(sec.key)" :key="item.id" class="wk-richtext-block">
+            <template v-if="editingRichId === `${sec.key}:${item.id}`">
+              <RichTextEditor v-model="editingRichHtml" style="margin-bottom:8px" />
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-primary btn-sm" @click="saveRichItem(sec.key, item.id)">Save</button>
+                <button class="btn btn-ghost btn-sm" @click="editingRichId = null">Cancel</button>
+              </div>
+            </template>
+            <template v-else>
+              <div class="wk-html-content" v-html="item.html || '<em style=\'color:var(--muted)\'>Empty block</em>'"></div>
+              <div class="wk-richtext-actions">
+                <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px"
+                  @click="editRich(sec.key, item)">Edit</button>
+                <button class="btn-icon" style="font-size:11px"
+                  @click="removeItem(sec.key, item.id)" title="Remove">✕</button>
+              </div>
+            </template>
+          </div>
+          <div v-if="!sectionItems(sec.key).length" class="wk-empty">Nothing logged yet.</div>
+
+          <div v-if="addOpen === sec.key" class="wk-add-form">
+            <RichTextEditor v-model="addForm.html" placeholder="Write here…" style="margin-bottom:8px" />
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-primary btn-sm" @click="addRichItem(sec.key)">Add</button>
+              <button class="btn btn-ghost btn-sm" @click="addOpen = null">Cancel</button>
+            </div>
+          </div>
+        </template>
+
       </div>
     </div>
 
@@ -67,27 +189,56 @@
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useProjectsStore } from '@/stores/projects'
+import { usePhasesStore }   from '@/stores/phases'
 import { subscribeToWeeklyTracker, saveWeeklyTrackerDoc } from '@/firebase-service'
+import RichTextEditor from '@/components/shared/RichTextEditor.vue'
+import NotificationBell from '@/components/layout/NotificationBell.vue'
 
 const projectsStore = useProjectsStore()
+const phasesStore   = usePhasesStore()
 
+// ── Section definitions ───────────────────────────────────────────────────────
+// color: null = no accent; otherwise a CSS color for the top border
+// kind:  freeform | project | project-date | richtext
+// dateField: the project document field that syncs with the date picker
 const SECTIONS = [
-  { key: 'newProjects',      icon: '✨', label: 'New Projects',       needsProject: true  },
-  { key: 'pendingToOngoing', icon: '🔄', label: 'Pending to Ongoing', needsProject: true  },
-  { key: 'deliveryPreviews', icon: '🚀', label: 'Delivery & Previews',needsProject: true  },
-  { key: 'sitesGoingLive',   icon: '🌐', label: 'Sites Going Live',   needsProject: true  },
-  { key: 'urgentRequests',   icon: '⚡', label: 'Urgent Requests',    needsProject: false },
-  { key: 'blockersIssues',   icon: '🚧', label: 'Blockers & Issues',  needsProject: false },
+  { key: 'newProjects',      kind: 'freeform',      icon: '✨', label: 'New Projects',        color: null,      dateField: null },
+  { key: 'pendingToOngoing', kind: 'project',        icon: '🔄', label: 'Pending to Ongoing',  color: '#f59e0b', dateField: null },
+  { key: 'deliveryPreviews', kind: 'project-date',   icon: '🚀', label: 'Delivery & Previews', color: '#3b82f6', dateField: 'deliveryDate' },
+  { key: 'sitesGoingLive',   kind: 'project-date',   icon: '🌐', label: 'Sites Going Live',    color: '#10b981', dateField: 'liveDate' },
+  { key: 'urgentRequests',   kind: 'richtext',       icon: '⚡', label: 'Urgent Requests',     color: null,      dateField: null },
+  { key: 'blockersIssues',   kind: 'richtext',       icon: '🚧', label: 'Blockers & Issues',   color: null,      dateField: null },
 ]
 
-const offset   = ref(0)
-const entry    = ref({})
-const loading  = ref(false)
-const addOpen  = ref(null)
-const addForm  = ref({ projectId: '', text: '' })
+// ── State ─────────────────────────────────────────────────────────────────────
+const offset  = ref(0)
+const entry   = ref({})
+const loading = ref(false)
+const addOpen = ref(null)
+const addForm = ref({ projectId: '', projectSearch: '', text: '', html: '', date: '' })
+
+// Type-ahead
+const showDropdown = ref(false)
+const filteredProjects = computed(() => {
+  const q = (addForm.value.projectSearch || '').toLowerCase().trim()
+  const list = q
+    ? projectsStore.projects.filter(p => p.name.toLowerCase().includes(q))
+    : projectsStore.projects.slice()
+  return list.slice(0, 10)
+})
+
+// Rich text inline editing
+const editingRichId   = ref(null)
+const editingRichHtml = ref('')
+
+// Drag-and-drop (freeform column only)
+let   _dragSectionKey = null
+let   _dragItemId     = null
+const dragOverId      = ref(null)
 
 let unsub = null
 
+// ── Week key / label ──────────────────────────────────────────────────────────
 const weekKey = computed(() => {
   const d = new Date()
   d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + offset.value * 7)
@@ -100,22 +251,18 @@ const weekKey = computed(() => {
 const weekLabel = computed(() => {
   const d = new Date()
   d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + offset.value * 7)
-  const sun = new Date(d); sun.setDate(sun.getDate() + 6)
-  const fmt = (dt) => dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  const prefix = offset.value === 0 ? 'This Week · '
+  const sun  = new Date(d); sun.setDate(sun.getDate() + 6)
+  const fmt  = (dt) => dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const yr   = d.getFullYear()
+  const jan1 = new Date(yr, 0, 1)
+  const wn   = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7)
+  const rel  = offset.value ===  0 ? 'This Week · '
     : offset.value === -1 ? 'Last Week · '
-    : offset.value === 1  ? 'Next Week · ' : ''
-  return `${prefix}${fmt(d)} – ${fmt(sun)}, ${d.getFullYear()}`
+    : offset.value ===  1 ? 'Next Week · ' : ''
+  return `Week ${wn} · ${rel}${fmt(d)} – ${fmt(sun)}, ${yr}`
 })
 
-function sectionItems(key) {
-  return (entry.value[key] || [])
-}
-
-function projectName(id) {
-  return projectsStore.projects.find(p => p.id === id)?.name || id
-}
-
+// ── Listener ──────────────────────────────────────────────────────────────────
 function startListener(wk) {
   if (unsub) unsub()
   loading.value = true
@@ -125,39 +272,182 @@ function startListener(wk) {
   })
 }
 
-watch(weekKey, (wk) => { startListener(wk); addOpen.value = null }, { immediate: true })
+watch(weekKey, (wk) => {
+  startListener(wk)
+  addOpen.value    = null
+  editingRichId.value = null
+}, { immediate: true })
+
 onUnmounted(() => { if (unsub) unsub() })
 
-function toggleAdd(key) {
-  if (addOpen.value === key) { addOpen.value = null; return }
-  addOpen.value = key
-  addForm.value = { projectId: '', text: '' }
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function sectionItems(key) {
+  return entry.value[key] || []
 }
 
-async function addItem(sectionKey, needsProject) {
+function uid() {
+  return Math.random().toString(36).slice(2)
+}
+
+function projectById(id) {
+  return projectsStore.projects.find(p => p.id === id)
+}
+
+function projectName(id) {
+  return projectById(id)?.name || id
+}
+
+function projectPhase(id) {
+  const p = projectById(id)
+  if (!p?.currentPhase) return ''
+  const ph = phasesStore.phaseConfig.find(ph => ph.id === p.currentPhase)
+  return ph?.name || p.currentPhase
+}
+
+function projectSiteStatus(id) {
+  return projectById(id)?.siteStatus || ''
+}
+
+function siteStatusColor(status) {
+  if (status === 'live')      return '#10b981'
+  if (status === 'on-hold')   return '#f59e0b'
+  if (status === 'cancelled') return '#ef4444'
+  return 'var(--muted)'
+}
+
+// ── Add form ──────────────────────────────────────────────────────────────────
+function toggleAdd(key) {
+  if (addOpen.value === key) { addOpen.value = null; return }
+  addOpen.value  = key
+  addForm.value  = { projectId: '', projectSearch: '', text: '', html: '', date: '' }
+  showDropdown.value = false
+}
+
+// Freeform (New Projects)
+function addFreeformItem(sectionKey) {
   if (!addForm.value.text.trim()) return
-  if (needsProject && !addForm.value.projectId) return
-
-  const item = {
-    id:        Math.random().toString(36).slice(2),
-    text:      addForm.value.text.trim(),
-    projectId: needsProject ? addForm.value.projectId : undefined,
-    createdAt: new Date().toISOString(),
-  }
-
-  const updated = { ...entry.value }
-  updated[sectionKey] = [...(updated[sectionKey] || []), item]
-  entry.value = updated
-
-  await saveWeeklyTrackerDoc(weekKey.value, updated)
+  const item = { id: uid(), text: addForm.value.text.trim(), createdAt: new Date().toISOString() }
+  saveSection(sectionKey, [...sectionItems(sectionKey), item])
   addOpen.value = null
 }
 
-async function removeItem(sectionKey, id) {
-  const updated = { ...entry.value }
-  updated[sectionKey] = (updated[sectionKey] || []).filter(i => i.id !== id)
+// Type-ahead helpers
+function selectProject(p, sec) {
+  addForm.value.projectId     = p.id
+  addForm.value.projectSearch = p.name
+  showDropdown.value          = false
+  // Pre-populate date from the project document
+  if (sec?.dateField) {
+    addForm.value.date = p[sec.dateField] || ''
+  }
+}
+
+function selectFirstProject(sec) {
+  if (filteredProjects.value.length) selectProject(filteredProjects.value[0], sec)
+}
+
+// Project link (Pending to Ongoing)
+function addProjectItem(sectionKey) {
+  if (!addForm.value.projectId) return
+  const item = { id: uid(), projectId: addForm.value.projectId, createdAt: new Date().toISOString() }
+  saveSection(sectionKey, [...sectionItems(sectionKey), item])
+  addOpen.value = null
+}
+
+// Project + date (Delivery & Previews, Sites Going Live)
+async function addProjectDateItem(sec) {
+  if (!addForm.value.projectId) return
+  const item = {
+    id:        uid(),
+    projectId: addForm.value.projectId,
+    date:      addForm.value.date || '',
+    createdAt: new Date().toISOString(),
+  }
+  saveSection(sec.key, [...sectionItems(sec.key), item])
+  addOpen.value = null
+
+  // Write the date back to the project document
+  if (item.date && sec.dateField) {
+    try {
+      await projectsStore.updateProject(item.projectId, { [sec.dateField]: item.date })
+    } catch (err) {
+      console.error('[WeeklyTracker] project date update failed:', err.code, err.message)
+    }
+  }
+}
+
+// Date change on an existing project-date item
+async function onItemDateChange(sec, itemId, newDate) {
+  const items = sectionItems(sec.key).map(i =>
+    i.id === itemId ? { ...i, date: newDate } : i
+  )
+  saveSection(sec.key, items)
+
+  // Write back to the project document
+  const item = items.find(i => i.id === itemId)
+  if (item?.projectId && sec.dateField) {
+    try {
+      await projectsStore.updateProject(item.projectId, { [sec.dateField]: newDate })
+    } catch (err) {
+      console.error('[WeeklyTracker] project date update failed:', err.code, err.message)
+    }
+  }
+}
+
+// Rich text (Urgent Requests, Blockers & Issues)
+function addRichItem(sectionKey) {
+  if (!addForm.value.html) return
+  const item = { id: uid(), html: addForm.value.html, createdAt: new Date().toISOString() }
+  saveSection(sectionKey, [...sectionItems(sectionKey), item])
+  addOpen.value = null
+}
+
+function editRich(sectionKey, item) {
+  editingRichId.value   = `${sectionKey}:${item.id}`
+  editingRichHtml.value = item.html || ''
+}
+
+async function saveRichItem(sectionKey, itemId) {
+  const items = sectionItems(sectionKey).map(i =>
+    i.id === itemId ? { ...i, html: editingRichHtml.value } : i
+  )
+  saveSection(sectionKey, items)
+  editingRichId.value = null
+}
+
+// Remove
+function removeItem(sectionKey, id) {
+  saveSection(sectionKey, sectionItems(sectionKey).filter(i => i.id !== id))
+}
+
+// ── Drag-and-drop (freeform column) ──────────────────────────────────────────
+function onDragStart(sectionKey, itemId, evt) {
+  _dragSectionKey         = sectionKey
+  _dragItemId             = itemId
+  evt.dataTransfer.effectAllowed = 'move'
+}
+
+function onDrop(sectionKey, targetId) {
+  dragOverId.value = null
+  if (_dragSectionKey !== sectionKey || !_dragItemId || _dragItemId === targetId) return
+  const items   = sectionItems(sectionKey).slice()
+  const fromIdx = items.findIndex(i => i.id === _dragItemId)
+  const toIdx   = items.findIndex(i => i.id === targetId)
+  if (fromIdx === -1 || toIdx === -1) return
+  items.splice(toIdx, 0, items.splice(fromIdx, 1)[0])
+  saveSection(sectionKey, items)
+  _dragItemId = null
+}
+
+// ── Firestore write ───────────────────────────────────────────────────────────
+async function saveSection(sectionKey, items) {
+  const updated = { ...entry.value, [sectionKey]: items }
   entry.value = updated
-  await saveWeeklyTrackerDoc(weekKey.value, updated)
+  try {
+    await saveWeeklyTrackerDoc(weekKey.value, updated)
+  } catch (err) {
+    console.error('[WeeklyTracker] save failed:', err.code, err.message)
+  }
 }
 </script>
 
@@ -191,6 +481,9 @@ async function removeItem(sectionKey, id) {
   border: 1px solid var(--border);
   border-radius: var(--r);
   padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 .wk-sec-hdr {
   display: flex;
@@ -201,6 +494,8 @@ async function removeItem(sectionKey, id) {
   margin-bottom: 12px;
   color: var(--text);
 }
+
+/* Generic item row */
 .wk-item {
   display: flex;
   align-items: flex-start;
@@ -208,9 +503,85 @@ async function removeItem(sectionKey, id) {
   padding: 6px 0;
   border-bottom: 1px solid var(--border);
 }
+.wk-item:last-of-type { border-bottom: none; }
+
+/* Draggable freeform items */
+.wk-draggable { cursor: grab; }
+.wk-draggable:active { cursor: grabbing; }
+.wk-drag-over {
+  background: var(--bg);
+  border-radius: 4px;
+  outline: 2px dashed var(--primary);
+  outline-offset: -2px;
+}
+.drag-handle {
+  color: var(--muted);
+  font-size: 14px;
+  flex-shrink: 0;
+  user-select: none;
+  padding-top: 1px;
+}
+
+.wk-empty {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 8px 0;
+}
+
 .wk-add-form {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
+}
+
+/* Type-ahead project search */
+.wk-project-search { position: relative; }
+.wk-dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: 0 4px 12px rgba(0,0,0,.1);
+  z-index: 100;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.wk-dropdown-item {
+  padding: 7px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text);
+}
+.wk-dropdown-item:hover { background: var(--bg); }
+
+/* Rich text blocks */
+.wk-richtext-block {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.wk-richtext-block:last-of-type { border-bottom: none; }
+
+.wk-html-content {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.wk-html-content :deep(p)           { margin: 0 0 4px; }
+.wk-html-content :deep(p:last-child){ margin-bottom: 0; }
+.wk-html-content :deep(ul),
+.wk-html-content :deep(ol)          { margin: 4px 0; padding-left: 20px; }
+.wk-html-content :deep(li)          { margin: 2px 0; }
+.wk-html-content :deep(strong)      { font-weight: 700; }
+.wk-html-content :deep(em)          { font-style: italic; }
+.wk-html-content :deep(s)           { text-decoration: line-through; }
+
+.wk-richtext-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
 }
 </style>

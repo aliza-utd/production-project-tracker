@@ -9,6 +9,12 @@
     </div>
 
     <template v-else>
+      <!-- Page header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h1 style="font-size:20px;font-weight:700;color:var(--text);margin:0">Reports</h1>
+        <NotificationBell />
+      </div>
+
       <!-- Controls -->
       <div class="rpt-controls">
         <div class="rpt-date-row">
@@ -55,6 +61,7 @@ import { useProjectsStore }  from '@/stores/projects'
 import { usePhasesStore }    from '@/stores/phases'
 import { useTeamStore }      from '@/stores/team'
 import { useAuthStore }      from '@/stores/auth'
+import NotificationBell from '@/components/layout/NotificationBell.vue'
 
 const projectsStore = useProjectsStore()
 const phasesStore   = usePhasesStore()
